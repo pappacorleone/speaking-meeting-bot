@@ -1,4 +1,5 @@
 version: "2"
+authtoken: 37HHeMpj0ujWM38zhNGjMdGvOut_2QpY1jYkGhFCF4Y5QCmsT
 
 tunnels:
   proxy1:
