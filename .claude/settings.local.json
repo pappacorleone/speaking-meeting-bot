@@ -13,7 +13,8 @@
       "Bash(PYTHONPATH=\"c:\\\\\\\\Users\\\\\\\\kmond\\\\\\\\meeting bot\\\\\\\\speaking-meeting-bot\" \"c:\\\\\\\\Users\\\\\\\\kmond\\\\\\\\meeting bot\\\\\\\\speaking-meeting-bot\\\\\\\\.venv\\\\\\\\Scripts\\\\\\\\python.exe\" -c:*)",
       "Bash(del \"\\\\?\\\\c:\\\\Users\\\\kmond\\\\meeting bot\\\\speaking-meeting-bot\\\\nul\")",
       "Bash(cmd /c \"del \\\\?\\\\c:\\\\Users\\\\kmond\\\\meeting bot\\\\speaking-meeting-bot\\\\nul\")",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(gh pr create:*)"
     ]
   }
 }

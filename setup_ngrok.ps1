@@ -57,3 +57,4 @@ Write-Host ""
 $configPath = Join-Path $projectPath "config\ngrok\config.yml"
 ngrok start --all --config $configPath
 
+

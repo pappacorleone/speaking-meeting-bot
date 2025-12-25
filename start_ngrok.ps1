@@ -39,3 +39,4 @@ Write-Host ""
 # Start ngrok
 ngrok start --all --config $configPath
 
+
