@@ -3,14 +3,17 @@
 **Version:** 1.0
 **Date:** 2026-01-05
 **Status:** Consolidated from docs folder
-**Sources:**
-- docs/DYADIC_ALPHA_MASTER_STRATEGY.md
-- docs/PRD_DIADI_FRONTEND_V2.md
-- docs/DIADI_FRONTEND_PRD_CONSOLIDATED.md
-- docs/DIADI_FRONTEND_TECHNICAL_SPEC.md
-- docs/meeting-agent-platform-ux-recommendations.md
-- docs/archive/* (archived PRDs and specs)
-- docs/Diadi screens/* (94 UI mockup screenshots)
+**Sources (all now archived in `docs/archive/`):**
+- DYADIC_ALPHA_MASTER_STRATEGY.md
+- PRD_DIADI_FRONTEND_V2.md
+- DIADI_FRONTEND_PRD_CONSOLIDATED.md
+- DIADI_FRONTEND_TECHNICAL_SPEC.md
+- DIADI_FRONTEND_PRD.md
+- DIADI_FRONTEND_TECH_SPEC.md
+- PRD_DIADI_FRONTEND.md
+
+**Design References:**
+- docs/Diadi screens/* (94 UI mockup screenshots - UX designs extracted in Section 6)
 
 ---
 
@@ -20,14 +23,15 @@
 3. [Target Users & Personas](#3-target-users--personas)
 4. [Core Values & Constraints](#4-core-values--constraints)
 5. [Alpha Scope (P0)](#5-alpha-scope-p0)
-6. [Functional Requirements](#6-functional-requirements)
-7. [Technical Requirements](#7-technical-requirements)
-8. [Data Model](#8-data-model)
-9. [API Requirements](#9-api-requirements)
-10. [Non-Functional Requirements](#10-non-functional-requirements)
-11. [Success Metrics](#11-success-metrics)
-12. [Implementation Phases](#12-implementation-phases)
-13. [Open Questions & Risks](#13-open-questions--risks)
+6. [UX Design Specifications](#6-ux-design-specifications)
+7. [Functional Requirements](#7-functional-requirements)
+8. [Technical Requirements](#8-technical-requirements)
+9. [Data Model](#9-data-model)
+10. [API Requirements](#10-api-requirements)
+11. [Non-Functional Requirements](#11-non-functional-requirements)
+12. [Success Metrics](#12-success-metrics)
+13. [Implementation Phases](#13-implementation-phases)
+14. [Open Questions & Risks](#14-open-questions--risks)
 
 ---
 
@@ -181,9 +185,362 @@ Multi-person facilitation specialists with:
 
 ---
 
-## 6. Functional Requirements
+## 6. UX Design Specifications
 
-### 6.1 Hub
+*Extracted from 94 UI mockup screenshots in `docs/Diadi screens/`*
+
+### 6.1 Visual Design System
+
+#### Color Palette
+| Usage | Color | Notes |
+|-------|-------|-------|
+| Primary Background | Warm cream/off-white (#F5F3EF) | Used across all screens |
+| Primary CTA | Dark charcoal (#2D2D2D) | Buttons: "JOIN SESSION", "CONTINUE TO SETUP", etc. |
+| Secondary CTA | Olive/Sage green (#6B7B5C) | "LAUNCH SESSION", "RESUME SESSION", "ACCEPT" |
+| Text Primary | Dark charcoal (#2D2D2D) | Headlines and body text |
+| Text Secondary | Muted gray (#8B8B8B) | Labels, captions |
+| Status Indicators | Green (#4CAF50) | Active states, "Ready" indicators |
+| Warning/Alert | Amber/Orange (#F59E0B) | Emotional intensity warnings |
+| Sidebar/Nav Dark | Dark charcoal (#2D2D2D) | Desktop sidebar, expanded nav |
+
+#### Typography
+| Element | Style |
+|---------|-------|
+| Page Headlines | Large serif font (e.g., "The Hub.", "Facilitator.") |
+| Section Headers | All caps, small, spaced tracking (e.g., "READY FOR FACILITATION", "SESSION GOAL") |
+| Body Text | Sans-serif, regular weight |
+| Button Labels | All caps, medium weight |
+
+#### Component Patterns
+- **Cards**: Rounded corners (16px radius), subtle shadow, white background
+- **Buttons**: Pill-shaped (full rounded), dark fill with white text for primary
+- **Inputs**: Rounded borders, light gray placeholder text
+- **Icons**: Minimal line icons for navigation, filled icons for status
+
+### 6.2 Navigation Design
+
+#### Mobile Navigation (Bottom Bar)
+**Reference**: `navigation/Screenshot 2025-12-30 232335.png`
+- 3 tabs with center CTA button:
+  - Home (house icon)
+  - Center: New Session button (circular, elevated)
+  - People (two-person icon)
+- User avatar in bottom-right corner (floating)
+
+#### Desktop Navigation (Side Rail)
+**Reference**: `navigation/Screenshot 2025-12-30 232404.png`
+- Collapsed state: Icon-only vertical rail on left
+  - Home (house icon, highlighted when active)
+  - Partners (two-person icon)
+  - Artifacts (folder icon)
+  - Settings (gear icon)
+- Expanded state: Dark panel with:
+  - User avatar and name at top
+  - "Dashboard" and "Partners" menu items
+  - "COLLAPSE" button at bottom
+
+### 6.3 Hub Screen Design
+
+**Reference**: `hub/Screenshot 2025-12-31 013921.png`, `hub/Screenshot 2025-12-31 013934.png`
+
+#### Mobile Layout
+- Header: "Talk." logo with search icon
+- Active Session Card:
+  - Green dot + "READY FOR FACILITATION" status badge
+  - Partner name (large, bold)
+  - Session goal preview (truncated)
+  - "JOIN SESSION" CTA button (dark, full-width)
+- Artifact Library section:
+  - 2-column grid of artifact cards
+  - Each card: Icon + title + file type + size
+- Recent Sessions section:
+  - "VIEW ALL" link in header
+  - List of session cards with icon, title, partner name, date
+
+#### Desktop Layout
+- Search bar at top: "Find sessions, partners, or consensus goals..."
+- User avatars cluster in top-right ("+2" indicator for more)
+- Main content area:
+  - "The Hub." headline with tagline
+  - Active session card (larger):
+    - Status badge
+    - Session title (large serif font)
+    - Partner joined status + agreement baseline percentage
+    - "RESUME SESSION" and "ARCHIVE" buttons
+- Session Artifacts Library:
+  - 4-column horizontal card row
+  - Card types: Consensus Map (PDF), Equity Draft (DOC), Ground Rules (IMG), Sentiment Analysis (XLS)
+  - "EXPLORE ALL" link
+- Recent Sessions Archive:
+  - 2-column card grid
+  - Each card: Icon, title, date, partner name, agreement percentage
+
+### 6.4 Session Creation Wizard Design
+
+#### Step 0: Identity & Bond
+**Reference**: `session creation/Screenshot 2025-12-31 143620.png`, `session creation/Screenshot 2025-12-31 144126.png`
+
+- Step indicator: "00 / IDENTITY & BOND"
+- Headline: "Who are you connecting with?"
+- Form fields:
+  - "PARTNER'S NAME" - text input with placeholder "e.g. David Miller"
+  - "RELATIONSHIP CONTEXT" - textarea with placeholder "Describe your dynamic (e.g. Co-founders, 3 years working together, high trust but recent friction...)"
+- CTA: "CONTINUE TO SETUP →" (dark button)
+
+#### Step 2: Facilitator Calibration
+**Reference**: `session creation/Screenshot 2025-12-31 143628.png`
+
+- Step indicator: "02 / FACILITATOR CALIBRATION"
+- Headline: "Facilitator."
+- Two-column layout:
+  - Left: "CHOOSE AGENT PERSONA"
+    - Radio cards for each persona:
+      - **Neutral Mediator** (shield icon, "SELECTED" badge) - default
+      - **Deep Empath** (heart icon) - "EMOTIONAL ANCHOR" subtitle
+      - **Decision Catalyst** (lightning icon) - "RAPID RESOLUTION" subtitle
+  - Right: "AGENT PARAMETERS"
+    - Toggle switches:
+      - "Interrupt Authority" - ON - "Facilitator may pause speakers to clarify"
+      - "Direct Inquiry" - ON - "Asks challenging, data-driven questions"
+      - "Silence Detection" - OFF - "Nudges room if silence > 20s"
+- CTA: "REVIEW & CONNECT" (dark button)
+
+#### Session Detail & Deep Prep (Pre-Session)
+**Reference**: `session creation/Screenshot 2025-12-31 145032.png`
+
+- Desktop layout with sidebar
+- Header: Phase badge "PRE-SESSION PHASE" + "Drafting since Dec 31, 2025"
+- Right: "LAUNCH SESSION" CTA + "ENCRYPTED CHAMBER" badge
+- Main content:
+  - Session title (large serif): "Equity Split Discussion."
+  - Partner indicator: Avatar + "With David Miller"
+  - "SESSION GOAL" card with quoted goal text
+  - "CHOSEN FACILITATOR" card with persona icon + "Neutral Mediator" + "ACTIVE CONFIGURATION"
+  - "RECENT ARTIFACTS" section
+- Deep Prep modal overlay:
+  - "AI DEEP PREP LABORATORY" header + "STRATEGIC ADVANTAGE" badge
+  - "How would you like to prepare for this conversation?"
+  - Two option cards:
+    - "Simulate Dialogue" (chat icon)
+    - "Draft Opening" (edit icon)
+
+### 6.5 Partner Invitation Design
+
+**Reference**: `partner invitation/Screenshot 2025-12-31 135823.png`
+
+#### Mobile Invitation View
+- Header: Mail envelope icon
+- Headline: "You're Invited."
+- Subtext: "[Inviter name] has invited you to a facilitated talk on Diadi."
+- Content card:
+  - "PROPOSED AIM" section with quoted goal
+  - Schedule: Calendar icon + "TODAY @ 2:00 PM (45M)"
+  - Meeting link (truncated URL)
+  - Privacy note: "Conversations are E2E encrypted and never stored on centralized servers."
+- Actions:
+  - "Accept" button (olive green, primary)
+  - "Decline Privately" link
+
+#### Desktop Invitation View
+- Split layout
+- Left: Large "You're Invited." headline with explanation
+- Right: Content card with:
+  - "CONTEXT & GOAL" header
+  - Quoted goal text (italic serif)
+  - Clock icon + schedule
+  - "Open Meeting Link" link
+  - "END-TO-END ENCRYPTED SESSION" badge
+- Actions: "ACCEPT" (olive) + "DECLINE" buttons
+
+### 6.6 Waiting Room / Liminal Space Design
+
+**Reference**: `active session (diadi)/Screenshot 2026-01-01 044207.png`
+
+#### Mobile View
+- Partner avatar (circular, with status ring)
+- Headline: "Waiting for David..."
+- Status: "INITIALIZING FACILITATOR"
+- Progress bar with "AGENT PRE-CHECK" label
+- Status message: "Preparing a neutral space for alignment."
+
+#### Desktop View
+- Headline: "You are Ready."
+- Subtext: "We are just making sure the partner connection is stable before we begin the facilitated session."
+- Readiness checklist (green dots):
+  - "Mic: Active"
+  - "Agent: Ready"
+  - "Partner: Joining" (gray dot = pending)
+- Partner photo preview card
+
+### 6.7 Active Session Design
+
+#### Native Diadi Session (Mobile)
+**Reference**: `active session (diadi)/Screenshot 2026-01-01 171135.png`
+
+- Video feed (partner's face, full-screen background)
+- Top overlay:
+  - Session timer (green dot + "12:34")
+  - "TALK BALANCE" indicator bar (horizontal, bicolor)
+- Right side floating indicators:
+  - "CALM" badge (green, emoji icon)
+  - "TEN..." badge (truncated tension indicator)
+- Bottom controls:
+  - Microphone button
+  - End call button (red, center)
+  - Help/info button
+- Facilitator Settings panel (slide-up sheet):
+  - "Facilitator Settings" header
+  - "Configure AI intervention logic"
+  - Toggle switches:
+    - "Sentiment Detection" - "AGENT LIVE"
+    - "Tension Monitoring" - "ACTIVE"
+    - "Facilitated Prompts" - "PAUSED"
+  - "✓ APPLY CONFIGURATION" button
+
+#### External Platform HUD (Zoom/Meet)
+**Reference**: `active session (zoom_meet)/Screenshot 2026-01-04 103921.png`
+
+- Three-panel comic-style illustration showing:
+  - Participant 1 view (with balance indicator overlay)
+  - Participant 2 view (headphones)
+  - AI analysis panel with:
+    - "ACTIVE ANALYSIS" badge
+    - Balance percentages (47% / Low)
+    - AI prompt: "David, you've established your position. Shall we invite Maya's Converge AI (Red)"
+
+### 6.8 Intervention UI Design
+
+#### Agent Icebreaker
+**Reference**: `interventions/Screenshot 2025-12-30 230514.png`
+
+- Modal overlay on video
+- Agent avatar icon (circular, branded)
+- Header: "AGENT ICEBREAKER"
+- Message: Quoted facilitation prompt contextual to session goal
+- CTA: "I'LL START" (dark button)
+
+#### Kill Switch / Pause Modal
+**Reference**: `interventions/Screenshot 2025-12-30 230628.png`
+
+- Centered modal dialog
+- Pause icon (circle with two bars)
+- Headline: "Mute Agent?"
+- Explanation: "Pausing the facilitator stops all interventions and data tracking immediately."
+- Participant status: "MAYA: READY" + "DAVID: READY"
+- Actions:
+  - "PAUSE AI FACILITATION" (dark button, primary)
+  - "CANCEL" link
+
+#### Emotional Intensity Alert
+**Reference**: `interventions/Screenshot 2025-12-30 231018.png`
+
+- Dark overlay banner at bottom of screen
+- Warning icon (triangle)
+- Headline: "Emotional Intensity High"
+- Message: "I'm detecting significant tension. Would a 2-minute breath-pause help both of you?"
+- Actions:
+  - "PAUSE SESSION" button
+  - "CONTINUE" button
+- Badge: "AI INTERVENTION ACTIVE"
+
+#### Goal Re-sync
+**Reference**: `interventions/Screenshot 2025-12-30 232647.png`
+
+- Dark full-screen overlay
+- Animated loading indicator (dashed circle)
+- Message: "Re-syncing with Goal..."
+- Badge: "DIADI AGENT"
+
+### 6.9 Post-Session Recap Design
+
+#### Transcript View
+**Reference**: `session detail/post-session/Screenshot 2025-12-30 173732.png`
+
+- Header: "RECAP 02: TRANSCRIPT" badge (olive)
+- Back button: "← EQUITY REVIEW"
+- Headline: "Full Transcript"
+- Chat-style layout:
+  - Participant messages with:
+    - Avatar + name + timestamp
+    - Message bubble (rounded, light background)
+  - AI annotation inline:
+    - Green accent bar on left
+    - Italic text: "AI Prompted: '[insight]'"
+- Search bar: "Search Keywords..." with filter icon
+- Footer note: "The Record: Transcripts are enriched with AI annotations"
+
+#### Synthesis Board (Summary)
+**Reference**: `session detail/post-session/Screenshot 2026-01-04 092600.png`
+
+- Header: "RECAP 1 / SYNTHESIS BOARD"
+- Navigation: Back arrow + "RECAP MODE" badge + timestamp
+- Actions: "SHARE RECAP" + "DOWNLOAD PDF" buttons
+- Main content card:
+  - "AI CONSENSUS SUMMARY" header
+  - Large italic serif quote summarizing outcome
+- Key Agreements section:
+  - Two cards in row:
+    - "KEY AGREEMENT 1": Title + description
+    - "KEY AGREEMENT 2": Title + description
+- Right sidebar:
+  - "ACTION ITEMS" section with checkboxes
+  - "GENERATED ASSETS" section with downloadable files (PDF, PNG)
+
+### 6.10 Partner Profile Design (Beta)
+
+**Reference**: `partner profiles/Screenshot 2025-12-30 225626.png`
+
+- Header: "Partner Perspective"
+- CTA: "START TALK WITH DAVID" (olive button)
+- Main content:
+  - Partner photo (circular) with edit badge
+  - Name + role: "David Miller" / "CO-FOUNDER PARTNER"
+  - "DYAD HEALTH" score: 92% with progress bar
+- "AI NEXT STEP RECOMMENDATIONS" section:
+  - Two recommendation cards
+- "ACTIVE GOAL" card:
+  - Goal title + alignment percentage
+- "JOURNEY HISTORY WITH DAVID" list:
+  - Session entries with titles + dates
+
+### 6.11 User Profile Design
+
+**Reference**: `user profile/Screenshot 2025-12-30 225714.png`
+
+- User avatar (large, centered)
+- Name + membership: "Maya Jenkins" / "PREMIUM MEMBER • SINCE 2024"
+- "ACCOUNT MANAGEMENT" section:
+  - "Email Settings" row with arrow
+  - "Billing & Subscription" row with arrow
+- "MY ASSISTANTS" section:
+  - Active facilitator: "The Neutral Mediator" / "ACTIVE DEFAULT"
+- "INTEGRATIONS" section:
+  - Platform icons with "ACTIVE" / "LINK" status badges
+
+### 6.12 Screen-to-Feature Mapping
+
+| Feature | Screenshots | Notes |
+|---------|-------------|-------|
+| Hub | `hub/*` (2) | Mobile + desktop responsive layouts |
+| Navigation | `navigation/*` (4) | Bottom bar, side rail, collapsed/expanded |
+| Session Creation | `session creation/*` (14) | 5-step wizard + variants |
+| Partner Invitation | `partner invitation/*` (6) | Mobile + desktop, accept/decline flows |
+| Waiting Room | `active session (diadi)/*` | Liminal space initialization |
+| Live Session (Native) | `active session (diadi)/*` (11) | Video call with AI overlay |
+| Live Session (External) | `active session (zoom_meet)/*` (6) | HUD for Zoom/Meet/Teams |
+| Interventions | `interventions/*` (21) | Balance, silence, escalation, icebreaker, kill switch |
+| Pre-Session Detail | `session detail/pre-session/*` (6) | Session setup + deep prep |
+| During Session | `session detail/during-session/*` (1) | Active session state |
+| Post-Session Recap | `session detail/post-session/*` (9) | Summary, transcript, ratings |
+| Partner Profiles | `partner profiles/*` (5) | Beta feature - dyad health |
+| User Profile | `user profile/*` (2) | Account + integrations |
+| Complications | `complications/*` (7) | Edge cases + error states |
+
+---
+
+## 7. Functional Requirements
+
+### 7.1 Hub
 **Requirements:**
 - Show active sessions with status (ready, in progress, completed)
 - Primary CTA to start a new session
@@ -194,7 +551,7 @@ Multi-person facilitation specialists with:
 - Empty states for no sessions, no artifacts
 - Search field supports sessions and partners (no advanced filtering in alpha)
 
-### 6.2 Session Creation Wizard
+### 7.2 Session Creation Wizard
 **5-Step Lean Flow:**
 1. **Identity and Bond** - Partner name and relationship context
 2. **Session Goal** - Goal text (max 200 chars), schedule (now or later), duration
@@ -207,7 +564,7 @@ Multi-person facilitation specialists with:
 - Deep Empath - Emotionally attuned, validation-focused
 - Decision Catalyst - Action-oriented, decision-driving
 
-### 6.3 Invitation and Consent
+### 7.3 Invitation and Consent
 **Acceptance Criteria:**
 - Invitee sees goal, time, duration, and AI consent explanation
 - Invitee can accept or decline privately (inviter not notified of decline)
@@ -220,14 +577,14 @@ Multi-person facilitation specialists with:
 - "Either can pause anytime"
 - "Nothing is stored by default"
 
-### 6.4 Launch and Waiting Room
+### 7.4 Launch and Waiting Room
 **Acceptance Criteria:**
 - Show readiness status (mic, camera, agent ready)
 - Show partner status (waiting, joining, joined)
 - Allow copying invite link
 - If external platform is selected, show meeting link and "Open meeting" button
 
-### 6.5 Active Session UI
+### 7.5 Active Session UI
 **Surfaces:**
 - Live facilitation room in Diadi app
 - External meeting running separately (Zoom/Meet/Teams)
@@ -239,7 +596,7 @@ Multi-person facilitation specialists with:
 - Goal snippet visible in the live room
 - Kill switch or pause facilitation available at all times
 
-### 6.6 Intervention System
+### 7.6 Intervention System
 
 **Intervention Policy:**
 - Visual-first, voice only for severe cases
@@ -270,36 +627,36 @@ Multi-person facilitation specialists with:
 - Time: "You have about 5 minutes left. You mentioned wanting to discuss [topic]—would you like to touch on that?"
 - Escalation: "I sense some tension rising. Would a 2-minute break help?"
 
-### 6.7 Kill Switch
+### 7.7 Kill Switch
 **Requirements:**
 - Immediate effect with no confirmation
 - Both participants notified
 - Re-enable only with explicit consent from both parties
 
-### 6.8 Post-Session Recap
+### 7.8 Post-Session Recap
 **Acceptance Criteria:**
 - Summary generated within 30 seconds of session end
 - Summary includes: goal, consensus, key points, action items, balance stats
 - Rating prompt for AI presence (1-5)
 - Transcript view only if backend supports transcription (P1)
 
-### 6.9 Profile and Integrations
+### 7.9 Profile and Integrations
 **Acceptance Criteria:**
 - Basic account details and subscription status
 - Integrations section shows MeetingBaas status (active or not configured)
 
 ---
 
-## 7. Technical Requirements
+## 8. Technical Requirements
 
-### 7.1 Frontend Stack
+### 8.1 Frontend Stack
 - **Framework:** Next.js 14 (App Router) + React + TypeScript
 - **Styling:** Tailwind CSS + component primitives (shadcn/ui)
 - **State Management:** Zustand for session UI state
 - **Server State:** TanStack Query
 - **Validation:** Zod for runtime validation
 
-### 7.2 Frontend Directory Structure
+### 8.2 Frontend Directory Structure
 ```
 web/
 ├── src/
@@ -324,7 +681,7 @@ web/
 │   └── types/
 ```
 
-### 7.3 Backend Requirements (Additions to Existing)
+### 8.3 Backend Requirements (Additions to Existing)
 **New Endpoints Required:**
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
@@ -345,7 +702,7 @@ web/
 | WebSocket /ws/{client_id}/output | Audio stream from meeting |
 | WebSocket /ws/{client_id}/input | Audio stream to meeting |
 
-### 7.4 Real-Time Event Stream
+### 8.4 Real-Time Event Stream
 **Primary Endpoint:** WebSocket `/sessions/{session_id}/events`
 
 **Event Types:**
@@ -369,7 +726,7 @@ web/
 }
 ```
 
-### 7.5 New Personas to Create
+### 8.5 New Personas to Create
 Three new personas in `config/personas/`:
 
 1. **neutral_mediator** - Balanced, non-judgmental facilitation
@@ -378,9 +735,9 @@ Three new personas in `config/personas/`:
 
 ---
 
-## 8. Data Model
+## 9. Data Model
 
-### 8.1 Core Entities (TypeScript)
+### 9.1 Core Entities (TypeScript)
 ```typescript
 type SessionStatus =
   | "draft"
@@ -456,7 +813,7 @@ interface SessionSummary {
 }
 ```
 
-### 8.2 Session State Machine
+### 9.2 Session State Machine
 ```
 draft -> pending_consent -> ready -> in_progress -> ended -> archived
                                   |
@@ -469,9 +826,9 @@ draft -> pending_consent -> ready -> in_progress -> ended -> archived
 
 ---
 
-## 9. API Requirements
+## 10. API Requirements
 
-### 9.1 Session Management Endpoints
+### 10.1 Session Management Endpoints
 
 **POST /sessions**
 ```json
@@ -517,7 +874,7 @@ Response: {
 }
 ```
 
-### 9.2 Backend Modifications Required
+### 10.2 Backend Modifications Required
 - Extend `/bots` response to include `client_id` and `websocket_url`
 - Store mapping of `session_id` -> `bot_id`, `client_id`
 - Emit UI events from Pipecat (balance updates, interventions, time remaining)
@@ -525,37 +882,37 @@ Response: {
 
 ---
 
-## 10. Non-Functional Requirements
+## 11. Non-Functional Requirements
 
-### 10.1 Performance
+### 11.1 Performance
 - Initial page load <= 2 seconds on broadband
 - Real-time updates <= 1 second latency
 - All primary flows usable on 360x640 and 1280x720
 
-### 10.2 Accessibility
+### 11.2 Accessibility
 - Contrast ratio >= 4.5:1 for text
 - Keyboard navigable forms and dialogs
 - Screen reader labels for controls and status indicators
 
-### 10.3 Privacy and Security
+### 11.3 Privacy and Security
 - Session-only data by default, no recording unless explicitly enabled
 - Clear consent language before any facilitation begins
 - Audit logging for consent and kill switch events
 - E2E encryption where possible
 
-### 10.4 Reliability
+### 11.4 Reliability
 - Graceful degradation if real-time metrics fail
 - Fallback UI states when WebSocket is disconnected
 - Reconnection logic with exponential backoff
 
 ---
 
-## 11. Success Metrics
+## 12. Success Metrics
 
-### 11.1 North Star Metric
+### 12.1 North Star Metric
 **"Conversations that felt better"**: Percentage of facilitated conversations where BOTH participants rate the experience as better than they would have had without facilitation.
 
-### 11.2 Primary Metrics
+### 12.2 Primary Metrics
 | Metric | Target |
 |--------|--------|
 | Both-party satisfaction | >4.0/5 average |
@@ -564,7 +921,7 @@ Response: {
 | Session completion | >90% |
 | Return usage | >60% within 30 days |
 
-### 11.3 Facilitation Quality Metrics
+### 12.3 Facilitation Quality Metrics
 | Metric | Target |
 |--------|--------|
 | Intervention rate | <3 per 30-min session |
@@ -572,7 +929,7 @@ Response: {
 | Escalation prevention | >80% of escalation events |
 | False positive rate | <10% |
 
-### 11.4 Analytics Events
+### 12.4 Analytics Events
 - session_created
 - invitation_sent
 - consent_accepted / consent_declined
@@ -585,7 +942,7 @@ Response: {
 
 ---
 
-## 12. Implementation Phases
+## 13. Implementation Phases
 
 ### Phase 1: Foundation (Week 1-2)
 **Backend:**
@@ -660,16 +1017,16 @@ Response: {
 
 ---
 
-## 13. Open Questions & Risks
+## 14. Open Questions & Risks
 
-### 13.1 Open Questions
+### 14.1 Open Questions
 1. **Authentication**: How will users authenticate (email magic link, SSO, internal only)?
 2. **Platform Priority**: Which meeting platform first (Zoom vs Meet vs Teams)?
 3. **Data Retention**: What data is retained by default for summaries and transcripts?
 4. **Talk Balance Implementation**: MeetingBaas speaker diarization vs Pipecat-level tracking?
 5. **Analytics Provider**: Segment, Amplitude, or custom?
 
-### 13.2 Key Risks
+### 14.2 Key Risks
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
 | Users find AI intrusive | Medium | High | Minimal intervention philosophy; easy disable; user testing |
@@ -678,7 +1035,7 @@ Response: {
 | Privacy/consent concerns | Medium | High | Radical transparency; data minimization |
 | WebSocket reliability | Medium | Medium | Reconnection logic; fallback UI |
 
-### 13.3 Dependencies
+### 14.3 Dependencies
 - Backend API additions must be coordinated with frontend phases
 - Design references available in `docs/Diadi screens/`
 - MeetingBaas API key handling needs security review
