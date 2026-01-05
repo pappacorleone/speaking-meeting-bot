@@ -10,6 +10,7 @@
 - docs/DIADI_FRONTEND_TECHNICAL_SPEC.md
 - docs/meeting-agent-platform-ux-recommendations.md
 - docs/archive/* (archived PRDs and specs)
+- docs/Diadi screens/* (94 UI mockup screenshots)
 
 ---
 
@@ -684,21 +685,155 @@ Response: {
 
 ---
 
-## Appendix A: Design References
-UI mockups organized by category in `docs/Diadi screens/`:
-- hub (2 screens)
-- navigation (4 screens)
-- partner invitation (6 screens)
-- session creation (15 screens)
-- active session - diadi (11 screens)
-- active session - zoom_meet (6 screens)
-- interventions (21 screens)
-- session detail/pre-session (6 screens)
-- session detail/during-session (1 screen)
-- session detail/post-session (9 screens)
-- partner profiles (5 screens)
-- user profile (2 screens)
-- complications (7 screens)
+## Appendix A: Design References - Complete Screenshot Inventory
+
+**Total: 94 UI mockup screenshots** organized by category in `docs/Diadi screens/`:
+
+### Hub (2 screens)
+| File | Description |
+|------|-------------|
+| `hub/Screenshot 2025-12-31 013921.png` | Hub main view |
+| `hub/Screenshot 2025-12-31 013934.png` | Hub alternate state |
+
+### Navigation (4 screens)
+| File | Description |
+|------|-------------|
+| `navigation/Screenshot 2025-12-30 232335.png` | Navigation view 1 |
+| `navigation/Screenshot 2025-12-30 232345.png` | Navigation view 2 |
+| `navigation/Screenshot 2025-12-30 232404.png` | Navigation view 3 |
+| `navigation/Screenshot 2025-12-30 232717.png` | Navigation view 4 |
+
+### Partner Invitation (6 screens)
+| File | Description |
+|------|-------------|
+| `partner invitation/Screenshot 2025-12-31 135823.png` | Invitation flow 1 |
+| `partner invitation/Screenshot 2025-12-31 135832.png` | Invitation flow 2 |
+| `partner invitation/Screenshot 2025-12-31 135840.png` | Invitation flow 3 |
+| `partner invitation/Screenshot 2025-12-31 150015.png` | Invitation flow 4 |
+| `partner invitation/Screenshot 2025-12-31 150019.png` | Invitation flow 5 |
+| `partner invitation/Screenshot 2025-12-31 150025.png` | Invitation flow 6 |
+
+### Session Creation (14 screens)
+| File | Description |
+|------|-------------|
+| `session creation/Screenshot 2025-12-31 143620.png` | Wizard step |
+| `session creation/Screenshot 2025-12-31 143623.png` | Wizard step |
+| `session creation/Screenshot 2025-12-31 143628.png` | Wizard step |
+| `session creation/Screenshot 2025-12-31 143631.png` | Wizard step |
+| `session creation/Screenshot 2025-12-31 143635.png` | Wizard step |
+| `session creation/Screenshot 2025-12-31 144126.png` | Wizard step |
+| `session creation/Screenshot 2025-12-31 144128.png` | Wizard step |
+| `session creation/Screenshot 2025-12-31 144131.png` | Wizard step |
+| `session creation/Screenshot 2025-12-31 144134.png` | Wizard step |
+| `session creation/Screenshot 2025-12-31 144137.png` | Wizard step |
+| `session creation/Screenshot 2025-12-31 145032.png` | Wizard step |
+| `session creation/Screenshot 2025-12-31 145037.png` | Wizard step |
+| `session creation/Screenshot 2025-12-31 145040.png` | Wizard step |
+| `session creation/Screenshot 2025-12-31 145044.png` | Wizard step |
+
+### Active Session - Native Diadi (11 screens)
+| File | Description |
+|------|-------------|
+| `active session (diadi)/Screenshot 2026-01-01 044207.png` | Active session view |
+| `active session (diadi)/Screenshot 2026-01-01 171135.png` | Active session view |
+| `active session (diadi)/Screenshot 2026-01-01 172756.png` | Active session view |
+| `active session (diadi)/Screenshot 2026-01-01 175050.png` | Active session view |
+| `active session (diadi)/Screenshot 2026-01-01 175056.png` | Active session view |
+| `active session (diadi)/Screenshot 2026-01-01 180318.png` | Active session view |
+| `active session (diadi)/Screenshot 2026-01-01 180330.png` | Active session view |
+| `active session (diadi)/Screenshot 2026-01-01 180515.png` | Active session view |
+| `active session (diadi)/Screenshot 2026-01-01 180519.png` | Active session view |
+| `active session (diadi)/Screenshot 2026-01-01 180545.png` | Active session view |
+| `active session (diadi)/Screenshot 2026-01-01 183104.png` | Active session view |
+
+### Active Session - Zoom/Meet Integration (6 screens)
+| File | Description |
+|------|-------------|
+| `active session (zoom_meet)/Screenshot 2025-12-30 230744.png` | Zoom/Meet HUD |
+| `active session (zoom_meet)/Screenshot 2026-01-04 103921.png` | Zoom/Meet HUD |
+| `active session (zoom_meet)/Screenshot 2026-01-04 103935.png` | Zoom/Meet HUD |
+| `active session (zoom_meet)/Screenshot 2026-01-04 104525.png` | Zoom/Meet HUD |
+| `active session (zoom_meet)/Screenshot 2026-01-04 104556.png` | Zoom/Meet HUD |
+| `active session (zoom_meet)/Screenshot 2026-01-04 104611.png` | Zoom/Meet HUD |
+
+### Interventions (21 screens)
+| File | Description |
+|------|-------------|
+| `interventions/Screenshot 2025-12-30 180210.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-30 180217.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-30 1801217.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-30 1802101.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-30 1802117.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-30 1810210.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-30 2010948.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-30 2100948.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-30 230514.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-30 230526.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-30 230610.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-30 230628.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-30 231018.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-30 231042.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-30 232647.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-30 232656.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-30 233249.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-30 233254.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-30 233258.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-30 233334.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-310 200948.png` | Intervention UI |
+
+### Session Detail - Pre-Session (6 screens)
+| File | Description |
+|------|-------------|
+| `session detail/pre-session/Screenshot 2025-12-31 150007.png` | Pre-session view |
+| `session detail/pre-session/Screenshot 2025-12-31 150015.png` | Pre-session view |
+| `session detail/pre-session/Screenshot 2025-12-31 150019.png` | Pre-session view |
+| `session detail/pre-session/Screenshot 2025-12-31 150025.png` | Pre-session view |
+| `session detail/pre-session/Screenshot 2026-01-04 092056.png` | Pre-session view |
+| `session detail/pre-session/Screenshot 2026-01-04 092507.png` | Pre-session view |
+
+### Session Detail - During Session (1 screen)
+| File | Description |
+|------|-------------|
+| `session detail/during-session/Screenshot 2026-01-02 170340.png` | During session view |
+
+### Session Detail - Post-Session (9 screens)
+| File | Description |
+|------|-------------|
+| `session detail/post-session/Screenshot 2025-12-30 173732.png` | Post-session summary |
+| `session detail/post-session/Screenshot 2025-12-30 2039391.png` | Post-session summary |
+| `session detail/post-session/Screenshot 2025-12-30 204653.png` | Post-session summary |
+| `session detail/post-session/Screenshot 2025-12-30 205020.png` | Post-session summary |
+| `session detail/post-session/Screenshot 2025-12-30 225213.png` | Post-session summary |
+| `session detail/post-session/Screenshot 2025-12-30 225319.png` | Post-session summary |
+| `session detail/post-session/Screenshot 2026-01-04 092600.png` | Post-session summary |
+| `session detail/post-session/Screenshot 2026-01-04 092605.png` | Post-session summary |
+| `session detail/post-session/Screenshot 2026-01-04 092614.png` | Post-session summary |
+
+### Partner Profiles (5 screens)
+| File | Description |
+|------|-------------|
+| `partner profiles/Screenshot 2025-12-30 1815105.png` | Partner profile view |
+| `partner profiles/Screenshot 2025-12-30 204653.png` | Partner profile view |
+| `partner profiles/Screenshot 2025-12-30 225626.png` | Partner profile view |
+| `partner profiles/Screenshot 2025-12-30 232021.png` | Partner profile view |
+| `partner profiles/Screenshot 2025-12-30 232118.png` | Partner profile view |
+
+### User Profile (2 screens)
+| File | Description |
+|------|-------------|
+| `user profile/Screenshot 2025-12-30 192703.png` | User profile view |
+| `user profile/Screenshot 2025-12-30 225714.png` | User profile view |
+
+### Complications (7 screens)
+| File | Description |
+|------|-------------|
+| `complications/Screenshot 2025-12-30 231126.png` | Edge case UI |
+| `complications/Screenshot 2025-12-30 231131.png` | Edge case UI |
+| `complications/Screenshot 2025-12-30 231135.png` | Edge case UI |
+| `complications/Screenshot 2025-12-30 231138.png` | Edge case UI |
+| `complications/Screenshot 2025-12-30 231141.png` | Edge case UI |
+| `complications/Screenshot 2025-12-30 231144.png` | Edge case UI |
+| `complications/Screenshot 2025-12-30 231159.png` | Edge case UI |
 
 ## Appendix B: Coherence Decisions
 - Product name is **Diadi**. Use "Talk" as a section label only, not as the brand.
