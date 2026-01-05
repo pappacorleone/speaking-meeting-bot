@@ -4,13 +4,13 @@
 **Date:** 2026-01-05
 **Status:** Consolidated from docs folder
 **Sources (all now archived in `docs/archive/`):**
-- DYADIC_ALPHA_MASTER_STRATEGY.md
-- PRD_DIADI_FRONTEND_V2.md
-- DIADI_FRONTEND_PRD_CONSOLIDATED.md
-- DIADI_FRONTEND_TECHNICAL_SPEC.md
-- DIADI_FRONTEND_PRD.md
-- DIADI_FRONTEND_TECH_SPEC.md
-- PRD_DIADI_FRONTEND.md
+- DYADIC_ALPHA_MASTER_STRATEGY.md (master strategy document)
+- PRD_DIADI_FRONTEND_V2.md (latest PRD)
+- DIADI_FRONTEND_PRD_CONSOLIDATED.md (consolidated PRD)
+- DIADI_FRONTEND_TECHNICAL_SPEC.md (technical spec)
+- DIADI_FRONTEND_PRD.md (original PRD)
+- DIADI_FRONTEND_TECH_SPEC.md (original tech spec)
+- PRD_DIADI_FRONTEND.md (early PRD draft)
 
 **Design References:**
 - docs/Diadi screens/* (94 UI mockup screenshots - UX designs extracted in Section 6)
@@ -1035,162 +1035,195 @@ Response: {
 | Privacy/consent concerns | Medium | High | Radical transparency; data minimization |
 | WebSocket reliability | Medium | Medium | Reconnection logic; fallback UI |
 
-### 14.3 Dependencies
-- Backend API additions must be coordinated with frontend phases
+### 14.3 Dependencies (Ordered by Priority)
+
+**Critical Path (must be completed in order):**
+1. **Authentication system** - Blocks all user-facing features
+2. **Session data model + CRUD endpoints** - Blocks session creation UI
+3. **Invite token system** - Blocks partner invitation flow
+4. **Consent tracking** - Blocks session start (both must consent)
+5. **MeetingBaas bot integration** - Blocks live session launch
+6. **WebSocket event stream** - Blocks real-time UI updates
+7. **Speaker diarization** - Blocks talk balance feature
+8. **Intervention logic in Pipecat** - Blocks AI interventions
+9. **Summary generation** - Blocks post-session recap
+
+**External Dependencies:**
+- MeetingBaas API key and account configuration
+- Cartesia voice API for facilitator speech
+- Deepgram/Gladia for speech-to-text
+- OpenAI API for LLM intelligence
+
+**Design Dependencies:**
 - Design references available in `docs/Diadi screens/`
-- MeetingBaas API key handling needs security review
+- Some screenshots show scrolled states (hub, post-session) - review full viewport designs
+- Mobile/desktop breakpoints need design review at 360px and 1280px
+
+**Security Reviews Required:**
+- MeetingBaas API key handling
+- Invite token generation and validation
+- Consent audit logging
+- Session data retention policies
 
 ---
 
 ## Appendix A: Design References - Complete Screenshot Inventory
 
-**Total: 94 UI mockup screenshots** organized by category in `docs/Diadi screens/`:
+**Total: 94 UI mockup screenshots** organized by category in `docs/Diadi screens/`
+
+**Note:** Some screenshots show scrolled viewport states. Multiple screenshots of the same screen may represent:
+- Different scroll positions (above/below fold)
+- Different device sizes (mobile vs desktop)
+- Different states (empty, filled, loading, error)
 
 ### Hub (2 screens)
 | File | Description |
 |------|-------------|
-| `hub/Screenshot 2025-12-31 013921.png` | Hub main view |
-| `hub/Screenshot 2025-12-31 013934.png` | Hub alternate state |
+| `hub/Screenshot 2025-12-31 013921.png` | Hub main view - mobile + desktop, above fold with active session card |
+| `hub/Screenshot 2025-12-31 013934.png` | Hub scrolled state - artifacts library + recent sessions archive |
 
 ### Navigation (4 screens)
 | File | Description |
 |------|-------------|
-| `navigation/Screenshot 2025-12-30 232335.png` | Navigation view 1 |
-| `navigation/Screenshot 2025-12-30 232345.png` | Navigation view 2 |
-| `navigation/Screenshot 2025-12-30 232404.png` | Navigation view 3 |
-| `navigation/Screenshot 2025-12-30 232717.png` | Navigation view 4 |
+| `navigation/Screenshot 2025-12-30 232335.png` | Mobile bottom nav bar - Home, New Session (center), People |
+| `navigation/Screenshot 2025-12-30 232345.png` | Mobile nav with user avatar |
+| `navigation/Screenshot 2025-12-30 232404.png` | Desktop side rail - expanded state with menu items |
+| `navigation/Screenshot 2025-12-30 232717.png` | Desktop side rail - collapsed icon-only state |
 
 ### Partner Invitation (6 screens)
 | File | Description |
 |------|-------------|
-| `partner invitation/Screenshot 2025-12-31 135823.png` | Invitation flow 1 |
-| `partner invitation/Screenshot 2025-12-31 135832.png` | Invitation flow 2 |
-| `partner invitation/Screenshot 2025-12-31 135840.png` | Invitation flow 3 |
-| `partner invitation/Screenshot 2025-12-31 150015.png` | Invitation flow 4 |
-| `partner invitation/Screenshot 2025-12-31 150019.png` | Invitation flow 5 |
-| `partner invitation/Screenshot 2025-12-31 150025.png` | Invitation flow 6 |
+| `partner invitation/Screenshot 2025-12-31 135823.png` | Invitation landing - mobile + desktop views with accept/decline |
+| `partner invitation/Screenshot 2025-12-31 135832.png` | Invitation with goal + schedule details |
+| `partner invitation/Screenshot 2025-12-31 135840.png` | Invitation scrolled - privacy/encryption notice |
+| `partner invitation/Screenshot 2025-12-31 150015.png` | Pre-session detail after acceptance |
+| `partner invitation/Screenshot 2025-12-31 150019.png` | Pre-session scrolled state |
+| `partner invitation/Screenshot 2025-12-31 150025.png` | Pre-session with partner status |
 
 ### Session Creation (14 screens)
 | File | Description |
 |------|-------------|
-| `session creation/Screenshot 2025-12-31 143620.png` | Wizard step |
-| `session creation/Screenshot 2025-12-31 143623.png` | Wizard step |
-| `session creation/Screenshot 2025-12-31 143628.png` | Wizard step |
-| `session creation/Screenshot 2025-12-31 143631.png` | Wizard step |
-| `session creation/Screenshot 2025-12-31 143635.png` | Wizard step |
-| `session creation/Screenshot 2025-12-31 144126.png` | Wizard step |
-| `session creation/Screenshot 2025-12-31 144128.png` | Wizard step |
-| `session creation/Screenshot 2025-12-31 144131.png` | Wizard step |
-| `session creation/Screenshot 2025-12-31 144134.png` | Wizard step |
-| `session creation/Screenshot 2025-12-31 144137.png` | Wizard step |
-| `session creation/Screenshot 2025-12-31 145032.png` | Wizard step |
-| `session creation/Screenshot 2025-12-31 145037.png` | Wizard step |
-| `session creation/Screenshot 2025-12-31 145040.png` | Wizard step |
-| `session creation/Screenshot 2025-12-31 145044.png` | Wizard step |
+| `session creation/Screenshot 2025-12-31 143620.png` | Step 0: Identity & Bond - desktop view |
+| `session creation/Screenshot 2025-12-31 143623.png` | Step 0: Identity & Bond - with form fields |
+| `session creation/Screenshot 2025-12-31 143628.png` | Step 2: Facilitator Calibration - persona selection |
+| `session creation/Screenshot 2025-12-31 143631.png` | Step 2: Agent parameters toggles |
+| `session creation/Screenshot 2025-12-31 143635.png` | Step 2: Facilitator scrolled state |
+| `session creation/Screenshot 2025-12-31 144126.png` | Step 0: Mobile view - Identity & Bond |
+| `session creation/Screenshot 2025-12-31 144128.png` | Step 1: Session Goal - mobile |
+| `session creation/Screenshot 2025-12-31 144131.png` | Step 1: Goal + schedule input |
+| `session creation/Screenshot 2025-12-31 144134.png` | Step 3: Review & Connect |
+| `session creation/Screenshot 2025-12-31 144137.png` | Step 4: Launch Hub - invite link |
+| `session creation/Screenshot 2025-12-31 145032.png` | Session Detail - pre-session with Deep Prep modal |
+| `session creation/Screenshot 2025-12-31 145037.png` | Session Detail - scrolled, showing artifacts |
+| `session creation/Screenshot 2025-12-31 145040.png` | Session Detail - desktop full view |
+| `session creation/Screenshot 2025-12-31 145044.png` | Session Detail - launch ready state |
 
 ### Active Session - Native Diadi (11 screens)
 | File | Description |
 |------|-------------|
-| `active session (diadi)/Screenshot 2026-01-01 044207.png` | Active session view |
-| `active session (diadi)/Screenshot 2026-01-01 171135.png` | Active session view |
-| `active session (diadi)/Screenshot 2026-01-01 172756.png` | Active session view |
-| `active session (diadi)/Screenshot 2026-01-01 175050.png` | Active session view |
-| `active session (diadi)/Screenshot 2026-01-01 175056.png` | Active session view |
-| `active session (diadi)/Screenshot 2026-01-01 180318.png` | Active session view |
-| `active session (diadi)/Screenshot 2026-01-01 180330.png` | Active session view |
-| `active session (diadi)/Screenshot 2026-01-01 180515.png` | Active session view |
-| `active session (diadi)/Screenshot 2026-01-01 180519.png` | Active session view |
-| `active session (diadi)/Screenshot 2026-01-01 180545.png` | Active session view |
-| `active session (diadi)/Screenshot 2026-01-01 183104.png` | Active session view |
+| `active session (diadi)/Screenshot 2026-01-01 044207.png` | Waiting room / Liminal space - mobile + desktop |
+| `active session (diadi)/Screenshot 2026-01-01 171135.png` | Active call - talk balance + sentiment indicators |
+| `active session (diadi)/Screenshot 2026-01-01 172756.png` | Active call with facilitator settings panel |
+| `active session (diadi)/Screenshot 2026-01-01 175050.png` | Active call - tension indicator visible |
+| `active session (diadi)/Screenshot 2026-01-01 175056.png` | Active call - calm state indicator |
+| `active session (diadi)/Screenshot 2026-01-01 180318.png` | Active call - full controls visible |
+| `active session (diadi)/Screenshot 2026-01-01 180330.png` | Active call - alternate view |
+| `active session (diadi)/Screenshot 2026-01-01 180515.png` | Facilitator settings - sentiment detection ON |
+| `active session (diadi)/Screenshot 2026-01-01 180519.png` | Facilitator settings - tension monitoring ON |
+| `active session (diadi)/Screenshot 2026-01-01 180545.png` | Facilitator settings - prompts paused |
+| `active session (diadi)/Screenshot 2026-01-01 183104.png` | Active call - end session state |
 
 ### Active Session - Zoom/Meet Integration (6 screens)
 | File | Description |
 |------|-------------|
-| `active session (zoom_meet)/Screenshot 2025-12-30 230744.png` | Zoom/Meet HUD |
-| `active session (zoom_meet)/Screenshot 2026-01-04 103921.png` | Zoom/Meet HUD |
-| `active session (zoom_meet)/Screenshot 2026-01-04 103935.png` | Zoom/Meet HUD |
-| `active session (zoom_meet)/Screenshot 2026-01-04 104525.png` | Zoom/Meet HUD |
-| `active session (zoom_meet)/Screenshot 2026-01-04 104556.png` | Zoom/Meet HUD |
-| `active session (zoom_meet)/Screenshot 2026-01-04 104611.png` | Zoom/Meet HUD |
+| `active session (zoom_meet)/Screenshot 2025-12-30 230744.png` | External HUD concept - overlay on meeting |
+| `active session (zoom_meet)/Screenshot 2026-01-04 103921.png` | 3-panel view - both participants + AI analysis |
+| `active session (zoom_meet)/Screenshot 2026-01-04 103935.png` | HUD with balance percentages visible |
+| `active session (zoom_meet)/Screenshot 2026-01-04 104525.png` | AI intervention prompt overlay |
+| `active session (zoom_meet)/Screenshot 2026-01-04 104556.png` | HUD compact mode |
+| `active session (zoom_meet)/Screenshot 2026-01-04 104611.png` | HUD expanded analysis panel |
 
 ### Interventions (21 screens)
+*Note: Multiple screenshots cover various intervention types and states*
 | File | Description |
 |------|-------------|
-| `interventions/Screenshot 2025-12-30 180210.png` | Intervention UI |
-| `interventions/Screenshot 2025-12-30 180217.png` | Intervention UI |
-| `interventions/Screenshot 2025-12-30 1801217.png` | Intervention UI |
-| `interventions/Screenshot 2025-12-30 1802101.png` | Intervention UI |
-| `interventions/Screenshot 2025-12-30 1802117.png` | Intervention UI |
-| `interventions/Screenshot 2025-12-30 1810210.png` | Intervention UI |
-| `interventions/Screenshot 2025-12-30 2010948.png` | Intervention UI |
-| `interventions/Screenshot 2025-12-30 2100948.png` | Intervention UI |
-| `interventions/Screenshot 2025-12-30 230514.png` | Intervention UI |
-| `interventions/Screenshot 2025-12-30 230526.png` | Intervention UI |
-| `interventions/Screenshot 2025-12-30 230610.png` | Intervention UI |
-| `interventions/Screenshot 2025-12-30 230628.png` | Intervention UI |
-| `interventions/Screenshot 2025-12-30 231018.png` | Intervention UI |
-| `interventions/Screenshot 2025-12-30 231042.png` | Intervention UI |
-| `interventions/Screenshot 2025-12-30 232647.png` | Intervention UI |
-| `interventions/Screenshot 2025-12-30 232656.png` | Intervention UI |
-| `interventions/Screenshot 2025-12-30 233249.png` | Intervention UI |
-| `interventions/Screenshot 2025-12-30 233254.png` | Intervention UI |
-| `interventions/Screenshot 2025-12-30 233258.png` | Intervention UI |
-| `interventions/Screenshot 2025-12-30 233334.png` | Intervention UI |
-| `interventions/Screenshot 2025-12-310 200948.png` | Intervention UI |
+| `interventions/Screenshot 2025-12-30 180210.png` | Balance intervention - visual prompt |
+| `interventions/Screenshot 2025-12-30 180217.png` | Balance intervention - expanded |
+| `interventions/Screenshot 2025-12-30 1801217.png` | Silence detection prompt |
+| `interventions/Screenshot 2025-12-30 1802101.png` | Goal drift intervention |
+| `interventions/Screenshot 2025-12-30 1802117.png` | Time warning - 5 min remaining |
+| `interventions/Screenshot 2025-12-30 1810210.png` | Escalation detection |
+| `interventions/Screenshot 2025-12-30 2010948.png` | AI thinking/preparing state |
+| `interventions/Screenshot 2025-12-30 2100948.png` | Intervention dismissed state |
+| `interventions/Screenshot 2025-12-30 230514.png` | Agent Icebreaker modal |
+| `interventions/Screenshot 2025-12-30 230526.png` | Icebreaker - alternate text |
+| `interventions/Screenshot 2025-12-30 230610.png` | Mid-session prompt |
+| `interventions/Screenshot 2025-12-30 230628.png` | Kill Switch / Mute Agent modal |
+| `interventions/Screenshot 2025-12-30 231018.png` | Emotional Intensity High alert |
+| `interventions/Screenshot 2025-12-30 231042.png` | Tension alert - pause offered |
+| `interventions/Screenshot 2025-12-30 232647.png` | Goal re-sync loading state |
+| `interventions/Screenshot 2025-12-30 232656.png` | Goal re-sync complete |
+| `interventions/Screenshot 2025-12-30 233249.png` | Balance visual - name prompt |
+| `interventions/Screenshot 2025-12-30 233254.png` | Balance visual - persistent |
+| `interventions/Screenshot 2025-12-30 233258.png` | Intervention history/log |
+| `interventions/Screenshot 2025-12-30 233334.png` | Intervention settings |
+| `interventions/Screenshot 2025-12-310 200948.png` | Voice intervention indicator |
 
 ### Session Detail - Pre-Session (6 screens)
 | File | Description |
 |------|-------------|
-| `session detail/pre-session/Screenshot 2025-12-31 150007.png` | Pre-session view |
-| `session detail/pre-session/Screenshot 2025-12-31 150015.png` | Pre-session view |
-| `session detail/pre-session/Screenshot 2025-12-31 150019.png` | Pre-session view |
-| `session detail/pre-session/Screenshot 2025-12-31 150025.png` | Pre-session view |
-| `session detail/pre-session/Screenshot 2026-01-04 092056.png` | Pre-session view |
-| `session detail/pre-session/Screenshot 2026-01-04 092507.png` | Pre-session view |
+| `session detail/pre-session/Screenshot 2025-12-31 150007.png` | Pre-session - waiting for partner consent |
+| `session detail/pre-session/Screenshot 2025-12-31 150015.png` | Pre-session - partner invite sent |
+| `session detail/pre-session/Screenshot 2025-12-31 150019.png` | Pre-session - scrolled, artifacts visible |
+| `session detail/pre-session/Screenshot 2025-12-31 150025.png` | Pre-session - both parties consented |
+| `session detail/pre-session/Screenshot 2026-01-04 092056.png` | Pre-session - launch ready state |
+| `session detail/pre-session/Screenshot 2026-01-04 092507.png` | Pre-session - desktop full layout |
 
 ### Session Detail - During Session (1 screen)
 | File | Description |
 |------|-------------|
-| `session detail/during-session/Screenshot 2026-01-02 170340.png` | During session view |
+| `session detail/during-session/Screenshot 2026-01-02 170340.png` | During session - live status indicators |
 
 ### Session Detail - Post-Session (9 screens)
+*Note: Multiple screenshots show scrolled states of recap views*
 | File | Description |
 |------|-------------|
-| `session detail/post-session/Screenshot 2025-12-30 173732.png` | Post-session summary |
-| `session detail/post-session/Screenshot 2025-12-30 2039391.png` | Post-session summary |
-| `session detail/post-session/Screenshot 2025-12-30 204653.png` | Post-session summary |
-| `session detail/post-session/Screenshot 2025-12-30 205020.png` | Post-session summary |
-| `session detail/post-session/Screenshot 2025-12-30 225213.png` | Post-session summary |
-| `session detail/post-session/Screenshot 2025-12-30 225319.png` | Post-session summary |
-| `session detail/post-session/Screenshot 2026-01-04 092600.png` | Post-session summary |
-| `session detail/post-session/Screenshot 2026-01-04 092605.png` | Post-session summary |
-| `session detail/post-session/Screenshot 2026-01-04 092614.png` | Post-session summary |
+| `session detail/post-session/Screenshot 2025-12-30 173732.png` | Transcript view - chat-style with AI annotations |
+| `session detail/post-session/Screenshot 2025-12-30 2039391.png` | Transcript scrolled - more messages |
+| `session detail/post-session/Screenshot 2025-12-30 204653.png` | Summary - key agreements section |
+| `session detail/post-session/Screenshot 2025-12-30 205020.png` | Summary scrolled - action items |
+| `session detail/post-session/Screenshot 2025-12-30 225213.png` | Summary - generated assets section |
+| `session detail/post-session/Screenshot 2025-12-30 225319.png` | Summary - download/share options |
+| `session detail/post-session/Screenshot 2026-01-04 092600.png` | Synthesis Board - AI consensus summary |
+| `session detail/post-session/Screenshot 2026-01-04 092605.png` | Synthesis Board scrolled - key agreements |
+| `session detail/post-session/Screenshot 2026-01-04 092614.png` | Synthesis Board - action items + assets sidebar |
 
-### Partner Profiles (5 screens)
+### Partner Profiles (5 screens) - Beta Feature
 | File | Description |
 |------|-------------|
-| `partner profiles/Screenshot 2025-12-30 1815105.png` | Partner profile view |
-| `partner profiles/Screenshot 2025-12-30 204653.png` | Partner profile view |
-| `partner profiles/Screenshot 2025-12-30 225626.png` | Partner profile view |
-| `partner profiles/Screenshot 2025-12-30 232021.png` | Partner profile view |
-| `partner profiles/Screenshot 2025-12-30 232118.png` | Partner profile view |
+| `partner profiles/Screenshot 2025-12-30 1815105.png` | Partner profile - mobile view |
+| `partner profiles/Screenshot 2025-12-30 204653.png` | Partner profile - dyad health score |
+| `partner profiles/Screenshot 2025-12-30 225626.png` | Partner Perspective - desktop with recommendations |
+| `partner profiles/Screenshot 2025-12-30 232021.png` | Partner profile - journey history |
+| `partner profiles/Screenshot 2025-12-30 232118.png` | Partner profile scrolled - past sessions list |
 
 ### User Profile (2 screens)
 | File | Description |
 |------|-------------|
-| `user profile/Screenshot 2025-12-30 192703.png` | User profile view |
-| `user profile/Screenshot 2025-12-30 225714.png` | User profile view |
+| `user profile/Screenshot 2025-12-30 192703.png` | User profile - desktop full view |
+| `user profile/Screenshot 2025-12-30 225714.png` | User profile - mobile with integrations |
 
 ### Complications (7 screens)
+*Note: Edge cases, error states, and unusual flows*
 | File | Description |
 |------|-------------|
-| `complications/Screenshot 2025-12-30 231126.png` | Edge case UI |
-| `complications/Screenshot 2025-12-30 231131.png` | Edge case UI |
-| `complications/Screenshot 2025-12-30 231135.png` | Edge case UI |
-| `complications/Screenshot 2025-12-30 231138.png` | Edge case UI |
-| `complications/Screenshot 2025-12-30 231141.png` | Edge case UI |
-| `complications/Screenshot 2025-12-30 231144.png` | Edge case UI |
-| `complications/Screenshot 2025-12-30 231159.png` | Edge case UI |
+| `complications/Screenshot 2025-12-30 231126.png` | Partner declined invitation |
+| `complications/Screenshot 2025-12-30 231131.png` | Connection lost state |
+| `complications/Screenshot 2025-12-30 231135.png` | Partner left session |
+| `complications/Screenshot 2025-12-30 231138.png` | Session timeout warning |
+| `complications/Screenshot 2025-12-30 231141.png` | Audio/mic issue detected |
+| `complications/Screenshot 2025-12-30 231144.png` | Bot join failed |
+| `complications/Screenshot 2025-12-30 231159.png` | Reconnection in progress |
 
 ## Appendix B: Coherence Decisions
 - Product name is **Diadi**. Use "Talk" as a section label only, not as the brand.
