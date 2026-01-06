@@ -114,7 +114,8 @@ ruff check app/services/session_service.py
 - Global `session_service` instance for easy import
 - Verified with `ruff check` and `ruff format` - All checks passed
 
-### [ ] Step: 1.4 Session CRUD Routes
+### [x] Step: 1.4 Session CRUD Routes
+<!-- chat-id: b52a39c9-9649-466d-8335-6b7368e58703 -->
 
 Add session management routes to `app/routes.py`.
 
@@ -130,6 +131,13 @@ Add session management routes to `app/routes.py`.
 ```bash
 ruff check app/routes.py
 ```
+
+**Completed:** Added session CRUD routes to `app/routes.py`:
+- `POST /sessions` - Creates session with `CreateSessionRequest`, returns `CreateSessionResponse` with session_id, status, invite_link, and invite_token
+- `GET /sessions` - Lists all sessions with optional `status_filter`, `limit`, and `offset` query params; returns paginated response with `sessions`, `total`, and `hasMore`
+- `GET /sessions/{session_id}` - Returns single `Session` object or 404 if not found
+- Proper error handling: 400 for validation errors, 404 for not found, 500 for server errors
+- Verified with `ruff check` and `ruff format` - All checks passed (pre-existing issues in file not related to new code)
 
 ### [ ] Step: 1.5 Extend /bots Response
 
