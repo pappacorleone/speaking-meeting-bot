@@ -10,26 +10,26 @@
 
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense, lazy } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { getSession, startSession, getSessionSummary } from '@/lib/api/sessions';
 import { WaitingRoom, type ReadinessItem } from '@/components/session/waiting-room';
-import {
-  SynthesisBoard,
-  SynthesisBoardSkeleton,
-  KeyAgreements,
-  KeyAgreementsSkeleton,
-  ActionItems,
-  ActionItemsSkeleton,
-  RatingPrompt,
-  RatingPromptSkeleton,
-} from '@/components/recap';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Session as ApiSession, SessionSummary as ApiSessionSummary } from '@/lib/api/types';
 import type { Session, SessionStatus, SessionSummary } from '@/types/session';
 import type { SessionRating } from '@/components/recap';
+
+// Lazy load recap components - only needed for ended sessions
+const SynthesisBoard = lazy(() => import('@/components/recap/synthesis-board').then(m => ({ default: m.SynthesisBoard })));
+const SynthesisBoardSkeleton = lazy(() => import('@/components/recap/synthesis-board').then(m => ({ default: m.SynthesisBoardSkeleton })));
+const KeyAgreements = lazy(() => import('@/components/recap/key-agreements').then(m => ({ default: m.KeyAgreements })));
+const KeyAgreementsSkeleton = lazy(() => import('@/components/recap/key-agreements').then(m => ({ default: m.KeyAgreementsSkeleton })));
+const ActionItems = lazy(() => import('@/components/recap/action-items').then(m => ({ default: m.ActionItems })));
+const ActionItemsSkeleton = lazy(() => import('@/components/recap/action-items').then(m => ({ default: m.ActionItemsSkeleton })));
+const RatingPrompt = lazy(() => import('@/components/recap/rating-prompt').then(m => ({ default: m.RatingPrompt })));
+const RatingPromptSkeleton = lazy(() => import('@/components/recap/rating-prompt').then(m => ({ default: m.RatingPromptSkeleton })));
 
 // =============================================================================
 // Constants
@@ -298,15 +298,27 @@ function PostSessionView({
     console.log('Download PDF clicked');
   }, []);
 
+  // Loading skeleton for lazy-loaded recap components
+  const RecapSkeleton = () => (
+    <div className="p-4 space-y-6 max-w-4xl mx-auto animate-pulse">
+      <div className="h-48 bg-muted rounded-card" />
+      <div className="h-32 bg-muted rounded-card" />
+      <div className="h-24 bg-muted rounded-card" />
+      <div className="h-32 bg-muted rounded-card" />
+    </div>
+  );
+
   // Loading state for summary
   if (summaryLoading) {
     return (
-      <div className="p-4 space-y-6 max-w-4xl mx-auto">
-        <SynthesisBoardSkeleton />
-        <KeyAgreementsSkeleton />
-        <ActionItemsSkeleton />
-        <RatingPromptSkeleton />
-      </div>
+      <Suspense fallback={<RecapSkeleton />}>
+        <div className="p-4 space-y-6 max-w-4xl mx-auto">
+          <SynthesisBoardSkeleton />
+          <KeyAgreementsSkeleton />
+          <ActionItemsSkeleton />
+          <RatingPromptSkeleton />
+        </div>
+      </Suspense>
     );
   }
 
@@ -384,50 +396,52 @@ function PostSessionView({
     );
   }
 
-  // Full recap view with summary
+  // Full recap view with summary - wrap in Suspense for lazy-loaded components
   return (
-    <div className="p-4 space-y-6 max-w-4xl mx-auto pb-8">
-      {/* Synthesis Board - Main summary section */}
-      <SynthesisBoard
-        summary={summary}
-        sessionTitle={session.title || `Session with ${partner.name}`}
-        endedAt={endedAt}
-        onBack={() => router.push('/hub')}
-        onShare={handleShare}
-        onDownload={handleDownload}
-      />
-
-      {/* Key Agreements Section */}
-      <KeyAgreements agreements={summary.keyAgreements} />
-
-      {/* Action Items Section */}
-      <Card>
-        <CardContent className="pt-6">
-          <ActionItems items={summary.actionItems} />
-        </CardContent>
-      </Card>
-
-      {/* Rating Prompt - only show if not submitted */}
-      {!ratingSubmitted && (
-        <RatingPrompt
-          sessionId={session.id}
-          onSubmit={handleRatingSubmit}
-          onSkip={handleSkipRating}
-          isSubmitting={isRatingSubmitting}
+    <Suspense fallback={<RecapSkeleton />}>
+      <div className="p-4 space-y-6 max-w-4xl mx-auto pb-8">
+        {/* Synthesis Board - Main summary section */}
+        <SynthesisBoard
+          summary={summary}
+          sessionTitle={session.title || `Session with ${partner.name}`}
+          endedAt={endedAt}
+          onBack={() => router.push('/hub')}
+          onShare={handleShare}
+          onDownload={handleDownload}
         />
-      )}
 
-      {/* Return to Hub button */}
-      <div className="pt-4">
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={() => router.push('/hub')}
-        >
-          Return to Hub
-        </Button>
+        {/* Key Agreements Section */}
+        <KeyAgreements agreements={summary.keyAgreements} />
+
+        {/* Action Items Section */}
+        <Card>
+          <CardContent className="pt-6">
+            <ActionItems items={summary.actionItems} />
+          </CardContent>
+        </Card>
+
+        {/* Rating Prompt - only show if not submitted */}
+        {!ratingSubmitted && (
+          <RatingPrompt
+            sessionId={session.id}
+            onSubmit={handleRatingSubmit}
+            onSkip={handleSkipRating}
+            isSubmitting={isRatingSubmitting}
+          />
+        )}
+
+        {/* Return to Hub button */}
+        <div className="pt-4">
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => router.push('/hub')}
+          >
+            Return to Hub
+          </Button>
+        </div>
       </div>
-    </div>
+    </Suspense>
   );
 }
 

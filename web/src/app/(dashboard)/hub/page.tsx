@@ -6,7 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { ActiveSessionCard, RecentSessionsList, SearchBar } from "@/components/hub";
 import { EmptyState } from "@/components/common";
-import { listSessions } from "@/lib/api/sessions";
+import { InlineErrorFallback } from "@/components/error";
+import { listSessions, parseError, shouldRetryQuery } from "@/lib/api";
 import type { Session as ApiSession } from "@/lib/api/types";
 import type { Session, SessionStatus } from "@/types/session";
 
@@ -57,14 +58,14 @@ export default function HubPage() {
   // Note: In production, apiKey would come from auth context
   const apiKey = process.env.NEXT_PUBLIC_API_KEY || "";
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["sessions"],
     queryFn: async () => {
       const response = await listSessions({}, apiKey);
       return response.sessions.map(transformSession);
     },
-    // Don't fail if API is not available during development
-    retry: false,
+    // Use smart retry logic based on error type
+    retry: (failureCount, err) => shouldRetryQuery(failureCount, err, 2),
   });
 
   const sessions = data || [];
@@ -120,35 +121,21 @@ export default function HubPage() {
     );
   }
 
-  // Error state
+  // Error state - use parsed error for better messages
   if (error) {
+    const parsedError = parseError(error);
     return (
       <div className="p-6 md:p-8">
         <div className="max-w-4xl mx-auto">
           <HubHeader />
-          <EmptyState
-            icon={
-              <svg
-                className="h-12 w-12"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-            }
-            title="Unable to load sessions"
-            description="There was a problem connecting to the server. Please try again."
-            action={{
-              label: "Retry",
-              onClick: () => window.location.reload(),
-            }}
-          />
+          <div className="mt-8">
+            <InlineErrorFallback
+              title="Unable to load sessions"
+              message={parsedError.message}
+              error={error instanceof Error ? error : null}
+              onRetry={parsedError.isRecoverable ? () => refetch() : undefined}
+            />
+          </div>
         </div>
       </div>
     );

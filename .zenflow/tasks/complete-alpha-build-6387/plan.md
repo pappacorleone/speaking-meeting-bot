@@ -1497,7 +1497,8 @@ npm run build  # ✓ Passed
 
 All accessibility improvements verified to compile without errors.
 
-### [ ] Step: 10.3 Error Handling
+### [x] Step: 10.3 Error Handling
+<!-- chat-id: 5f28b9cc-d8c6-4832-a3fc-940cdc6bc69d -->
 
 Implement error states.
 
@@ -1508,7 +1509,47 @@ Implement error states.
 
 **Reference:** spec.md Section 11.4 Reliability
 
-### [ ] Step: 10.4 Performance Optimization
+**Completed:** Comprehensive error handling implementation:
+
+**1. Error Boundary Components** (`components/error/error-boundary.tsx`):
+- `ErrorBoundary` - React class component for catching JS errors in child components
+- `DefaultErrorFallback` - Default error UI with retry and home navigation
+- `PageErrorFallback` - Full-page error fallback for page-level errors
+- `InlineErrorFallback` - Inline error fallback for component-level errors
+- `CompactErrorFallback` - Compact error indicator for tight spaces
+- `SessionErrorFallback` - Session-specific error fallback with context-aware messages
+
+**2. WebSocket Disconnect Fallback** (`components/error/websocket-fallback.tsx`):
+- `WebSocketDisconnectFallback` - Full-page fallback UI for WebSocket disconnection
+- `ConnectionStatusBanner` - Banner component showing current connection status
+- `ReconnectingOverlay` - Full-screen overlay shown during reconnection attempts
+
+**3. API Error Handling Utilities** (`lib/api/error-handling.ts`):
+- `parseError()` - Parse errors into user-friendly format with category and recoverability
+- `ErrorCategory` type: network, authentication, authorization, validation, not_found, conflict, rate_limit, server, unknown
+- `getShortErrorMessage()` - Short messages for toasts/notifications
+- `shouldPromptRetry()` - Determine if retry should be offered
+- `requiresAuthentication()` - Check if auth action needed
+- `logError()` - Error logging with context for debugging
+- `shouldRetryQuery()` - React Query retry function
+
+**4. Integration with Existing Components**:
+- Updated dashboard layout (`app/(dashboard)/layout.tsx`) to wrap with ErrorBoundary
+- Updated live session page (`app/(dashboard)/sessions/[id]/live/page.tsx`):
+  - Added WebSocketDisconnectFallback wrapper
+  - Added ConnectionStatusBanner for connection state
+  - Updated error state to use SessionErrorFallback
+- Updated hub page (`app/(dashboard)/hub/page.tsx`):
+  - Added InlineErrorFallback for session list errors
+  - Added smart retry logic with shouldRetryQuery
+
+**Build Verification:**
+```bash
+npm run build  # ✓ Passed
+```
+
+### [x] Step: 10.4 Performance Optimization
+<!-- chat-id: 1d7a4285-4323-494c-baf6-b8ebf7196883 -->
 
 Optimize bundle and load times.
 
@@ -1518,6 +1559,52 @@ Optimize bundle and load times.
 - Lazy load session detail pages
 
 **Reference:** requirements.md Section 11.1 Performance
+
+**Completed:** Implemented comprehensive performance optimizations:
+
+1. **Bundle Analysis Setup:**
+   - Installed `@next/bundle-analyzer` for analyzing bundle sizes
+   - Added `npm run analyze` and `npm run analyze:win` scripts to package.json
+   - Added `npm run type-check` script for TypeScript validation
+
+2. **Next.js Configuration Optimizations** (`next.config.mjs`):
+   - Enabled React strict mode for development
+   - Added `optimizePackageImports` for tree-shaking lucide-react, radix-ui, zustand
+   - Configured `removeConsole` in production builds
+   - Optimized image formats (AVIF, WebP)
+
+3. **Code Splitting with React.lazy:**
+   - Created `lib/lazy.tsx` with lazy loading utilities
+   - Lazy loaded recap components in session detail page:
+     - `SynthesisBoard`, `KeyAgreements`, `ActionItems`, `RatingPrompt`
+     - Only loaded when session status is "ended"
+   - Added Suspense boundaries with fallback skeletons
+
+4. **React Query Optimization** (`providers/query-provider.tsx`):
+   - Configured `gcTime`: 10 minutes (garbage collection)
+   - `staleTime`: 1 minute (reduce unnecessary refetches)
+   - `retry`: 2 attempts with exponential backoff
+   - `refetchOnWindowFocus`: false (prevent unexpected refetches)
+   - `refetchOnReconnect`: true (refresh after network reconnection)
+   - `refetchOnMount`: false (don't refetch if data is fresh)
+   - `structuralSharing`: true (better performance)
+   - Mutation retry: 1 attempt
+
+**Bundle Size Results:**
+```
+Before optimization:
+├ ƒ /sessions/[id]                       28.6 kB         133 kB
+
+After optimization:
+├ ƒ /sessions/[id]                       13.4 kB         118 kB
+
+Reduction: 53% for session detail page
+```
+
+**Build Verification:**
+```bash
+npm run build  # ✓ Passed
+```
 
 ### [ ] Step: 10.5 Integration Testing
 

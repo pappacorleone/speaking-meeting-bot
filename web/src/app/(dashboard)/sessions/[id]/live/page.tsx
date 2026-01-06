@@ -15,7 +15,7 @@
 import { useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { getSession, endSession } from '@/lib/api/sessions';
+import { getSession, endSession, logError } from '@/lib/api';
 import { useSessionEvents } from '@/hooks/use-session-events';
 import { useSessionStore } from '@/stores/session-store';
 import { useInterventionStore } from '@/stores/intervention-store';
@@ -25,6 +25,11 @@ import {
   AIStatusIndicator,
   GoalSnippet,
 } from '@/components/live';
+import {
+  SessionErrorFallback,
+  WebSocketDisconnectFallback,
+  ConnectionStatusBanner,
+} from '@/components/error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -122,20 +127,28 @@ function LiveSessionSkeleton() {
 }
 
 /**
- * Error state display
+ * Error state display - uses SessionErrorFallback for consistent error UI
  */
-function LiveSessionError({ message, onRetry }: { message: string; onRetry: () => void }) {
+function LiveSessionError({
+  error,
+  sessionId,
+  onRetry
+}: {
+  error: Error;
+  sessionId: string;
+  onRetry: () => void;
+}) {
+  // Log the error for debugging
+  useEffect(() => {
+    logError(error, { sessionId, component: 'LiveSessionPage' });
+  }, [error, sessionId]);
+
   return (
-    <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-      <div className="w-16 h-16 rounded-full bg-status-error/10 flex items-center justify-center mb-4">
-        <ErrorIcon className="w-8 h-8 text-status-error" />
-      </div>
-      <h2 className="text-xl font-semibold mb-2">Connection Error</h2>
-      <p className="text-muted-foreground mb-4 max-w-sm">{message}</p>
-      <Button onClick={onRetry} variant="outline">
-        Try Again
-      </Button>
-    </div>
+    <SessionErrorFallback
+      error={error}
+      sessionId={sessionId}
+      onRetry={onRetry}
+    />
   );
 }
 
@@ -161,49 +174,7 @@ function SessionNotActive({ status }: { status: string }) {
   );
 }
 
-/**
- * Connection status banner
- */
-function ConnectionBanner({
-  state,
-  reconnectCount,
-}: {
-  state: string;
-  reconnectCount: number;
-}) {
-  if (state === 'connected') return null;
-
-  const config = {
-    connecting: {
-      bg: 'bg-status-info/10',
-      text: 'text-status-info',
-      message: 'Connecting to session...',
-    },
-    reconnecting: {
-      bg: 'bg-status-warning/10',
-      text: 'text-status-warning',
-      message: `Reconnecting... (attempt ${reconnectCount})`,
-    },
-    disconnected: {
-      bg: 'bg-status-error/10',
-      text: 'text-status-error',
-      message: 'Disconnected from session',
-    },
-    error: {
-      bg: 'bg-status-error/10',
-      text: 'text-status-error',
-      message: 'Connection error',
-    },
-  };
-
-  const { bg, text, message } = config[state as keyof typeof config] || config.error;
-
-  return (
-    <div className={cn('px-4 py-2 text-center text-sm font-medium', bg, text)}>
-      {message}
-    </div>
-  );
-}
+// ConnectionBanner is now imported from @/components/error
 
 /**
  * Session header with partner info and status
@@ -343,15 +314,6 @@ function SessionControls({
 // =============================================================================
 // Icons
 // =============================================================================
-
-function ErrorIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-      <path d="M12 8v4m0 4h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 function InfoIcon({ className }: { className?: string }) {
   return (
@@ -613,9 +575,11 @@ export default function LiveSessionPage() {
 
   // Error state
   if (error) {
+    const errorObj = error instanceof Error ? error : new Error('Failed to load session');
     return (
       <LiveSessionError
-        message={error instanceof Error ? error.message : 'Failed to load session'}
+        error={errorObj}
+        sessionId={sessionId}
         onRetry={() => refetch()}
       />
     );
@@ -634,9 +598,19 @@ export default function LiveSessionPage() {
   const partnerName = getPartnerName(session.participants);
 
   return (
+    <WebSocketDisconnectFallback
+      connectionState={connectionState}
+      reconnectCount={reconnectCount}
+      maxReconnectAttempts={5}
+      onReconnect={() => {
+        // Trigger reconnect via refetch which will re-initialize the WebSocket
+        refetch();
+      }}
+      onReturnToHub={() => router.push('/hub')}
+    >
     <div className="flex flex-col h-[calc(100vh-4rem)] md:h-screen">
       {/* Connection Status Banner */}
-      <ConnectionBanner state={connectionState} reconnectCount={reconnectCount} />
+      <ConnectionStatusBanner connectionState={connectionState} reconnectCount={reconnectCount} />
 
       {/* Header */}
       <SessionHeader
@@ -668,5 +642,6 @@ export default function LiveSessionPage() {
         isPausing={isPausing}
       />
     </div>
+    </WebSocketDisconnectFallback>
   );
 }
