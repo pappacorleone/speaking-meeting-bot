@@ -852,7 +852,8 @@ Create balance tracking logic.
   - `to_metrics_dict()` - Export full metrics for API response
 - Verified with `ruff check` and `ruff format` - All checks passed
 
-### [ ] Step: 5.4 Frontend WebSocket Hook
+### [x] Step: 5.4 Frontend WebSocket Hook
+<!-- chat-id: 4881c66f-c73b-4324-b13f-d9b39187fe5f -->
 
 Create WebSocket hook for session events.
 
@@ -862,6 +863,21 @@ Create WebSocket hook for session events.
 - Handle event types: balance_update, intervention, time_remaining, session_state
 
 **Reference:** spec.md Section 7.3 Frontend WebSocket Hook
+
+**Completed:** Created `web/src/hooks/use-session-events.ts` with:
+- `useSessionEvents` hook with full WebSocket connection management
+- Connection states: connecting, connected, disconnected, reconnecting, error
+- Automatic reconnection with exponential backoff (1s, 2s, 4s, 8s, 16s delays)
+- Maximum 5 reconnect attempts before giving up
+- Heartbeat/ping every 30 seconds to keep connection alive
+- Event routing for all event types: balance_update, intervention, escalation, time_remaining, session_state, participant_status, ai_status, goal_drift, error
+- Helper methods: `sendMessage()`, `acknowledgeIntervention()`, `updateSettings()`
+- Manual `connect()` and `disconnect()` controls
+- Proper cleanup on unmount (closes connection, clears timeouts)
+- Ref-based callback pattern to avoid circular dependencies
+- TypeScript types exported: `UseSessionEventsOptions`, `UseSessionEventsReturn`
+- Barrel export in `hooks/index.ts`
+- Verified build passes: `npm run build` ✓
 
 ### [ ] Step: 5.5 Session UI Store
 
