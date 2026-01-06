@@ -21,6 +21,8 @@ from app.models import (
     PersonaImageRequest,
     PersonaImageResponse,
     Session,
+    StartSessionRequest,
+    StartSessionResponse,
 )
 from app.services.image_service import image_service
 from config.persona_utils import persona_manager
@@ -876,6 +878,92 @@ async def record_consent(session_id: str, request: ConsentRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to record consent",
+        )
+
+
+@router.post(
+    "/sessions/{session_id}/start",
+    tags=["sessions"],
+    response_model=StartSessionResponse,
+    responses={
+        200: {"description": "Session started successfully"},
+        400: {"description": "Session not ready to start or invalid request"},
+        404: {"description": "Session not found"},
+        500: {"description": "Failed to start session (MeetingBaas or Pipecat error)"},
+    },
+)
+async def start_session(
+    session_id: str,
+    request: StartSessionRequest,
+    client_request: Request,
+):
+    """
+    Start a Diadi facilitation session.
+
+    This endpoint initiates the live session by:
+    1. Loading the configured facilitator persona
+    2. Creating a MeetingBaas bot to join the meeting
+    3. Starting a Pipecat process for AI audio pipeline
+    4. Transitioning the session status to "in_progress"
+
+    Prerequisites:
+    - Session must exist and be in "ready" status (both participants consented)
+    - A valid meeting URL must be provided
+
+    Args:
+        session_id: The session identifier.
+        request: StartSessionRequest with meeting_url.
+
+    Returns:
+        StartSessionResponse with status, bot_id, client_id, and event_url.
+
+    Raises:
+        HTTPException: 404 if session not found, 400 if not ready, 500 if start fails.
+    """
+    # Get API key from request state (set by middleware)
+    api_key = client_request.state.api_key
+
+    # Determine WebSocket base URL for MeetingBaas
+    websocket_url, _ = determine_websocket_url(None, client_request)
+
+    try:
+        result = await session_service.start_session(
+            session_id=session_id,
+            meeting_url=request.meeting_url,
+            api_key=api_key,
+            websocket_base_url=websocket_url,
+        )
+
+        return StartSessionResponse(
+            status=result["status"],
+            bot_id=result["bot_id"],
+            client_id=result["client_id"],
+            event_url=result["event_url"],
+        )
+
+    except ValueError as e:
+        error_message = str(e)
+        if "not found" in error_message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_message,
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_message,
+            )
+    except RuntimeError as e:
+        logger.error(f"Failed to start session {session_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error starting session {session_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to start session",
         )
 
 

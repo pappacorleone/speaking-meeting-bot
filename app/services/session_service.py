@@ -5,7 +5,7 @@ Handles session lifecycle, state transitions, and business logic.
 
 import secrets
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
@@ -174,18 +174,23 @@ class SessionService:
         self,
         session_id: str,
         meeting_url: str,
-    ) -> Dict:
+        api_key: str,
+        websocket_base_url: str,
+    ) -> Dict[str, Any]:
         """Start the session: spawn Pipecat, call MeetingBaas.
 
         Args:
             session_id: The session identifier.
             meeting_url: The meeting platform URL.
+            api_key: The MeetingBaas API key for bot creation.
+            websocket_base_url: Base URL for WebSocket connections.
 
         Returns:
             Dict with status, bot_id, client_id, and event_url.
 
         Raises:
             ValueError: If session not found or not ready.
+            RuntimeError: If bot creation fails.
         """
         session = store_get_session(session_id)
         if not session:
@@ -195,26 +200,127 @@ class SessionService:
                 f"Session not ready to start (current status: {session.status.value})"
             )
 
-        # TODO: Implement full start_session logic in Phase 5
-        # - Load persona via PersonaManager
-        # - Create MeetingBaas bot
-        # - Start Pipecat process
-        # - Update session with bot_id and client_id
+        # Import dependencies here to avoid circular imports
+        from config.persona_utils import persona_manager
+        from config.voice_utils import VoiceUtils
+        from core.connection import MEETING_DETAILS, PIPECAT_PROCESSES
+        from core.process import start_pipecat_process
+        from scripts.meetingbaas_api import create_meeting_bot
 
+        # Generate unique client ID for this session
         client_id = secrets.token_urlsafe(16)
-        bot_id = f"placeholder_bot_{client_id}"
 
+        # Load persona based on facilitator configuration
+        persona_name = session.facilitator.persona.value
+        try:
+            persona_data = persona_manager.get_persona(persona_name)
+            persona_data["is_temporary"] = False
+        except KeyError:
+            logger.warning(
+                f"Persona '{persona_name}' not found, falling back to neutral_mediator"
+            )
+            try:
+                persona_data = persona_manager.get_persona("neutral_mediator")
+                persona_data["is_temporary"] = False
+            except KeyError:
+                # Final fallback to baas_onboarder
+                persona_data = persona_manager.get_persona("baas_onboarder")
+                persona_data["is_temporary"] = False
+
+        logger.info(f"Loaded persona '{persona_name}' for session {session_id}")
+
+        # Resolve voice ID if not present
+        if not persona_data.get("cartesia_voice_id"):
+            voice_utils = VoiceUtils()
+            cartesia_voice_id = await voice_utils.match_voice_to_persona(
+                persona_details=persona_data
+            )
+            persona_data["cartesia_voice_id"] = cartesia_voice_id
+            logger.info(f"Resolved voice ID for persona: {cartesia_voice_id}")
+
+        # Build entry message with session context
+        entry_message = persona_data.get("entry_message", "")
+        if not entry_message:
+            display_name = persona_data.get("name", "AI Facilitator")
+            entry_message = (
+                f"Hello, I'm {display_name}. "
+                f"I'm here to help facilitate your conversation about: {session.goal}"
+            )
+
+        # Fixed streaming audio frequency for consistency
+        streaming_audio_frequency = "16khz"
+
+        # Store meeting details for WebSocket handler
+        MEETING_DETAILS[client_id] = (
+            meeting_url,
+            persona_data.get("name", persona_name),
+            None,  # meetingbaas_bot_id, will be set after creation
+            False,  # enable_tools - disabled for Diadi facilitation
+            streaming_audio_frequency,
+            persona_data,  # Full persona data for Pipecat subprocess
+        )
+
+        # Create MeetingBaas bot
+        webhook_url = f"{websocket_base_url}/webhook"
+        meetingbaas_bot_id = create_meeting_bot(
+            meeting_url=meeting_url,
+            websocket_url=websocket_base_url,
+            bot_id=client_id,
+            persona_name=persona_data.get("name", persona_name),
+            api_key=api_key,
+            bot_image=persona_data.get("image"),
+            entry_message=entry_message,
+            extra={
+                "session_id": session_id,
+                "goal": session.goal,
+                "facilitator_persona": persona_name,
+            },
+            streaming_audio_frequency=streaming_audio_frequency,
+            webhook_url=webhook_url,
+        )
+
+        if not meetingbaas_bot_id:
+            # Clean up meeting details on failure
+            MEETING_DETAILS.pop(client_id, None)
+            raise RuntimeError("Failed to create MeetingBaas bot")
+
+        # Update MEETING_DETAILS with the bot ID
+        details = list(MEETING_DETAILS[client_id])
+        details[2] = meetingbaas_bot_id
+        MEETING_DETAILS[client_id] = tuple(details)
+
+        logger.info(f"Created MeetingBaas bot with ID: {meetingbaas_bot_id}")
+
+        # Start Pipecat process
+        # Pipecat connects to the local WebSocket server, not external URL
+        pipecat_websocket_url = f"ws://localhost:7014/pipecat/{client_id}"
+        process = start_pipecat_process(
+            client_id=client_id,
+            websocket_url=pipecat_websocket_url,
+            meeting_url=meeting_url,
+            persona_data=persona_data,
+            streaming_audio_frequency=streaming_audio_frequency,
+            enable_tools=False,  # Disable weather/time tools for Diadi
+            api_key=api_key,
+            meetingbaas_bot_id=meetingbaas_bot_id,
+        )
+
+        # Store the process for later cleanup
+        PIPECAT_PROCESSES[client_id] = process
+        logger.info(f"Started Pipecat process with PID {process.pid}")
+
+        # Update session state
         session.status = SessionStatus.IN_PROGRESS
         session.meeting_url = meeting_url
-        session.bot_id = bot_id
+        session.bot_id = meetingbaas_bot_id
         session.client_id = client_id
 
         store_update_session(session_id, session)
-        logger.info(f"Started session {session_id}")
+        logger.info(f"Session {session_id} started successfully")
 
         return {
             "status": session.status,
-            "bot_id": bot_id,
+            "bot_id": meetingbaas_bot_id,
             "client_id": client_id,
             "event_url": f"/sessions/{session_id}/events",
         }

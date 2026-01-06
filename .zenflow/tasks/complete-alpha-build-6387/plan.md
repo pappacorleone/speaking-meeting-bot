@@ -760,7 +760,8 @@ Build waiting room UI.
 
 ## Phase 5: Live Session Infrastructure
 
-### [ ] Step: 5.1 Session Start Backend
+### [x] Step: 5.1 Session Start Backend
+<!-- chat-id: d3f797ac-8739-4cef-afa5-53d9047d000c -->
 
 Implement session start logic.
 
@@ -771,6 +772,26 @@ Implement session start logic.
 - Update session status to in_progress
 
 **Reference:** spec.md Section 4.2 start_session()
+
+**Completed:** Implemented full session start backend:
+- Added `POST /sessions/{session_id}/start` endpoint to `app/routes.py`:
+  - Accepts `StartSessionRequest` with `meeting_url`
+  - Returns `StartSessionResponse` with status, bot_id, client_id, and event_url
+  - Proper error handling: 404 for session not found, 400 for not ready, 500 for MeetingBaas/Pipecat failures
+- Updated `start_session()` in `app/services/session_service.py`:
+  - Loads facilitator persona based on session configuration (with fallbacks)
+  - Resolves voice ID via VoiceUtils if not present
+  - Creates MeetingBaas bot with session context (goal, persona) in `extra` metadata
+  - Starts Pipecat subprocess for AI audio pipeline
+  - Stores process in PIPECAT_PROCESSES for cleanup
+  - Updates session status to IN_PROGRESS
+  - Returns bot_id, client_id, and event_url
+- Integration with existing infrastructure:
+  - Uses `create_meeting_bot()` from `scripts/meetingbaas_api.py`
+  - Uses `start_pipecat_process()` from `core/process.py`
+  - Uses `determine_websocket_url()` from `utils/ngrok.py`
+  - Stores meeting details in `MEETING_DETAILS` for WebSocket handler
+- Verified with `ruff check` - All new code passes
 
 ### [ ] Step: 5.2 Session Events WebSocket
 
