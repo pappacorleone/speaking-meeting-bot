@@ -322,7 +322,8 @@ cd web && npm run type-check
 - `index.ts` - Barrel exports for clean imports
 - Verified with `npm run build` and `npx tsc --noEmit` - All checks passed
 
-### [ ] Step: 2.5 Define TypeScript Types
+### [x] Step: 2.5 Define TypeScript Types
+<!-- chat-id: 9db52dbd-4a61-4cfd-a375-6ea41060c34c -->
 
 Create type definitions in `types/`.
 
@@ -337,6 +338,27 @@ Create type definitions in `types/`.
 ```bash
 cd web && npm run type-check
 ```
+
+**Completed:** Created TypeScript type definitions in `web/src/types/`:
+- `session.ts` - Session-related types with camelCase naming for React:
+  - Enums: `SessionStatus`, `Platform`, `FacilitatorPersona`, `ParticipantRole`, `BalanceStatus`, `SessionStatusGroup`
+  - Models: `Participant`, `FacilitatorConfig`, `Session`, `TalkBalanceMetrics`, `SessionSummary`, `KeyAgreement`
+  - Wizard types: `SessionWizardFormData`, `WizardStep`
+  - Utility functions: `getSessionStatusGroup()`, `isSessionActive()`, `canStartSession()`, `getStatusLabel()`
+- `intervention.ts` - Intervention types for AI facilitation:
+  - Enums: `InterventionType`, `InterventionModality`, `InterventionPriority`
+  - Models: `Intervention`, `InterventionWithMeta`, `InterventionQueueState`
+  - Specialized types: `BalanceIntervention`, `SilenceIntervention`, `TimeWarningIntervention`, `EscalationIntervention`, `GoalDriftIntervention`, `IcebreakerIntervention`
+  - Utility functions: `getInterventionPriority()`, `shouldAutoDismiss()`, `getAutoDismissDelay()`, `getInterventionLabel()`, `getInterventionIcon()`
+- `events.ts` - WebSocket event types for real-time communication:
+  - Event type literal: `SessionEventType`
+  - Base event: `SessionEvent<T>`
+  - Event data types: `BalanceUpdateData`, `TimeRemainingData`, `SessionStateData`, `ParticipantStatusData`, `AIStatusData`, `GoalDriftData`, `ErrorData`
+  - Typed events: `BalanceUpdateEvent`, `TimeRemainingEvent`, `SessionStateEvent`, `InterventionEvent`, etc.
+  - Type guards: `isBalanceUpdateEvent()`, `isTimeRemainingEvent()`, etc.
+  - WebSocket types: `WebSocketConnectionState`, `WebSocketConfig`, `WebSocketState`, `SessionEventHandlers`
+- `index.ts` - Barrel exports for clean imports
+- Verified with `npx tsc --noEmit` and `npm run build` - All checks passed
 
 ### [ ] Step: 2.6 Implement Navigation Components
 
