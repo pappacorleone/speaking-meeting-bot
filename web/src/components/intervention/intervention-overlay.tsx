@@ -305,12 +305,12 @@ function AgentAvatar({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'w-12 h-12 rounded-full bg-white/10 flex items-center justify-center',
-        className
+        'rounded-full bg-white/10 flex items-center justify-center shrink-0',
+        className || 'w-12 h-12'
       )}
     >
       <svg
-        className="w-6 h-6 text-white"
+        className="w-1/2 h-1/2 text-white"
         viewBox="0 0 24 24"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
@@ -398,17 +398,17 @@ function InterventionCard({
       )}
 
       {/* Content */}
-      <div className={cn('p-6', styles.text)}>
+      <div className={cn('p-4 sm:p-6', styles.text)}>
         {/* Header with avatar and badge */}
-        <div className="flex items-start gap-4 mb-4">
-          <AgentAvatar />
-          <div className="flex-1">
+        <div className="flex items-start gap-3 sm:gap-4 mb-3 sm:mb-4">
+          <AgentAvatar className="w-10 h-10 sm:w-12 sm:h-12" />
+          <div className="flex-1 min-w-0">
             <InterventionBadge
               type={intervention.type}
               priority={intervention.priority}
             />
             {intervention.targetParticipant && (
-              <p className="text-xs mt-1 opacity-70">
+              <p className="text-xs mt-1 opacity-70 truncate">
                 For: {intervention.targetParticipant}
               </p>
             )}
@@ -416,16 +416,16 @@ function InterventionCard({
         </div>
 
         {/* Message */}
-        <p className="text-lg font-serif italic leading-relaxed mb-6">
+        <p className="text-base sm:text-lg font-serif italic leading-relaxed mb-4 sm:mb-6">
           &ldquo;{intervention.message}&rdquo;
         </p>
 
-        {/* Actions */}
-        <div className="flex items-center gap-3">
+        {/* Actions - stack on mobile */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
           <button
             onClick={onAcknowledge}
             className={cn(
-              'flex-1 py-3 px-6 rounded-button font-semibold text-sm uppercase tracking-wider',
+              'flex-1 py-2.5 sm:py-3 px-4 sm:px-6 rounded-button font-semibold text-sm uppercase tracking-wider',
               'transition-all duration-200',
               intervention.priority === 'critical' || intervention.priority === 'high'
                 ? 'bg-white text-foreground hover:bg-white/90'
@@ -438,7 +438,7 @@ function InterventionCard({
             <button
               onClick={onDismiss}
               className={cn(
-                'py-3 px-6 rounded-button font-medium text-sm uppercase tracking-wider',
+                'py-2.5 sm:py-3 px-4 sm:px-6 rounded-button font-medium text-sm uppercase tracking-wider',
                 'border-2 border-white/30 hover:bg-white/10',
                 'transition-all duration-200'
               )}
@@ -449,7 +449,7 @@ function InterventionCard({
         </div>
 
         {/* AI attribution badge */}
-        <p className="text-[10px] uppercase tracking-wider opacity-50 mt-4 text-center">
+        <p className="text-[10px] uppercase tracking-wider opacity-50 mt-3 sm:mt-4 text-center">
           AI Intervention Active
         </p>
       </div>
@@ -627,7 +627,8 @@ export function InterventionBanner({ className }: InterventionBannerProps) {
           styles.bg,
           styles.border,
           'backdrop-blur-lg shadow-elevated',
-          'mx-auto max-w-2xl'
+          'mx-auto max-w-2xl',
+          'sm:pr-28' // Space for absolute-positioned button on desktop
         )}
       >
         {/* Auto-dismiss progress */}
@@ -635,34 +636,25 @@ export function InterventionBanner({ className }: InterventionBannerProps) {
           <AutoDismissProgress duration={current.autoDismissMs} />
         )}
 
-        <div className={cn('p-4 flex items-center gap-4', styles.text)}>
-          {/* Icon */}
-          <div className="flex-shrink-0">
-            <InterventionIcon type={current.type} className="w-6 h-6" />
-          </div>
+        <div className={cn('p-3 sm:p-4', styles.text)}>
+          <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+            {/* Icon */}
+            <div className="flex-shrink-0 mt-0.5 sm:mt-0">
+              <InterventionIcon type={current.type} className="w-5 h-5 sm:w-6 sm:h-6" />
+            </div>
 
-          {/* Message */}
-          <div className="flex-1 min-w-0">
-            <p className="text-xs uppercase tracking-wider opacity-70 mb-0.5">
-              {getInterventionLabel(current.type)}
-            </p>
-            <p className="font-medium truncate">{current.message}</p>
-          </div>
+            {/* Message */}
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] sm:text-xs uppercase tracking-wider opacity-70 mb-0.5">
+                {getInterventionLabel(current.type)}
+              </p>
+              <p className="font-medium text-sm sm:text-base line-clamp-2 sm:truncate">{current.message}</p>
+            </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              onClick={handleAcknowledge}
-              className={cn(
-                'py-2 px-4 rounded-button text-xs font-semibold uppercase tracking-wider',
-                'bg-white/20 hover:bg-white/30 transition-colors'
-              )}
-            >
-              Got it
-            </button>
+            {/* Dismiss button - always visible */}
             <button
               onClick={handleDismiss}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              className="p-1.5 sm:p-2 hover:bg-white/10 rounded-full transition-colors flex-shrink-0"
               aria-label="Dismiss"
             >
               <svg
@@ -676,6 +668,32 @@ export function InterventionBanner({ className }: InterventionBannerProps) {
               >
                 <path d="M18 6L6 18M6 6l12 12" />
               </svg>
+            </button>
+          </div>
+
+          {/* Action button - separate row on mobile */}
+          <div className="mt-2 sm:hidden">
+            <button
+              onClick={handleAcknowledge}
+              className={cn(
+                'w-full py-2 px-4 rounded-button text-xs font-semibold uppercase tracking-wider',
+                'bg-white/20 hover:bg-white/30 transition-colors'
+              )}
+            >
+              Got it
+            </button>
+          </div>
+
+          {/* Desktop action button */}
+          <div className="hidden sm:flex items-center gap-2 mt-0 absolute right-4 top-1/2 -translate-y-1/2">
+            <button
+              onClick={handleAcknowledge}
+              className={cn(
+                'py-2 px-4 rounded-button text-xs font-semibold uppercase tracking-wider',
+                'bg-white/20 hover:bg-white/30 transition-colors'
+              )}
+            >
+              Got it
             </button>
           </div>
         </div>

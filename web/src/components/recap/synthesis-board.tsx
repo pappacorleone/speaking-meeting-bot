@@ -101,49 +101,51 @@ function SynthesisBoardHeader({
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       {/* Left side: Navigation and badge */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
         {onBack && (
           <Button
             variant="ghost"
             size="sm"
             onClick={onBack}
-            className="h-8 px-2"
+            className="h-8 w-8 p-0 sm:w-auto sm:px-2 shrink-0"
           >
             <ArrowLeft className="h-4 w-4" />
             <span className="sr-only">Back</span>
           </Button>
         )}
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <span className="section-header text-secondary">
+        <div className="flex flex-col gap-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="section-header text-secondary whitespace-nowrap text-xs">
               RECAP 1 / SYNTHESIS BOARD
             </span>
-            <span className="inline-flex items-center rounded-full bg-secondary/10 px-2 py-0.5 text-xs font-medium text-secondary">
+            <span className="inline-flex items-center rounded-full bg-secondary/10 px-2 py-0.5 text-xs font-medium text-secondary whitespace-nowrap">
               RECAP MODE
             </span>
           </div>
           {(sessionTitle || endedAt) && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground truncate">
               {sessionTitle && <span>{sessionTitle}</span>}
-              {sessionTitle && endedAt && <span className="mx-2">-</span>}
-              {endedAt && <span>{formatDate(endedAt)}</span>}
+              {sessionTitle && endedAt && <span className="mx-1 sm:mx-2">-</span>}
+              {endedAt && <span className="whitespace-nowrap">{formatDate(endedAt)}</span>}
             </p>
           )}
         </div>
       </div>
 
       {/* Right side: Actions */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 w-full sm:w-auto">
         {onShare && (
-          <Button variant="outline" size="sm" onClick={onShare}>
-            <Share2 className="mr-2 h-4 w-4" />
-            SHARE RECAP
+          <Button variant="outline" size="sm" onClick={onShare} className="flex-1 sm:flex-none text-xs sm:text-sm">
+            <Share2 className="mr-1 sm:mr-2 h-4 w-4" />
+            <span className="hidden xs:inline">SHARE</span>
+            <span className="xs:hidden">Share</span>
           </Button>
         )}
         {onDownload && (
-          <Button variant="secondary" size="sm" onClick={onDownload}>
-            <Download className="mr-2 h-4 w-4" />
-            DOWNLOAD PDF
+          <Button variant="secondary" size="sm" onClick={onDownload} className="flex-1 sm:flex-none text-xs sm:text-sm">
+            <Download className="mr-1 sm:mr-2 h-4 w-4" />
+            <span className="hidden xs:inline">DOWNLOAD</span>
+            <span className="xs:hidden">PDF</span>
           </Button>
         )}
       </div>
@@ -185,24 +187,24 @@ function SessionMetrics({
   className,
 }: SessionMetricsProps) {
   return (
-    <div className={cn('grid grid-cols-3 gap-4', className)}>
+    <div className={cn('grid grid-cols-1 sm:grid-cols-3 gap-4', className)}>
       {/* Duration */}
-      <div className="text-center">
+      <div className="text-center py-2 sm:py-0">
         <p className="section-header mb-1">DURATION</p>
-        <p className="text-2xl font-semibold">{formatDuration(durationMinutes)}</p>
+        <p className="text-xl sm:text-2xl font-semibold">{formatDuration(durationMinutes)}</p>
       </div>
 
       {/* Interventions */}
-      <div className="text-center">
+      <div className="text-center py-2 sm:py-0 border-t sm:border-t-0 sm:border-l sm:border-r border-border">
         <p className="section-header mb-1">INTERVENTIONS</p>
-        <p className="text-2xl font-semibold">{interventionCount}</p>
+        <p className="text-xl sm:text-2xl font-semibold">{interventionCount}</p>
       </div>
 
       {/* Balance */}
-      <div className="text-center">
+      <div className="text-center py-2 sm:py-0 border-t sm:border-t-0">
         <p className="section-header mb-1">BALANCE</p>
         <div className="flex flex-col items-center">
-          <p className="text-lg font-semibold">
+          <p className="text-base sm:text-lg font-semibold">
             {balance.participantA.percentage}% / {balance.participantB.percentage}%
           </p>
           <span
@@ -275,14 +277,14 @@ export function SynthesisBoardSkeleton() {
   return (
     <div className="space-y-6">
       {/* Header skeleton */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <div className="h-4 w-48 animate-pulse rounded bg-muted" />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2 flex-1 min-w-0">
+          <div className="h-4 w-48 max-w-full animate-pulse rounded bg-muted" />
           <div className="h-3 w-32 animate-pulse rounded bg-muted" />
         </div>
-        <div className="flex gap-2">
-          <div className="h-9 w-32 animate-pulse rounded-button bg-muted" />
-          <div className="h-9 w-36 animate-pulse rounded-button bg-muted" />
+        <div className="flex gap-2 w-full sm:w-auto">
+          <div className="h-9 flex-1 sm:flex-none sm:w-24 animate-pulse rounded-button bg-muted" />
+          <div className="h-9 flex-1 sm:flex-none sm:w-28 animate-pulse rounded-button bg-muted" />
         </div>
       </div>
 
@@ -303,11 +305,11 @@ export function SynthesisBoardSkeleton() {
       {/* Metrics skeleton */}
       <Card>
         <CardContent className="pt-6">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="flex flex-col items-center gap-2">
+              <div key={i} className="flex flex-col items-center gap-2 py-2 sm:py-0">
                 <div className="h-3 w-20 animate-pulse rounded bg-muted" />
-                <div className="h-8 w-16 animate-pulse rounded bg-muted" />
+                <div className="h-7 sm:h-8 w-16 animate-pulse rounded bg-muted" />
               </div>
             ))}
           </div>

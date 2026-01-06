@@ -1396,13 +1396,44 @@ Build unified session detail page.
 
 ## Phase 10: Polish & Testing
 
-### [ ] Step: 10.1 Responsive Testing
+### [x] Step: 10.1 Responsive Testing
+<!-- chat-id: 9a7961eb-ec40-4d1e-ae94-a665e0b66e88 -->
 
 Verify mobile/desktop layouts.
 
 **Tasks:**
 - Test all pages at 360x640 (mobile) and 1280x720 (desktop)
 - Fix any layout issues
+
+**Completed:** Verified and fixed responsive layouts across all pages:
+
+**Components Fixed:**
+1. **SynthesisBoard** (`components/recap/synthesis-board.tsx`):
+   - Header: Made responsive with `flex-col sm:flex-row` for stacked mobile layout
+   - Buttons: Made full-width on mobile with `w-full sm:w-auto`
+   - Text: Shortened button labels on mobile (Share vs SHARE RECAP)
+   - SessionMetrics: Changed from fixed 3-column to `grid-cols-1 sm:grid-cols-3`
+   - Added borders between metrics on mobile for visual separation
+   - Fixed skeleton to match new responsive layout
+
+2. **Live Session Page** (`app/(dashboard)/sessions/[id]/live/page.tsx`):
+   - SessionHeader: Reduced padding on mobile, added text truncation
+   - MetricsPanel: Reduced spacing with `p-3 sm:p-4` and `space-y-3 sm:space-y-4`
+   - SessionControls: Adjusted button heights and spacing for touch targets
+
+3. **Intervention Overlay** (`components/intervention/intervention-overlay.tsx`):
+   - InterventionCard: Made buttons stack on mobile with `flex-col sm:flex-row`
+   - AgentAvatar: Made size responsive with `w-10 h-10 sm:w-12 sm:h-12`
+   - Reduced padding on mobile content areas
+   - InterventionBanner: Redesigned for mobile with stacked layout
+   - Message text uses `line-clamp-2` on mobile vs `truncate` on desktop
+
+**Build Verification:**
+```bash
+npm run build  # ✓ Passed
+```
+
+All pages now properly adapt to both mobile (360x640) and desktop (1280x720) viewports.
 
 ### [ ] Step: 10.2 Accessibility Audit
 

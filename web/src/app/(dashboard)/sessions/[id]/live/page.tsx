@@ -218,10 +218,10 @@ function SessionHeader({
   facilitatorPaused: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between p-4 border-b border-border">
-      <div>
-        <h1 className="text-lg font-semibold">Session with {partnerName}</h1>
-        <p className="text-sm text-muted-foreground">
+    <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border gap-3">
+      <div className="min-w-0 flex-1">
+        <h1 className="text-base sm:text-lg font-semibold truncate">Session with {partnerName}</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">
           {facilitatorPaused ? 'Facilitation Paused' : 'AI Facilitation Active'}
         </p>
       </div>
@@ -256,17 +256,17 @@ function MetricsPanel({
   onTick: () => void;
 }) {
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-3 sm:space-y-4 p-3 sm:p-4">
       {/* Talk Balance */}
       <Card>
-        <CardContent className="p-4">
+        <CardContent className="p-3 sm:p-4">
           <TalkBalance balance={balance} />
         </CardContent>
       </Card>
 
       {/* Timer */}
       <Card>
-        <CardContent className="p-4">
+        <CardContent className="p-3 sm:p-4">
           <SessionTimer
             timeRemaining={timeRemaining}
             elapsedSeconds={elapsedSeconds}
@@ -304,11 +304,11 @@ function SessionControls({
   isPausing: boolean;
 }) {
   return (
-    <div className="p-4 border-t border-border space-y-3">
+    <div className="p-3 sm:p-4 border-t border-border space-y-2 sm:space-y-3">
       {/* Kill Switch / Pause Button */}
       <Button
         variant="outline"
-        className="w-full"
+        className="w-full h-10 sm:h-11 text-sm"
         onClick={onPauseFacilitator}
         disabled={isPausing}
       >
@@ -325,7 +325,7 @@ function SessionControls({
       {/* End Session Button */}
       <Button
         variant="destructive"
-        className="w-full"
+        className="w-full h-10 sm:h-11 text-sm"
         onClick={onEndSession}
         disabled={isEnding}
       >
