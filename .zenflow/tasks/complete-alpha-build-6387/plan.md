@@ -1205,7 +1205,8 @@ Add pause/resume endpoints.
   - Broadcasts `session_state` event to WebSocket clients with `facilitator_paused: false`
 - Verified with `ruff format --check` - all files properly formatted
 
-### [ ] Step: 8.2 Kill Switch Component
+### [x] Step: 8.2 Kill Switch Component
+<!-- chat-id: 81fd77e0-7705-4f68-bd93-4b81e65f00c6 -->
 
 Build pause facilitation UI.
 
@@ -1214,6 +1215,31 @@ Build pause facilitation UI.
 - Immediate effect button (no confirmation)
 
 **Reference:** requirements.md Section 7.7 Kill Switch Requirements
+
+**Completed:** Created `web/src/components/live/kill-switch.tsx` with multiple variants:
+- `KillSwitch` - Main toggle button with pause/resume states
+  - Uses Button component with secondary/outline variants
+  - Shows play/pause icons with loading spinner during transitions
+  - Immediate action with no confirmation dialog
+  - Proper ARIA attributes: `aria-pressed`, `aria-label`
+- `KillSwitchCompact` - Minimal inline variant with Switch toggle
+  - Shows "AI Active" (green dot) or "AI Paused" (pause icon) label
+  - Suitable for toolbars and compact layouts
+- `KillSwitchLarge` - Large prominent button for critical situations
+  - Centered layout with large icon and text
+  - Clear visual distinction between paused/active states
+- `KillSwitchBanner` - Full-width banner for paused state
+  - Shows warning styling with message and resume button
+  - Only renders when `isPaused` is true
+  - Message: "AI facilitation is paused. Both participants see this."
+- `KillSwitchHUD` - HUD overlay for video backgrounds
+  - Semi-transparent floating button with position options
+  - Shows "AI Active" (green) or "Paused" (amber) with animated indicators
+- `KillSwitchOverlay` - Full-screen overlay for paused state
+  - Modal-like overlay with large pause icon and resume button
+  - Shows explanation text about paused state
+- Updated `components/live/index.ts` barrel export
+- Verified with `npm run build` ✓
 
 ### [ ] Step: 8.3 Session End Backend
 
