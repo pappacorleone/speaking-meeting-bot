@@ -217,7 +217,8 @@ cd web && npm run build
 - Created `.env.example` for documentation
 - Verified build passes: `npm run build` ✓
 
-### [ ] Step: 2.2 Configure Tailwind Theme
+### [x] Step: 2.2 Configure Tailwind Theme
+<!-- chat-id: 40c0672f-f509-4899-ae84-e3e47b9566fd -->
 
 Set up Diadi design system in Tailwind.
 
@@ -228,6 +229,23 @@ Set up Diadi design system in Tailwind.
 - Add status colors
 
 **Reference:** spec.md Section 3.2 Design System Implementation
+
+**Completed:** Configured Tailwind with Diadi design system:
+- Updated `tailwind.config.ts` with full color palette using HSL CSS variables for shadcn/ui compatibility:
+  - Primary: Dark charcoal (#2D2D2D) for main CTAs
+  - Secondary: Olive/sage green (#6B7B5C) for secondary actions
+  - Background: Warm cream (#F5F3EF)
+  - Status colors: active (green), warning (amber), error (red), info (blue)
+  - Sidebar, card, popover, muted, accent, destructive colors
+- Added custom border-radius tokens: `rounded-card` (16px) and `rounded-button` (pill-shaped)
+- Configured font families: serif (for headlines) and sans (for body text)
+- Added custom fontSize for section headers with letter-spacing
+- Added box-shadow tokens: `shadow-card` and `shadow-elevated`
+- Added animations: `glow` for AI intervention, `accordion-down/up` for shadcn/ui
+- Updated `globals.css` with CSS custom properties in HSL format
+- Added Diadi-specific component utility classes: `.btn-primary`, `.btn-secondary`, `.diadi-card`, `.section-header`, `.status-badge-*`
+- Installed `tailwindcss-animate` plugin for shadcn/ui compatibility
+- Verified build passes: `npm run build` ✓
 
 ### [ ] Step: 2.3 Install and Configure shadcn/ui
 

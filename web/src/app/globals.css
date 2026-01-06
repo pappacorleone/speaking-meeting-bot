@@ -2,26 +2,140 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@layer base {
+  :root {
+    /* Diadi Design System - Light theme (primary) */
+
+    /* Primary palette */
+    --background: 42 33% 95%; /* #F5F3EF - Warm cream */
+    --foreground: 0 0% 18%; /* #2D2D2D - Dark charcoal */
+
+    /* Card backgrounds */
+    --card: 0 0% 100%; /* #FFFFFF */
+    --card-foreground: 0 0% 18%; /* #2D2D2D */
+
+    /* Popover backgrounds */
+    --popover: 0 0% 100%; /* #FFFFFF */
+    --popover-foreground: 0 0% 18%; /* #2D2D2D */
+
+    /* Primary CTA (dark charcoal) */
+    --primary: 0 0% 18%; /* #2D2D2D */
+    --primary-foreground: 0 0% 100%; /* #FFFFFF */
+
+    /* Secondary CTA (olive/sage green) */
+    --secondary: 90 16% 42%; /* #6B7B5C */
+    --secondary-foreground: 0 0% 100%; /* #FFFFFF */
+
+    /* Muted elements */
+    --muted: 0 0% 96%; /* Light gray background */
+    --muted-foreground: 0 0% 55%; /* #8B8B8B */
+
+    /* Accent (warm cream) */
+    --accent: 42 33% 95%; /* #F5F3EF */
+    --accent-foreground: 0 0% 18%; /* #2D2D2D */
+
+    /* Destructive actions */
+    --destructive: 0 84% 60%; /* #EF4444 */
+    --destructive-foreground: 0 0% 100%; /* #FFFFFF */
+
+    /* Borders and inputs */
+    --border: 0 0% 90%; /* #E5E5E5 */
+    --input: 0 0% 90%; /* #E5E5E5 */
+    --ring: 0 0% 18%; /* #2D2D2D */
+
+    /* Border radius */
+    --radius: 0.5rem;
+
+    /* Status colors (HSL for Tailwind compatibility) */
+    --status-active: 122 39% 49%; /* #4CAF50 - Green */
+    --status-warning: 38 92% 50%; /* #F59E0B - Amber */
+    --status-error: 0 84% 60%; /* #EF4444 - Red */
+    --status-info: 217 91% 60%; /* #3B82F6 - Blue */
+
+    /* Sidebar */
+    --sidebar: 0 0% 18%; /* #2D2D2D */
+    --sidebar-foreground: 0 0% 100%; /* #FFFFFF */
+  }
+
+  /* Note: Diadi uses a single warm light theme. Dark mode is not part of the design system.
+     If dark mode is needed in the future, uncomment and customize below: */
+  /*
+  .dark {
+    --background: 0 0% 11%;
+    --foreground: 0 0% 93%;
+    ...
+  }
+  */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+  }
+
+  /* Diadi typography defaults */
+  h1,
+  h2,
+  h3 {
+    @apply font-serif;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* Diadi-specific component patterns */
+
+  /* Primary CTA button (dark charcoal, pill-shaped) */
+  .btn-primary {
+    @apply rounded-button bg-primary px-6 py-3 text-sm font-medium uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90;
+  }
+
+  /* Secondary CTA button (olive green, pill-shaped) */
+  .btn-secondary {
+    @apply rounded-button bg-secondary px-6 py-3 text-sm font-medium uppercase tracking-widest text-secondary-foreground transition-colors hover:bg-secondary/90;
+  }
+
+  /* Card component */
+  .diadi-card {
+    @apply rounded-card bg-card shadow-card;
+  }
+
+  /* Section header (all caps, small, spaced tracking) */
+  .section-header {
+    @apply text-section-header uppercase tracking-widest text-muted-foreground;
+  }
+
+  /* Status badge base */
+  .status-badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide;
+  }
+
+  .status-badge-active {
+    @apply status-badge bg-status-active/10 text-status-active;
+  }
+
+  .status-badge-warning {
+    @apply status-badge bg-status-warning/10 text-status-warning;
+  }
+
+  .status-badge-error {
+    @apply status-badge bg-status-error/10 text-status-error;
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* Animate pulse for AI status indicator */
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 }
