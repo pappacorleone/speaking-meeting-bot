@@ -1090,13 +1090,22 @@ Create backend intervention logic.
   - `get_stats()` / `get_history()` - for analytics
 - Verified with `ruff check` and `ruff format` - All checks passed
 
-### [ ] Step: 7.2 Intervention Store
+### [x] Step: 7.2 Intervention Store
+<!-- chat-id: 8bb8994c-fcaa-43e9-b914-43bfe3be44d2 -->
 
 Create frontend intervention queue.
 
 **Tasks:**
 - Create `stores/intervention-store.ts`
 - Add state: queue, current intervention
+
+**Completed:** Already implemented as part of Step 5.5 (Session UI Store). The `web/src/stores/intervention-store.ts` file contains:
+- `InterventionState` interface with: queue, current, history, isOverlayVisible, isPreviewing, lastInterventionAt, cooldownActive, totalInterventions, acknowledgedCount, autoDismissedCount
+- `InterventionActions` interface with: push, dismiss, acknowledge, clear, showOverlay, hideOverlay, setPreviewMode, processNext, clearHistory, setCooldown
+- Priority-based queue sorting (critical > high > medium > low)
+- Auto-dismiss support with `getAutoDismissTimeout()` helper
+- Selectors: selectHasCurrentIntervention, selectQueueLength, selectCurrentPriority, selectIsCriticalIntervention, selectAcknowledgementRate, selectRecentHistory, selectInterventionsByType, selectIsInCooldown
+- Verified build passes: `npm run build` ✓
 
 ### [ ] Step: 7.3 Intervention Overlay Component
 
