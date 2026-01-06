@@ -284,7 +284,8 @@ cd web && npm run build
   - Added `font-serif` to DialogTitle
 - Verified build passes: `npm run build` ✓
 
-### [ ] Step: 2.4 Create API Client
+### [x] Step: 2.4 Create API Client
+<!-- chat-id: 701e7d02-25de-4957-b19f-eeead4ff59df -->
 
 Set up API client in `lib/api/`.
 
@@ -299,6 +300,27 @@ Set up API client in `lib/api/`.
 ```bash
 cd web && npm run type-check
 ```
+
+**Completed:** Created API client in `web/src/lib/api/`:
+- `types.ts` - All API response types matching backend Pydantic models:
+  - Enums: `SessionStatus`, `Platform`, `FacilitatorPersona`, `ParticipantRole`
+  - Models: `Session`, `Participant`, `FacilitatorConfig`, `TalkBalanceMetrics`, `InterventionRecord`, `SessionSummary`
+  - Request types: `CreateSessionRequest`, `ConsentRequest`, `StartSessionRequest`
+  - Response types: `CreateSessionResponse`, `ConsentResponse`, `StartSessionResponse`, `EndSessionResponse`, `PauseResumeResponse`, `ListSessionsResponse`
+  - Error types: `ApiError`, `ApiRequestError` class
+- `client.ts` - Base API client with fetch wrapper:
+  - `ApiClient` class with request/get/post/put/patch/delete methods
+  - Automatic JSON serialization/deserialization
+  - API key header injection (`x-meeting-baas-api-key`)
+  - Error handling with `ApiRequestError`
+  - Helper functions: `buildQueryString()`, `getWebSocketUrl()`
+- `sessions.ts` - Session API functions:
+  - `createSession()`, `listSessions()`, `getSession()`, `getSessionByInviteToken()`
+  - `recordConsent()`, `startSession()`, `endSession()`
+  - `pauseSession()`, `resumeSession()`, `getSessionSummary()`
+  - Convenience `sessionsApi` object export
+- `index.ts` - Barrel exports for clean imports
+- Verified with `npm run build` and `npx tsc --noEmit` - All checks passed
 
 ### [ ] Step: 2.5 Define TypeScript Types
 
