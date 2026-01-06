@@ -793,7 +793,8 @@ Implement session start logic.
   - Stores meeting details in `MEETING_DETAILS` for WebSocket handler
 - Verified with `ruff check` - All new code passes
 
-### [ ] Step: 5.2 Session Events WebSocket
+### [x] Step: 5.2 Session Events WebSocket
+<!-- chat-id: 852706b2-415c-48f2-97ed-a6e324371f6c -->
 
 Add WebSocket endpoint for session events.
 
@@ -804,6 +805,25 @@ Add WebSocket endpoint for session events.
 - Implement `broadcast_session_event()` helper
 
 **Reference:** spec.md Section 7.1 WebSocket Handler Extension
+
+**Completed:** Added session events WebSocket endpoint to `app/websockets.py`:
+- Added `WS /sessions/{session_id}/events` endpoint for real-time session updates
+- Validates session exists on connect (returns 4004 if not found)
+- Registers connection in SESSION_EVENTS via `register_event_connection()`
+- Sends initial session state on connect with:
+  - Session status, goal, duration
+  - Full participant list with id, name, role, consented status
+  - Facilitator config (persona, interrupt_authority, direct_inquiry, silence_detection)
+  - bot_id and client_id references
+- Handles incoming client messages:
+  - `ping` → responds with `pong` for heartbeat
+  - `update_settings` → logs and acknowledges settings updates (TODO: forward to Pipecat)
+  - `intervention_ack` → logs intervention acknowledgment for analytics
+- Invalid JSON triggers error event back to client
+- Proper cleanup on disconnect via `unregister_event_connection()`
+- Logs connection counts for debugging
+- `broadcast_session_event()` helper already exists in `core/session_store.py` (implemented in Step 1.2)
+- Verified with `ruff check` and `ruff format` - All checks passed
 
 ### [ ] Step: 5.3 Balance Tracker Module
 
