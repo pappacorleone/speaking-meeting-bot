@@ -677,7 +677,8 @@ ruff check app/routes.py app/services/session_service.py
 - Proper error handling: 404 for session not found, 400 for invalid token
 - Verified with `ruff check` - no new issues introduced (pre-existing issues in files are unrelated)
 
-### [ ] Step: 4.2 Invite Page
+### [x] Step: 4.2 Invite Page
+<!-- chat-id: a31c80db-14a5-48ed-80e2-60193007a498 -->
 
 Build partner invitation page.
 
@@ -689,7 +690,34 @@ Build partner invitation page.
 
 **Reference:** requirements.md Section 6.5 Partner Invitation Design
 
-### [ ] Step: 4.3 Consent Form Component
+**Completed:** Created Partner Invitation page and ConsentForm component:
+- `app/invite/[token]/page.tsx` - Invite page with:
+  - Fetches session data via `getSessionByInviteToken()` using invite token from URL
+  - Loading state with spinner
+  - Error state for invalid/expired tokens
+  - Session status checks (redirects for in_progress/ended/archived)
+  - Mobile layout: Centered header with mail icon, "You're Invited." headline, inviter name
+  - Desktop layout: Split view with hero text (left) and form card (right)
+  - Success state after acceptance with redirect to session details
+  - Decline state with privacy confirmation
+- `components/session/consent-form.tsx` - Consent form component with:
+  - Session details card showing inviter name as CardDescription
+  - "Proposed Aim" section with quoted goal text (italic serif)
+  - Schedule/duration display with icons
+  - Meeting link (external link) for external platforms
+  - AI Facilitation Notice section with 4 consent points:
+    - "An AI will observe your conversation"
+    - "BOTH of you see the same information"
+    - "Either can pause anytime"
+    - "Nothing is stored by default"
+  - "End-to-End Encrypted Session" badge
+  - Name input field for invitee
+  - "Accept" button (secondary variant) and "Decline Privately" link
+  - Loading/disabled states during submission
+- Updated `components/session/index.ts` to export ConsentForm
+- Verified with `npm run build` ✓
+
+### [x] Step: 4.3 Consent Form Component
 
 Build consent UI.
 
@@ -699,6 +727,8 @@ Build consent UI.
 - Add "Decline Privately" link
 
 **Reference:** requirements.md Section 7.3 Consent Information
+
+**Completed:** Implemented as part of Step 4.2 in `components/session/consent-form.tsx`
 
 ### [ ] Step: 4.4 Waiting Room Component
 
