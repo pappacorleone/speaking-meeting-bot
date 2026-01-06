@@ -82,7 +82,8 @@ ruff check core/session_store.py
 - WebSocket management: `register_event_connection()`, `unregister_event_connection()`, `get_event_connections()`, `broadcast_session_event()`
 - Verified with `ruff check` - All checks passed
 
-### [ ] Step: 1.3 Session Service Skeleton
+### [x] Step: 1.3 Session Service Skeleton
+<!-- chat-id: 6bceb4f8-1ace-407c-8ca2-0e2a8274f7a6 -->
 
 Create `app/services/session_service.py` with basic structure.
 
@@ -99,6 +100,19 @@ Create `app/services/session_service.py` with basic structure.
 ```bash
 ruff check app/services/session_service.py
 ```
+
+**Completed:** Created `app/services/session_service.py` with:
+- `SessionService` class with full session lifecycle management
+- `create_session()` - generates session_id, invite_token, stores in SESSION_STORE
+- `get_session()` and `get_session_by_invite_token()` - retrieval methods
+- `list_sessions()` - list all sessions with optional status filter
+- `record_consent()` - handle partner consent and status transitions
+- `start_session()` - placeholder for session start (Phase 5)
+- `end_session()` - placeholder for session end (Phase 8)
+- `pause_facilitation()` and `resume_facilitation()` - kill switch support
+- `_generate_summary()` and `_notify_pipecat()` - internal helper placeholders
+- Global `session_service` instance for easy import
+- Verified with `ruff check` and `ruff format` - All checks passed
 
 ### [ ] Step: 1.4 Session CRUD Routes
 
