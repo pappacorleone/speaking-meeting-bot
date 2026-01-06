@@ -1321,7 +1321,8 @@ Add summary retrieval endpoint.
 - Frontend API client already has corresponding `getSessionSummary()` function in `web/src/lib/api/sessions.ts`
 - Verified with `ruff check` (no new issues) and `ruff format --check` (already formatted)
 
-### [ ] Step: 9.3 Post-Session Recap UI
+### [x] Step: 9.3 Post-Session Recap UI
+<!-- chat-id: 148819c9-89d0-4d59-8145-e75ab49798e3 -->
 
 Build recap components.
 
@@ -1330,6 +1331,35 @@ Build recap components.
 - Create rating prompt
 
 **Reference:** requirements.md Section 6.9 Post-Session Recap Design
+
+**Completed:** Created post-session recap UI components in `web/src/components/recap/`:
+- `synthesis-board.tsx` - Main post-session summary view:
+  - `SynthesisBoard` - Full board with header, consensus summary card, and session metrics
+  - `SynthesisBoardHeader` - Navigation with RECAP MODE badge, share/download actions
+  - `ConsensusSummaryCard` - AI-generated consensus in blockquote styling
+  - `SessionMetrics` - Duration, interventions count, and balance display
+  - `SynthesisBoardSkeleton` - Loading state
+- `key-agreements.tsx` - Key agreements display:
+  - `KeyAgreements` - Section with grid of agreement cards
+  - `KeyAgreementCard` - Individual agreement with title/description (default and compact variants)
+  - `KeyAgreementsList` - Grid or list layout variants
+  - `KeyAgreementsInline` - Compact sidebar version with "View all" link
+  - `KeyAgreementsSkeleton` - Loading state
+- `action-items.tsx` - Action items checklist:
+  - `ActionItems` - Static list from session summary
+  - `ActionItemsInteractive` - Interactive checklist with toggle and add functionality
+  - `ActionItemsCompact` - Minimal inline version for sidebar
+  - `toActionItems()` - Helper to convert string array to ActionItem objects
+  - `ActionItemsSkeleton` - Loading state
+- `rating-prompt.tsx` - Session rating collection:
+  - `RatingPrompt` - Full rating card with stars, helpful toggle, feedback textarea
+  - `RatingPromptCompact` - Minimal inline star rating
+  - `RatingPromptDialog` - Rating in modal dialog
+  - `StarRating` - Reusable star rating input component
+  - `SessionRating` type for rating data
+  - `RatingPromptSkeleton` - Loading state
+- `index.ts` - Barrel exports for all recap components
+- Verified with `npm run build` ✓
 
 ### [ ] Step: 9.4 Session Detail Page
 
