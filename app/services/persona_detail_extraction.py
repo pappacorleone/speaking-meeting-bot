@@ -4,13 +4,14 @@ import os
 from typing import Any, Dict, Optional
 from loguru import logger
 
+
 async def extract_persona_details_from_prompt(
     prompt_text: str,
 ) -> Dict[str, Any]:
     """
     Analyzes a prompt to extract persona details like name, gender, description, and characteristics.
     """
-    prompt = f'''Analyze the following text prompt and extract the persona's name, gender, a brief description for image generation, and a list of characteristics.
+    prompt = f"""Analyze the following text prompt and extract the persona's name, gender, a brief description for image generation, and a list of characteristics.
 If no explicit name is mentioned, generate a concise, descriptive name that clearly indicates the persona's role or key trait, based on the description and characteristics. This name should *not* be a personal name unless explicitly provided in the prompt. For example, if the description is about an interviewer, the name could be 'Interviewer Bot'.
 
 Prompt: {prompt_text}
@@ -23,7 +24,7 @@ Extract the information in the following JSON format. If a field cannot be deter
     "characteristics": ["string", ...]
 }}
 
-JSON Output:'''
+JSON Output:"""
 
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -45,17 +46,21 @@ JSON Output:'''
         content = response.choices[0].message.content
         if content:
             extracted_data = json.loads(content)
-            
+
             # Apply default values and handle nulls/empty strings
             extracted_data["name"] = extracted_data.get("name") or "Bot"
             extracted_data["gender"] = extracted_data.get("gender") or "male"
 
-            extracted_data['description'] = extracted_data.get("description") or prompt_text
+            extracted_data["description"] = (
+                extracted_data.get("description") or prompt_text
+            )
 
             # Ensure characteristics is a list, default to empty list if null or not list
             characteristics = extracted_data.get("characteristics")
-            extracted_data["characteristics"] = characteristics if isinstance(characteristics, list) else []
-            
+            extracted_data["characteristics"] = (
+                characteristics if isinstance(characteristics, list) else []
+            )
+
             return extracted_data
         else:
             logger.warning("LLM returned empty content for persona details extraction.")
@@ -69,4 +74,4 @@ JSON Output:'''
         return None
     except Exception as e:
         logger.error(f"Error during LLM persona details extraction: {e}")
-        return None 
+        return None

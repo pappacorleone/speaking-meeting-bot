@@ -87,7 +87,10 @@ class ConnectionRegistry:
                     else ["input", "output"]
                 )
                 for direction in directions:
-                    if direction == "input" and client_id in self.client_input_connections:
+                    if (
+                        direction == "input"
+                        and client_id in self.client_input_connections
+                    ):
                         websocket = self.client_input_connections.pop(client_id)
                         try:
                             await websocket.close(code=1000, reason="Bot disconnected")
@@ -96,7 +99,10 @@ class ConnectionRegistry:
                                 f"Could not close client INPUT WebSocket for {client_id}: {e}"
                             )
                         self.logger.info(f"Client {client_id} INPUT disconnected")
-                    if direction == "output" and client_id in self.client_output_connections:
+                    if (
+                        direction == "output"
+                        and client_id in self.client_output_connections
+                    ):
                         websocket = self.client_output_connections.pop(client_id)
                         try:
                             await websocket.close(code=1000, reason="Bot disconnected")

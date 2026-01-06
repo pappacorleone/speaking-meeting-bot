@@ -12,9 +12,11 @@ from meetingbaas_pipecat.utils.logger import logger
 
 PIPECAT_PROCESSES: Dict[str, subprocess.Popen] = {}
 
+
 def stream_output(pipe, prefix):
-    for line in iter(pipe.readline, ''):
+    for line in iter(pipe.readline, ""):
         print(f"{prefix} {line.strip()}", flush=True)
+
 
 def start_pipecat_process(
     client_id: str,
@@ -110,8 +112,12 @@ def start_pipecat_process(
     )
 
     # Start threads to print output
-    threading.Thread(target=stream_output, args=(process.stdout, "[Pipecat STDOUT]"), daemon=True).start()
-    threading.Thread(target=stream_output, args=(process.stderr, "[Pipecat STDERR]"), daemon=True).start()
+    threading.Thread(
+        target=stream_output, args=(process.stdout, "[Pipecat STDOUT]"), daemon=True
+    ).start()
+    threading.Thread(
+        target=stream_output, args=(process.stderr, "[Pipecat STDERR]"), daemon=True
+    ).start()
 
     logger.info(f"Started Pipecat process with PID {process.pid}")
     return process
