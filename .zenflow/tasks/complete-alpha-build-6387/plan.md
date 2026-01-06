@@ -435,7 +435,8 @@ Build main hub/dashboard page.
 
 ## Phase 3: Session Creation
 
-### [ ] Step: 3.1 Wizard State Management
+### [x] Step: 3.1 Wizard State Management
+<!-- chat-id: a404474f-5d80-4a86-95ff-9deea5620e74 -->
 
 Create wizard form state context.
 
@@ -448,6 +449,28 @@ Create wizard form state context.
 ```bash
 cd web && npm run type-check
 ```
+
+**Completed:** Created wizard state management in `web/src/components/session/wizard/`:
+- `wizard-provider.tsx` - Full wizard state management with React Context:
+  - `WizardProvider` component with `useReducer` for state management
+  - `WizardState` type with: `currentStep`, `formData`, `stepErrors`, `isSubmitting`, `isComplete`
+  - `SessionWizardFormData` type with all form fields for 5 steps
+  - Navigation: `nextStep()` (with validation), `prevStep()`, `goToStep()`
+  - Data management: `setStepData()`, `setFieldValue()`, `getFieldError()`
+  - Validation: `validateCurrentStep()`, `validateStep()` using Zod schemas
+  - Form state: `setSubmitting()`, `setComplete()`, `reset()`
+  - Derived values: `currentStepConfig`, `isFirstStep`, `isLastStep`, `canGoBack`, `canGoForward`
+- Zod validation schemas for each step:
+  - `stepIdentitySchema` - Partner name and relationship context
+  - `stepGoalSchema` - Goal text, scheduled time, duration (15-90 min)
+  - `stepFacilitatorSchema` - Persona and toggle settings
+  - `stepLaunchSchema` - Platform and meeting URL
+  - `sessionWizardSchema` - Combined full form validation
+- `WIZARD_STEPS` configuration array with 5 steps: Identity & Bond, Session Goal, Facilitator Calibration, Review & Confirm, Launch Hub
+- Convenience hooks: `useWizard()`, `useWizardNavigation()`, `useWizardFormData()`, `useWizardValidation()`
+- `index.ts` - Barrel exports for all exports
+- `components/session/index.ts` - Parent barrel export
+- Verified with `npm run build` ✓
 
 ### [ ] Step: 3.2 Step 0 - Identity & Bond
 
