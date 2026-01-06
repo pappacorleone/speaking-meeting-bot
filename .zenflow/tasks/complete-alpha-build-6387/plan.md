@@ -360,7 +360,8 @@ cd web && npm run type-check
 - `index.ts` - Barrel exports for clean imports
 - Verified with `npx tsc --noEmit` and `npm run build` - All checks passed
 
-### [ ] Step: 2.6 Implement Navigation Components
+### [x] Step: 2.6 Implement Navigation Components
+<!-- chat-id: 5fcb4756-f94b-42ad-96c1-39c86215a1c6 -->
 
 Build responsive navigation.
 
@@ -371,6 +372,33 @@ Build responsive navigation.
 - Implement responsive behavior
 
 **Reference:** requirements.md Section 6.2 Navigation Design
+
+**Verification:**
+```bash
+cd web && npm run build
+```
+
+**Completed:** Created responsive navigation components in `web/src/components/navigation/`:
+- `nav-item.tsx` - Base navigation item components:
+  - `NavItem` - Link-based navigation item with icon and label
+  - `NavItemButton` - Button-based variant for actions like collapse
+  - Supports active state highlighting and expanded/collapsed views
+- `side-rail.tsx` - Desktop sidebar navigation:
+  - Collapsible from 64px (icons only) to 256px (with labels)
+  - Navigation items: Dashboard, Partners, Artifacts, Settings
+  - New Session CTA button at bottom
+  - Collapse/expand toggle button
+  - Hidden on mobile (< md breakpoint)
+- `mobile-nav.tsx` - Mobile bottom navigation bar:
+  - Fixed position at bottom of screen
+  - 3-tab layout: Home, New Session (elevated center CTA), Partners
+  - Active state highlighting
+  - Hidden on desktop (>= md breakpoint)
+- `app-layout.tsx` - Responsive layout wrapper:
+  - Combines SideRail (desktop) and MobileNav (mobile)
+  - Handles content padding for mobile nav bar
+- `index.ts` - Barrel exports for clean imports
+- Verified with `npm run build` ✓
 
 ### [ ] Step: 2.7 Create Hub Page
 
