@@ -160,7 +160,8 @@ ruff check app/routes.py
 - Updated `/bots` route in `app/routes.py` to return both `bot_id` (MeetingBaas ID) and `client_id` (internal ID for WebSocket connections)
 - Verified with `ruff check` - no new issues introduced (pre-existing issues in files are unrelated)
 
-### [ ] Step: 1.6 Create Diadi Personas
+### [x] Step: 1.6 Create Diadi Personas
+<!-- chat-id: b8854a64-2e5e-4109-b171-74e49c2346b0 -->
 
 Create three new personas in `config/personas/`.
 
@@ -174,6 +175,14 @@ Create three new personas in `config/personas/`.
 
 **Verification:**
 - Verify personas load via PersonaManager
+
+**Completed:** Created three Diadi facilitator personas:
+- `neutral_mediator/README.md` - Calm, balanced facilitator focused on fair dialogue. Gender: neutral. Entry message emphasizes support for both participants.
+- `deep_empath/README.md` - Warm, emotionally attuned facilitator prioritizing emotional safety. Gender: female. Entry message focuses on creating safe space.
+- `decision_catalyst/README.md` - Focused, action-oriented facilitator driving toward decisions. Gender: male. Entry message emphasizes staying focused and reaching outcomes.
+- All personas follow the existing PersonaManager format with Core Behaviors, Intervention Style, and Metadata sections
+- Voice IDs marked as TBD (matched at runtime via VoiceUtils)
+- Images marked as TBD (generated at runtime via Replicate SDXL)
 
 ---
 
