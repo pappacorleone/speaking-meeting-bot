@@ -825,7 +825,8 @@ Add WebSocket endpoint for session events.
 - `broadcast_session_event()` helper already exists in `core/session_store.py` (implemented in Step 1.2)
 - Verified with `ruff check` and `ruff format` - All checks passed
 
-### [ ] Step: 5.3 Balance Tracker Module
+### [x] Step: 5.3 Balance Tracker Module
+<!-- chat-id: f37e6a96-c16f-447f-9aa7-03af02974413 -->
 
 Create balance tracking logic.
 
@@ -835,6 +836,21 @@ Create balance tracking logic.
 - Implement `BalanceTracker` class
 
 **Reference:** spec.md Section 4.4 Balance Tracker
+
+**Completed:** Created `core/balance_tracker.py` with comprehensive balance tracking:
+- `SpeakerMetrics` dataclass with `total_speaking_time_ms`, `last_spoke_at`, `is_speaking` fields
+- `BalanceResult` dataclass for structured balance calculations with `to_dict()` for JSON serialization
+- `BalanceTracker` class with:
+  - Configurable thresholds: `MILD_IMBALANCE_THRESHOLD=35` (65/35), `SEVERE_IMBALANCE_THRESHOLD=40` (70/30)
+  - Duration thresholds: `MILD_IMBALANCE_DURATION=3min`, `SEVERE_IMBALANCE_DURATION=5min`
+  - `update_speaker()` - Update speaker state from diarization events
+  - `get_current_speaking_time()` - Get total time including active turns
+  - `get_balance()` - Calculate percentages and status ("balanced", "mild_imbalance", "severe_imbalance")
+  - `check_intervention_trigger()` - Returns "severe_balance" or "balance" based on duration thresholds
+  - `get_dominant_speaker()` / `get_quiet_speaker()` - Helper methods for intervention targeting
+  - `reset_intervention_timers()` - Reset after intervention delivery
+  - `to_metrics_dict()` - Export full metrics for API response
+- Verified with `ruff check` and `ruff format` - All checks passed
 
 ### [ ] Step: 5.4 Frontend WebSocket Hook
 
