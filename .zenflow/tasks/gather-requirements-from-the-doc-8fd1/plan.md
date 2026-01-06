@@ -50,7 +50,7 @@ Create a detailed implementation plan based on `{@artifacts_path}/spec.md`.
 
 ### Phase 1: Backend Foundation
 
-#### [ ] Step 1.1: Session Data Models
+#### [x] Step 1.1: Session Data Models
 Add Session Pydantic models to `app/models.py`.
 
 **Tasks:**
@@ -70,7 +70,7 @@ ruff check app/models.py
 ruff format app/models.py
 ```
 
-#### [ ] Step 1.2: Session Store
+#### [x] Step 1.2: Session Store
 Create `core/session_store.py` for in-memory session storage.
 
 **Tasks:**
@@ -85,7 +85,7 @@ Create `core/session_store.py` for in-memory session storage.
 ruff check core/session_store.py
 ```
 
-#### [ ] Step 1.3: Session Service Skeleton
+#### [x] Step 1.3: Session Service Skeleton
 Create `app/services/session_service.py` with basic structure.
 
 **Tasks:**
@@ -102,7 +102,7 @@ Create `app/services/session_service.py` with basic structure.
 ruff check app/services/session_service.py
 ```
 
-#### [ ] Step 1.4: Session CRUD Routes
+#### [x] Step 1.4: Session CRUD Routes
 Add session management routes to `app/routes.py`.
 
 **Tasks:**
