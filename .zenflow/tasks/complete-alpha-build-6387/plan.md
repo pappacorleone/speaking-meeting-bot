@@ -611,7 +611,8 @@ Build final launch step.
 - Updated `components/session/wizard/index.ts` to export `StepLaunch`
 - Verified with `npm run build` ✓
 
-### [ ] Step: 3.7 Session Creation Page
+### [x] Step: 3.7 Session Creation Page
+<!-- chat-id: 843a0058-aad8-44c6-ae41-9fdb54f65748 -->
 
 Assemble wizard into page.
 
@@ -622,6 +623,27 @@ Assemble wizard into page.
 - Redirect to session detail page on success
 
 **Reference:** spec.md Section 6.1 POST /sessions
+
+**Completed:** Created Session Creation Page at `web/src/app/(dashboard)/sessions/new/page.tsx`:
+- `WizardProgress` - Desktop step indicator showing current/completed steps with checkmark icons
+- `MobileProgress` - Mobile step indicator with progress bar and step title
+- `ErrorAlert` - Error display component for API failures
+- `StepLaunchInternal` - Custom launch step with submission handler:
+  - Invite link display with copy functionality
+  - Platform selection (Diadi, Zoom, Google Meet, Microsoft Teams)
+  - Conditional meeting URL input for external platforms
+  - Create Session button with loading state
+- `WizardContentWithSubmit` - Step renderer with form submission logic:
+  - Validates final step before submission
+  - Checks platform URL requirements
+  - Transforms form data to API request format
+  - Handles errors and loading states
+- `NewSessionPage` - Main page component:
+  - Wraps content in `WizardProvider`
+  - Handles API call via `createSession()` from `lib/api/sessions.ts`
+  - Transforms camelCase form data to snake_case API format
+  - Redirects to `/sessions/{session_id}` on success
+- Verified with `npm run build` ✓
 
 ---
 
