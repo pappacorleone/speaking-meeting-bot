@@ -20,3 +20,4 @@ export {
 // Step Components
 export { StepIdentity } from "./step-identity";
 export { StepGoal } from "./step-goal";
+export { StepFacilitator } from "./step-facilitator";

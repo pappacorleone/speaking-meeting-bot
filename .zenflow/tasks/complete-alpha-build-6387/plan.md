@@ -526,7 +526,8 @@ Build goal step.
 - Zod validation already defined in wizard-provider.tsx (`stepGoalSchema`)
 - Verified with `npm run build` ✓
 
-### [ ] Step: 3.4 Step 2 - Facilitator Calibration
+### [x] Step: 3.4 Step 2 - Facilitator Calibration
+<!-- chat-id: cb9ce5a1-2ef0-45df-9489-66facd37371d -->
 
 Build facilitator selection step.
 
@@ -536,6 +537,25 @@ Build facilitator selection step.
 - Create `components/session/parameter-toggles.tsx`
 
 **Reference:** requirements.md Section 6.4 Step 2
+
+**Completed:** Created Facilitator Calibration step with all components:
+- `components/session/persona-selector.tsx` - Radio card group for selecting AI facilitator persona:
+  - Three persona options: Neutral Mediator (shield icon), Deep Empath (heart icon), Decision Catalyst (zap icon)
+  - Each card shows name, subtitle, description, and selection state
+  - Accessible with proper ARIA attributes (`role="radiogroup"`, `role="radio"`, `aria-checked`)
+- `components/session/parameter-toggles.tsx` - Switch toggles for configuring facilitator behavior:
+  - Three toggles: Interrupt Authority, Direct Inquiry, Silence Detection
+  - Each toggle shows label, description, ON/OFF state, and switch control
+  - Uses shadcn/ui Switch component (installed during implementation)
+- `components/session/wizard/step-facilitator.tsx` - Step 2 component with:
+  - Step indicator showing "02 / FACILITATOR CALIBRATION"
+  - Headline: "Facilitator."
+  - Two-column layout on desktop: Persona selection (left) and Parameter toggles (right)
+  - Back button and "Review & Connect" CTA
+  - Uses `useWizardFormData()` and `useWizardNavigation()` hooks
+- Updated `components/session/wizard/index.ts` to export `StepFacilitator`
+- Updated `components/session/index.ts` to export `PersonaSelector` and `ParameterToggles`
+- Verified with `npm run build` ✓
 
 ### [ ] Step: 3.5 Step 3 - Review & Connect
 
