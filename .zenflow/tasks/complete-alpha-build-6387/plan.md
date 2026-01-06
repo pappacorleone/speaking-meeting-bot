@@ -1303,7 +1303,8 @@ Create summary generation logic.
 - Global `summary_service` instance for easy import
 - Verified with `ruff check` and `ruff format` - All checks passed
 
-### [ ] Step: 9.2 Summary Endpoint
+### [x] Step: 9.2 Summary Endpoint
+<!-- chat-id: a7d8c505-a707-4bf9-893e-ba39e791c62c -->
 
 Add summary retrieval endpoint.
 
@@ -1311,6 +1312,14 @@ Add summary retrieval endpoint.
 - Add `GET /sessions/{id}/summary` endpoint
 
 **Reference:** spec.md Section 6.1 GET /sessions/{id}/summary
+
+**Completed:** Added `GET /sessions/{session_id}/summary` endpoint to `app/routes.py`:
+- Returns `SessionSummary` object containing consensus_summary, action_items, key_agreements, balance metrics, and intervention_count
+- Validates session exists before checking for summary (returns 404 "Session not found")
+- Returns 404 "Summary not available" if summary hasn't been generated yet
+- Uses `get_session()` and `get_summary()` from `core/session_store.py`
+- Frontend API client already has corresponding `getSessionSummary()` function in `web/src/lib/api/sessions.ts`
+- Verified with `ruff check` (no new issues) and `ruff format --check` (already formatted)
 
 ### [ ] Step: 9.3 Post-Session Recap UI
 

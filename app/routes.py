@@ -23,6 +23,7 @@ from app.models import (
     PersonaImageRequest,
     PersonaImageResponse,
     Session,
+    SessionSummary,
     StartSessionRequest,
     StartSessionResponse,
 )
@@ -1135,6 +1136,60 @@ async def end_session(session_id: str, client_request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to end session",
         )
+
+
+@router.get(
+    "/sessions/{session_id}/summary",
+    tags=["sessions"],
+    response_model=SessionSummary,
+    responses={
+        200: {"description": "Session summary returned"},
+        404: {"description": "Session not found or summary not available"},
+    },
+)
+async def get_session_summary(session_id: str, client_request: Request):
+    """
+    Get the summary for a completed session.
+
+    Returns the AI-generated summary including:
+    - Consensus summary of the conversation
+    - Key agreements reached
+    - Action items identified
+    - Talk balance metrics
+    - Intervention count
+
+    The summary is generated asynchronously when a session ends.
+    It may take a few seconds to become available after session end.
+
+    Args:
+        session_id: The session identifier.
+
+    Returns:
+        SessionSummary object with conversation insights.
+
+    Raises:
+        HTTPException: 404 if session not found or summary not yet available.
+    """
+    # Import here to avoid circular dependency
+    from core.session_store import get_session, get_summary
+
+    # First check if the session exists
+    session = get_session(session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found",
+        )
+
+    # Get the summary
+    summary = get_summary(session_id)
+    if not summary:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Summary not available",
+        )
+
+    return summary
 
 
 @router.post(
