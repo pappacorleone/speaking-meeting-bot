@@ -1700,6 +1700,20 @@ npm run type-check  # ✔ No TypeScript errors
 
 ---
 
+
+### [x] Step: resolve PR merge conflicts
+<!-- chat-id: dd7fe79b-e2e0-467f-850c-e7167c6634c7 -->
+<!-- agent: CLAUDE_CODE -->
+
+go through the merge conflicts one by one and resolve them
+
+**Completed:** Verified merge conflict status:
+- Branch `complete-alpha-build-6387` is already up to date with `origin/main`
+- Common ancestor is `1e2fe93` (latest main commit)
+- Branch is 34+ commits ahead of main, 0 commits behind
+- No merge in progress (`git status` shows clean working directory)
+- No PR currently open for this branch
+- **Result: No merge conflicts to resolve** - the branch is properly based on latest main
 ## Test Results
 
 *Final test results recorded below*
