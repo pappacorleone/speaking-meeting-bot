@@ -247,7 +247,8 @@ Set up Diadi design system in Tailwind.
 - Installed `tailwindcss-animate` plugin for shadcn/ui compatibility
 - Verified build passes: `npm run build` ✓
 
-### [ ] Step: 2.3 Install and Configure shadcn/ui
+### [x] Step: 2.3 Install and Configure shadcn/ui
+<!-- chat-id: bc00a4b7-1037-4626-a210-468b43c09d4a -->
 
 Set up component library.
 
@@ -260,6 +261,28 @@ Set up component library.
 ```bash
 cd web && npm run build
 ```
+
+**Completed:** Installed and configured shadcn/ui with Diadi styling:
+- Initialized shadcn/ui with `npx shadcn@latest init --defaults` (new-york style, neutral base)
+- Created `components.json` configuration and `lib/utils.ts` with `cn()` helper
+- Installed base components: button, card, input, dialog, toggle, form, label
+- Customized Button component (`components/ui/button.tsx`):
+  - Added `rounded-button` (pill-shaped) for default, destructive, outline, secondary variants
+  - Added `uppercase tracking-widest` for Diadi CTA styling
+  - Increased default size to `h-10 px-6`
+- Customized Card component (`components/ui/card.tsx`):
+  - Changed to `rounded-card` (16px) and `shadow-card`
+  - Added `font-serif` to CardTitle for Diadi headlines
+- Customized Input component (`components/ui/input.tsx`):
+  - Changed to `h-10 rounded-lg bg-background px-4 py-2`
+  - Enhanced focus ring with `ring-2 ring-offset-2`
+- Customized Toggle component (`components/ui/toggle.tsx`):
+  - Updated on-state to use secondary color (`bg-secondary text-secondary-foreground`)
+  - Changed to `rounded-lg` with larger sizes
+- Customized Dialog component (`components/ui/dialog.tsx`):
+  - Changed to `rounded-card` and `shadow-elevated`
+  - Added `font-serif` to DialogTitle
+- Verified build passes: `npm run build` ✓
 
 ### [ ] Step: 2.4 Create API Client
 
