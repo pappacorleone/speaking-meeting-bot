@@ -10,3 +10,10 @@ export {
   TalkBalanceCompact,
   TalkBalanceVertical,
 } from './talk-balance';
+
+export {
+  AIStatusIndicator,
+  AIStatusBadge,
+  AIStatusHUD,
+  AIStatusLarge,
+} from './ai-status-indicator';

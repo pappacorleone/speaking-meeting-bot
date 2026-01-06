@@ -938,7 +938,8 @@ Build real-time balance indicator.
 - Created `components/live/index.ts` barrel export
 - Verified with `npm run build` ✓
 
-### [ ] Step: 6.2 AI Status Indicator
+### [x] Step: 6.2 AI Status Indicator
+<!-- chat-id: 93359176-f0d6-41c4-8436-bf5e012f35a7 -->
 
 Build AI status display.
 
@@ -948,6 +949,29 @@ Build AI status display.
 - Add animated states
 
 **Reference:** spec.md Section 3.3 AIStatusIndicator Component
+
+**Completed:** Created `web/src/components/live/ai-status-indicator.tsx` with multiple variants:
+- `AIStatusIndicator` - Main component with circular ring indicator and icon:
+  - Supports 5 AI states: idle, listening, preparing, intervening, paused
+  - Custom SVG icons for each state
+  - Animated states: listening (pulse), preparing (spin), intervening (glow)
+  - Configurable: compact mode, show/hide label, custom message
+- `AIStatusBadge` - Badge-style variant for toolbar/header use:
+  - Compact horizontal layout with dot indicator and label
+  - Color-coded backgrounds and rings per status
+- `AIStatusHUD` - HUD overlay variant for video backgrounds:
+  - Light colors on semi-transparent dark backdrop
+  - Optimized for visibility on video feeds
+- `AIStatusLarge` - Large display variant for full-screen states:
+  - Large animated ring with icon
+  - Label and optional message below
+  - Outer glow effect for intervening state
+- Helper functions: `getStatusLabel()`, `getStatusStyles()` for consistent styling
+- Custom inline SVG icons: IdleIcon, ListeningIcon, PreparingIcon, InterveningIcon, PausedIcon
+- Uses existing `animate-glow` animation from Tailwind config
+- Proper ARIA attributes: `role="status"`, `aria-live="polite"`, `aria-label`
+- Updated `components/live/index.ts` barrel export
+- Verified with `npm run build` ✓
 
 ### [ ] Step: 6.3 Session Timer
 
