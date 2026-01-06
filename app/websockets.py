@@ -1,12 +1,19 @@
 """WebSocket routes for the Speaking Meeting Bot API."""
 
-import asyncio
+import json
+from datetime import datetime
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from core.connection import MEETING_DETAILS, PIPECAT_PROCESSES, registry
 from core.process import start_pipecat_process, terminate_process_gracefully
 from core.router import router as message_router
+from core.session_store import (
+    SESSION_EVENTS,
+    get_session,
+    register_event_connection,
+    unregister_event_connection,
+)
 from meetingbaas_pipecat.utils.logger import logger
 from utils.ngrok import LOCAL_DEV_MODE, log_ngrok_status, release_ngrok_url
 
@@ -23,7 +30,9 @@ async def _load_meeting_details(client_id: str):
     persona_name = meeting_details[1] if len(meeting_details) > 1 else None
     meetingbaas_bot_id = meeting_details[2] if len(meeting_details) > 2 else None
     enable_tools = meeting_details[3] if len(meeting_details) > 3 else False
-    streaming_audio_frequency = meeting_details[4] if len(meeting_details) > 4 else "16khz"
+    streaming_audio_frequency = (
+        meeting_details[4] if len(meeting_details) > 4 else "16khz"
+    )
     resolved_persona_data = (
         meeting_details[5] if len(meeting_details) > 5 else {"name": persona_name}
     )
@@ -71,7 +80,9 @@ async def websocket_output_endpoint(websocket: WebSocket, client_id: str):
         else:
             # Start Pipecat process if not already running
             pipecat_websocket_url = f"ws://localhost:7014/pipecat/{client_id}"
-            logger.info(f"Starting new Pipecat process for client {client_id} (previous process not running)")
+            logger.info(
+                f"Starting new Pipecat process for client {client_id} (previous process not running)"
+            )
             process = start_pipecat_process(
                 client_id=client_id,
                 websocket_url=pipecat_websocket_url,
@@ -91,11 +102,14 @@ async def websocket_output_endpoint(websocket: WebSocket, client_id: str):
             try:
                 message = await websocket.receive()
             except RuntimeError as e:
-                if "Cannot call \"receive\" once a disconnect message has been received" in str(e):
+                if (
+                    'Cannot call "receive" once a disconnect message has been received'
+                    in str(e)
+                ):
                     logger.info(f"WebSocket for client {client_id} closed by client.")
                     break
                 raise
-            
+
             # logger.info(f"Received message type: {type(message)}, keys: {list(message.keys())}")
             if "bytes" in message:
                 audio_data = message["bytes"]
@@ -230,6 +244,7 @@ async def websocket_legacy_endpoint(websocket: WebSocket, client_id: str):
     )
     await websocket_output_endpoint(websocket, client_id)
 
+
 @websocket_router.websocket("/pipecat/{client_id}")
 async def pipecat_websocket(websocket: WebSocket, client_id: str):
     """Handle WebSocket connections from Pipecat."""
@@ -270,3 +285,147 @@ async def pipecat_websocket(websocket: WebSocket, client_id: str):
         if LOCAL_DEV_MODE:
             release_ngrok_url(client_id)
             log_ngrok_status()
+
+
+# =============================================================================
+# Session Events WebSocket (Diadi)
+# =============================================================================
+
+
+@websocket_router.websocket("/sessions/{session_id}/events")
+async def session_events_websocket(websocket: WebSocket, session_id: str):
+    """WebSocket endpoint for real-time session events.
+
+    This endpoint is used by the Diadi frontend to receive real-time updates
+    about session state, talk balance, interventions, and timing.
+
+    Events sent from server:
+        - session_state: Current session status
+        - balance_update: Talk time balance between participants
+        - intervention: AI intervention notification
+        - time_remaining: Time warning updates
+        - participant_status: Participant join/leave events
+        - ai_status: AI facilitator status (listening, preparing, etc.)
+        - error: Error notifications
+
+    Messages accepted from client:
+        - ping: Heartbeat (responds with pong)
+        - update_settings: Update facilitator settings mid-session
+        - intervention_ack: Acknowledge intervention was seen/dismissed
+    """
+    await websocket.accept()
+
+    # Validate session exists
+    session = get_session(session_id)
+    if not session:
+        logger.warning(f"Session events WebSocket: Session {session_id} not found")
+        await websocket.close(code=4004, reason="Session not found")
+        return
+
+    # Register this connection for session events
+    register_event_connection(session_id, websocket)
+    logger.info(
+        f"Session events WebSocket connected for session {session_id}. "
+        f"Total connections: {len(SESSION_EVENTS.get(session_id, []))}"
+    )
+
+    try:
+        # Send initial session state
+        await websocket.send_json(
+            {
+                "type": "session_state",
+                "data": {
+                    "status": session.status.value,
+                    "goal": session.goal,
+                    "duration_minutes": session.duration_minutes,
+                    "participants": [
+                        {
+                            "id": p.id,
+                            "name": p.name,
+                            "role": p.role.value,
+                            "consented": p.consented,
+                        }
+                        for p in session.participants
+                    ],
+                    "facilitator_config": {
+                        "persona": session.facilitator_config.persona.value,
+                        "interrupt_authority": session.facilitator_config.interrupt_authority,
+                        "direct_inquiry": session.facilitator_config.direct_inquiry,
+                        "silence_detection": session.facilitator_config.silence_detection,
+                    },
+                    "bot_id": session.bot_id,
+                    "client_id": session.client_id,
+                },
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
+
+        # Listen for client messages
+        while True:
+            try:
+                data = await websocket.receive_text()
+                message = json.loads(data)
+                message_type = message.get("type")
+
+                if message_type == "ping":
+                    # Heartbeat response
+                    await websocket.send_json(
+                        {
+                            "type": "pong",
+                            "timestamp": datetime.utcnow().isoformat(),
+                        }
+                    )
+
+                elif message_type == "update_settings":
+                    # Update facilitator settings mid-session
+                    settings = message.get("data", {})
+                    logger.info(
+                        f"Session {session_id}: Received settings update: {settings}"
+                    )
+                    # TODO: Forward settings to Pipecat process
+                    # await update_pipecat_settings(session.client_id, settings)
+
+                    # Acknowledge the update
+                    await websocket.send_json(
+                        {
+                            "type": "settings_updated",
+                            "data": settings,
+                            "timestamp": datetime.utcnow().isoformat(),
+                        }
+                    )
+
+                elif message_type == "intervention_ack":
+                    # Log that intervention was acknowledged
+                    intervention_id = message.get("data", {}).get("intervention_id")
+                    logger.info(
+                        f"Session {session_id}: Intervention {intervention_id} acknowledged"
+                    )
+                    # Could track this for analytics
+
+                else:
+                    logger.debug(
+                        f"Session {session_id}: Unknown message type: {message_type}"
+                    )
+
+            except json.JSONDecodeError as e:
+                logger.warning(f"Session {session_id}: Invalid JSON received: {e}")
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "data": {"message": "Invalid JSON format"},
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }
+                )
+
+    except WebSocketDisconnect:
+        logger.info(f"Session events WebSocket disconnected for session {session_id}")
+    except Exception as e:
+        logger.error(f"Session events WebSocket error for session {session_id}: {e}")
+    finally:
+        # Unregister connection
+        unregister_event_connection(session_id, websocket)
+        remaining = len(SESSION_EVENTS.get(session_id, []))
+        logger.info(
+            f"Session events WebSocket cleaned up for session {session_id}. "
+            f"Remaining connections: {remaining}"
+        )

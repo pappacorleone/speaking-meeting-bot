@@ -1,391 +1,468 @@
 """Session service for Diadi facilitation sessions.
 
-This module provides business logic for managing session lifecycle,
-including creation, consent, starting, pausing, and ending sessions.
+Handles session lifecycle, state transitions, and business logic.
 """
 
 import secrets
 from datetime import datetime
-from typing import Optional, List
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
 from app.models import (
+    FacilitatorConfig,
+    Participant,
+    Platform,
     Session,
     SessionStatus,
-    SessionSummary,
-    Participant,
-    FacilitatorConfig,
-    Platform,
-    TalkBalanceMetrics,
-    CreateSessionRequest,
-    CreateSessionResponse,
-    ConsentRequest,
-    ConsentResponse,
-    StartSessionRequest,
-    StartSessionResponse,
-    EndSessionResponse,
 )
 from core.session_store import (
-    get_session,
-    get_session_by_invite_token,
-    save_session,
+    create_session as store_create_session,
+    get_session as store_get_session,
+    get_session_by_invite_token as store_get_session_by_token,
     list_sessions as store_list_sessions,
-    get_session_summary,
-    save_session_summary,
+    update_session as store_update_session,
 )
 
 
 class SessionService:
-    """Manages Diadi session lifecycle and state transitions."""
-
-    def __init__(self, base_url: str = "http://localhost:7014"):
-        """Initialize the session service.
-
-        Args:
-            base_url: Base URL for generating invite links.
-        """
-        self.base_url = base_url
+    """Manages session lifecycle and state transitions."""
 
     async def create_session(
         self,
-        request: CreateSessionRequest,
-        creator_id: str = "",
-        creator_name: str = "",
-    ) -> CreateSessionResponse:
+        creator_name: str,
+        partner_name: str,
+        goal: str,
+        relationship_context: str,
+        facilitator_config: Optional[FacilitatorConfig] = None,
+        duration_minutes: int = 30,
+        platform: Platform = Platform.MEET,
+        scheduled_at: Optional[str] = None,
+    ) -> Session:
         """Create a new session in draft status.
 
         Args:
-            request: The session creation request.
-            creator_id: Optional ID of the creator (from auth).
-            creator_name: Optional name of the creator (from auth).
+            creator_name: Name of the session creator.
+            partner_name: Name of the invited partner.
+            goal: The session goal (max 200 chars).
+            relationship_context: Context about the relationship.
+            facilitator_config: Optional facilitator configuration.
+            duration_minutes: Session duration in minutes.
+            platform: Meeting platform to use.
+            scheduled_at: Optional scheduled time (ISO format).
 
         Returns:
-            CreateSessionResponse with session ID and invite link.
+            The created Session object.
         """
         session_id = secrets.token_urlsafe(16)
         invite_token = secrets.token_urlsafe(32)
+        creator_id = secrets.token_urlsafe(8)
 
-        # Generate creator ID if not provided
-        if not creator_id:
-            creator_id = secrets.token_urlsafe(8)
+        if facilitator_config is None:
+            facilitator_config = FacilitatorConfig()
 
         session = Session(
             id=session_id,
-            goal=request.goal,
-            relationship_context=request.relationship_context,
-            partner_name=request.partner_name,
-            platform=request.platform,
-            duration_minutes=request.duration_minutes,
-            scheduled_at=request.scheduled_at,
-            status=SessionStatus.DRAFT,
+            title=f"Session with {partner_name}",
+            goal=goal,
+            relationship_context=relationship_context,
+            partner_name=partner_name,
+            platform=platform,
+            duration_minutes=duration_minutes,
+            scheduled_at=scheduled_at,
+            status=SessionStatus.PENDING_CONSENT,
             participants=[
                 Participant(
                     id=creator_id,
-                    name=creator_name or "Session Creator",
+                    name=creator_name,
                     role="creator",
                     consented=True,  # Creator implicitly consents
                 )
             ],
-            facilitator=request.facilitator,
+            facilitator=facilitator_config,
             created_at=datetime.utcnow().isoformat(),
             invite_token=invite_token,
         )
 
-        save_session(session)
+        store_create_session(session)
+        logger.info(f"Created session {session_id} for {creator_name}")
 
-        # Update status to pending_consent since we're waiting for partner
-        session.status = SessionStatus.PENDING_CONSENT
-        save_session(session)
+        return session
 
-        invite_link = f"{self.base_url}/invite/{invite_token}"
-
-        logger.info(f"Created session {session_id} with invite token {invite_token[:8]}...")
-
-        return CreateSessionResponse(
-            session_id=session_id,
-            status=session.status,
-            invite_link=invite_link,
-            invite_token=invite_token,
-        )
-
-    async def get_session(self, session_id: str) -> Optional[Session]:
-        """Get a session by ID.
+    def get_session(self, session_id: str) -> Optional[Session]:
+        """Retrieve a session by ID.
 
         Args:
-            session_id: The session identifier.
+            session_id: The unique session identifier.
 
         Returns:
-            The Session if found, None otherwise.
+            The Session object if found, None otherwise.
         """
-        return get_session(session_id)
+        return store_get_session(session_id)
 
-    async def get_session_by_token(self, invite_token: str) -> Optional[Session]:
-        """Get a session by invite token.
+    def get_session_by_invite_token(self, invite_token: str) -> Optional[Session]:
+        """Retrieve a session by its invite token.
 
         Args:
-            invite_token: The invitation token.
+            invite_token: The unique invite token.
 
         Returns:
-            The Session if found, None otherwise.
+            The Session object if found, None otherwise.
         """
-        return get_session_by_invite_token(invite_token)
+        return store_get_session_by_token(invite_token)
 
-    async def list_sessions(
-        self,
-        status: Optional[SessionStatus] = None,
-        limit: int = 20,
-        offset: int = 0,
-    ) -> tuple[List[Session], int, bool]:
-        """List sessions with optional filtering.
+    def list_sessions(self, status: Optional[str] = None) -> List[Session]:
+        """List all sessions, optionally filtered by status.
 
         Args:
-            status: Optional status filter.
-            limit: Maximum number of sessions to return.
-            offset: Number of sessions to skip.
+            status: Optional status filter (e.g., "draft", "in_progress").
 
         Returns:
-            Tuple of (sessions, total count, has more).
+            List of Session objects matching the filter.
         """
-        sessions, total = store_list_sessions(status, limit, offset)
-        has_more = offset + len(sessions) < total
-        return sessions, total, has_more
+        return store_list_sessions(status)
 
     async def record_consent(
         self,
         session_id: str,
-        request: ConsentRequest,
-    ) -> ConsentResponse:
+        invite_token: str,
+        invitee_name: str,
+        consented: bool,
+    ) -> Session:
         """Record partner consent and transition status if both consented.
 
         Args:
             session_id: The session identifier.
-            request: The consent request.
+            invite_token: The invite token for verification.
+            invitee_name: Name of the invitee.
+            consented: Whether the invitee consented.
 
         Returns:
-            ConsentResponse with updated status and participants.
+            The updated Session object.
 
         Raises:
             ValueError: If session not found or invalid token.
         """
-        session = get_session(session_id)
+        session = store_get_session(session_id)
         if not session:
             raise ValueError("Session not found")
-
-        if session.invite_token != request.invite_token:
+        if session.invite_token != invite_token:
             raise ValueError("Invalid invite token")
 
-        if request.consented:
-            # Add the invitee as a participant
+        if consented:
             invitee_id = secrets.token_urlsafe(8)
             session.participants.append(
                 Participant(
                     id=invitee_id,
-                    name=request.invitee_name,
+                    name=invitee_name,
                     role="invitee",
                     consented=True,
                 )
             )
-
-            # Check if both participants have consented
-            all_consented = all(p.consented for p in session.participants)
-            if all_consented and len(session.participants) >= 2:
+            # Check if both consented
+            if all(p.consented for p in session.participants):
                 session.status = SessionStatus.READY
-                logger.info(f"Session {session_id} is now READY - both parties consented")
-            else:
-                session.status = SessionStatus.PENDING_CONSENT
-
-            save_session(session)
+                logger.info(f"Session {session_id} is ready - both parties consented")
         else:
-            # Decline is private - archive the session
+            # Decline is private - don't notify creator
             session.status = SessionStatus.ARCHIVED
-            save_session(session)
-            logger.info(f"Session {session_id} declined privately")
+            logger.info(f"Session {session_id} archived - partner declined")
 
-        return ConsentResponse(
-            status=session.status,
-            participants=session.participants,
-        )
+        store_update_session(session_id, session)
+        return session
 
     async def start_session(
         self,
         session_id: str,
-        request: StartSessionRequest,
-        api_key: str = "",
-    ) -> StartSessionResponse:
+        meeting_url: str,
+        api_key: str,
+        websocket_base_url: str,
+    ) -> Dict[str, Any]:
         """Start the session: spawn Pipecat, call MeetingBaas.
 
         Args:
             session_id: The session identifier.
-            request: The start session request with meeting URL.
-            api_key: MeetingBaas API key.
+            meeting_url: The meeting platform URL.
+            api_key: The MeetingBaas API key for bot creation.
+            websocket_base_url: Base URL for WebSocket connections.
 
         Returns:
-            StartSessionResponse with bot IDs and event URL.
+            Dict with status, bot_id, client_id, and event_url.
 
         Raises:
             ValueError: If session not found or not ready.
+            RuntimeError: If bot creation fails.
         """
-        session = get_session(session_id)
+        session = store_get_session(session_id)
         if not session:
             raise ValueError("Session not found")
-
         if session.status != SessionStatus.READY:
-            raise ValueError(f"Session not ready to start. Current status: {session.status}")
+            raise ValueError(
+                f"Session not ready to start (current status: {session.status.value})"
+            )
 
-        # Generate client ID for WebSocket routing
+        # Import dependencies here to avoid circular imports
+        from config.persona_utils import persona_manager
+        from config.voice_utils import VoiceUtils
+        from core.connection import MEETING_DETAILS, PIPECAT_PROCESSES
+        from core.process import start_pipecat_process
+        from scripts.meetingbaas_api import create_meeting_bot
+
+        # Generate unique client ID for this session
         client_id = secrets.token_urlsafe(16)
 
-        # Import here to avoid circular imports
-        from config.persona_utils import PersonaManager
-        from scripts.meetingbaas_api import create_meeting_bot
-        from core.process import start_pipecat_process
-        from core.connection import MEETING_DETAILS, PIPECAT_PROCESSES
-        import os
-
-        # Load persona
-        persona_manager = PersonaManager()
+        # Load persona based on facilitator configuration
         persona_name = session.facilitator.persona.value
         try:
             persona_data = persona_manager.get_persona(persona_name)
-        except Exception as e:
-            logger.warning(f"Persona {persona_name} not found, using default: {e}")
-            persona_data = persona_manager.get_persona("baas_onboarder")
+            persona_data["is_temporary"] = False
+        except KeyError:
+            logger.warning(
+                f"Persona '{persona_name}' not found, falling back to neutral_mediator"
+            )
+            try:
+                persona_data = persona_manager.get_persona("neutral_mediator")
+                persona_data["is_temporary"] = False
+            except KeyError:
+                # Final fallback to baas_onboarder
+                persona_data = persona_manager.get_persona("baas_onboarder")
+                persona_data["is_temporary"] = False
 
-        # Get API key from env if not provided
-        if not api_key:
-            api_key = os.environ.get("MEETING_BAAS_API_KEY", "")
+        logger.info(f"Loaded persona '{persona_name}' for session {session_id}")
 
-        # Get base URL for WebSocket
-        base_url = os.environ.get("BASE_URL", self.base_url)
-        ws_base = base_url.replace("http://", "ws://").replace("https://", "wss://")
+        # Resolve voice ID if not present
+        if not persona_data.get("cartesia_voice_id"):
+            voice_utils = VoiceUtils()
+            cartesia_voice_id = await voice_utils.match_voice_to_persona(
+                persona_details=persona_data
+            )
+            persona_data["cartesia_voice_id"] = cartesia_voice_id
+            logger.info(f"Resolved voice ID for persona: {cartesia_voice_id}")
+
+        # Build entry message with session context
+        entry_message = persona_data.get("entry_message", "")
+        if not entry_message:
+            display_name = persona_data.get("name", "AI Facilitator")
+            entry_message = (
+                f"Hello, I'm {display_name}. "
+                f"I'm here to help facilitate your conversation about: {session.goal}"
+            )
+
+        # Fixed streaming audio frequency for consistency
+        streaming_audio_frequency = "16khz"
+
+        # Store meeting details for WebSocket handler
+        MEETING_DETAILS[client_id] = (
+            meeting_url,
+            persona_data.get("name", persona_name),
+            None,  # meetingbaas_bot_id, will be set after creation
+            False,  # enable_tools - disabled for Diadi facilitation
+            streaming_audio_frequency,
+            persona_data,  # Full persona data for Pipecat subprocess
+        )
 
         # Create MeetingBaas bot
-        try:
-            bot_id = create_meeting_bot(
-                meeting_url=request.meeting_url,
-                websocket_url=base_url,
-                bot_id=client_id,
-                persona_name=persona_name,
-                api_key=api_key,
-                bot_image=persona_data.get("image"),
-                entry_message=persona_data.get("entry_message"),
-            )
-        except Exception as e:
-            logger.error(f"Failed to create MeetingBaas bot: {e}")
-            raise ValueError(f"Failed to create meeting bot: {e}")
-
-        # Store meeting details
-        MEETING_DETAILS[client_id] = (
-            request.meeting_url,
-            persona_name,
-            bot_id,
-            False,  # enable_tools - disabled for Diadi
-            "16khz",
-            persona_data,
+        webhook_url = f"{websocket_base_url}/webhook"
+        meetingbaas_bot_id = create_meeting_bot(
+            meeting_url=meeting_url,
+            websocket_url=websocket_base_url,
+            bot_id=client_id,
+            persona_name=persona_data.get("name", persona_name),
+            api_key=api_key,
+            bot_image=persona_data.get("image"),
+            entry_message=entry_message,
+            extra={
+                "session_id": session_id,
+                "goal": session.goal,
+                "facilitator_persona": persona_name,
+            },
+            streaming_audio_frequency=streaming_audio_frequency,
+            webhook_url=webhook_url,
         )
+
+        if not meetingbaas_bot_id:
+            # Clean up meeting details on failure
+            MEETING_DETAILS.pop(client_id, None)
+            raise RuntimeError("Failed to create MeetingBaas bot")
+
+        # Update MEETING_DETAILS with the bot ID
+        details = list(MEETING_DETAILS[client_id])
+        details[2] = meetingbaas_bot_id
+        MEETING_DETAILS[client_id] = tuple(details)
+
+        logger.info(f"Created MeetingBaas bot with ID: {meetingbaas_bot_id}")
 
         # Start Pipecat process
-        try:
-            process = start_pipecat_process(
-                client_id=client_id,
-                websocket_url=f"{ws_base}/pipecat/{client_id}",
-                meeting_url=request.meeting_url,
-                persona_data=persona_data,
-                streaming_audio_frequency="16khz",
-                enable_tools=False,  # Disable tools for Diadi
-                api_key=api_key,
-                meetingbaas_bot_id=bot_id,
-            )
-            PIPECAT_PROCESSES[client_id] = process
-        except Exception as e:
-            logger.error(f"Failed to start Pipecat process: {e}")
-            raise ValueError(f"Failed to start facilitation: {e}")
-
-        # Update session
-        session.status = SessionStatus.IN_PROGRESS
-        session.bot_id = bot_id
-        session.client_id = client_id
-        session.meeting_url = request.meeting_url
-        save_session(session)
-
-        event_url = f"{ws_base}/sessions/{session_id}/events"
-
-        logger.info(f"Session {session_id} started with bot {bot_id}")
-
-        return StartSessionResponse(
-            status=session.status,
-            bot_id=bot_id,
+        # Pipecat connects to the local WebSocket server, not external URL
+        pipecat_websocket_url = f"ws://localhost:7014/pipecat/{client_id}"
+        process = start_pipecat_process(
             client_id=client_id,
-            event_url=event_url,
+            websocket_url=pipecat_websocket_url,
+            meeting_url=meeting_url,
+            persona_data=persona_data,
+            streaming_audio_frequency=streaming_audio_frequency,
+            enable_tools=False,  # Disable weather/time tools for Diadi
+            api_key=api_key,
+            meetingbaas_bot_id=meetingbaas_bot_id,
         )
 
-    async def end_session(self, session_id: str) -> EndSessionResponse:
-        """End the session, cleanup resources, trigger summary generation.
+        # Store the process for later cleanup
+        PIPECAT_PROCESSES[client_id] = process
+        logger.info(f"Started Pipecat process with PID {process.pid}")
+
+        # Update session state
+        session.status = SessionStatus.IN_PROGRESS
+        session.meeting_url = meeting_url
+        session.bot_id = meetingbaas_bot_id
+        session.client_id = client_id
+
+        store_update_session(session_id, session)
+        logger.info(f"Session {session_id} started successfully")
+
+        return {
+            "status": session.status,
+            "bot_id": meetingbaas_bot_id,
+            "client_id": client_id,
+            "event_url": f"/sessions/{session_id}/events",
+        }
+
+    async def end_session(self, session_id: str, api_key: str) -> Dict[str, Any]:
+        """End the session, cleanup resources, generate summary.
+
+        This method handles the full session end lifecycle:
+        1. Validates session exists and can be ended
+        2. Terminates the Pipecat process
+        3. Calls MeetingBaas API to make the bot leave
+        4. Cleans up in-memory state
+        5. Broadcasts session_state event
+        6. Triggers summary generation (async)
 
         Args:
             session_id: The session identifier.
+            api_key: The MeetingBaas API key for bot removal.
 
         Returns:
-            EndSessionResponse with status and summary availability.
+            Dict with status and summary_available flag.
 
         Raises:
-            ValueError: If session not found.
+            ValueError: If session not found or not in a state that can be ended.
         """
-        session = get_session(session_id)
+        session = store_get_session(session_id)
         if not session:
             raise ValueError("Session not found")
 
-        # Cleanup Pipecat and MeetingBaas
-        if session.client_id:
-            from core.process import terminate_process_gracefully
-            from core.connection import PIPECAT_PROCESSES, MEETING_DETAILS
-            from scripts.meetingbaas_api import leave_meeting_bot
-            import os
+        # Session can be ended from in_progress or paused states
+        if session.status not in [SessionStatus.IN_PROGRESS, SessionStatus.PAUSED]:
+            raise ValueError(
+                f"Session cannot be ended (current status: {session.status.value})"
+            )
 
-            # Terminate Pipecat process
-            process = PIPECAT_PROCESSES.get(session.client_id)
-            if process:
-                terminate_process_gracefully(process)
-                PIPECAT_PROCESSES.pop(session.client_id, None)
+        # Import dependencies here to avoid circular imports
+        from core.connection import MEETING_DETAILS, PIPECAT_PROCESSES, registry
+        from core.process import terminate_process_gracefully
+        from core.router import router as message_router
+        from core.session_store import broadcast_session_event
+        from scripts.meetingbaas_api import leave_meeting_bot
 
-            # Leave MeetingBaas meeting
-            if session.bot_id:
-                api_key = os.environ.get("MEETING_BAAS_API_KEY", "")
+        client_id = session.client_id
+        bot_id = session.bot_id
+
+        # 1. Terminate the Pipecat process
+        if client_id and client_id in PIPECAT_PROCESSES:
+            process = PIPECAT_PROCESSES[client_id]
+            if process and process.poll() is None:  # Process is still running
                 try:
-                    leave_meeting_bot(session.bot_id, api_key)
+                    # Mark client as closing to prevent further messages
+                    message_router.mark_closing(client_id)
+
+                    if terminate_process_gracefully(process, timeout=3.0):
+                        logger.info(
+                            f"Gracefully terminated Pipecat process for session {session_id}"
+                        )
+                    else:
+                        logger.warning(
+                            f"Had to forcefully kill Pipecat process for session {session_id}"
+                        )
                 except Exception as e:
-                    logger.warning(f"Failed to leave meeting: {e}")
+                    logger.error(f"Error terminating Pipecat process: {e}")
 
-            # Cleanup meeting details
-            MEETING_DETAILS.pop(session.client_id, None)
+            # Remove from process tracking
+            PIPECAT_PROCESSES.pop(client_id, None)
 
+        # 2. Call MeetingBaas API to make the bot leave
+        if bot_id:
+            try:
+                result = leave_meeting_bot(bot_id=bot_id, api_key=api_key)
+                if result:
+                    logger.info(f"Bot {bot_id} successfully left the meeting")
+                else:
+                    logger.warning(f"Failed to remove bot {bot_id} from meeting")
+            except Exception as e:
+                logger.error(f"Error calling leave_meeting_bot: {e}")
+
+        # 3. Close WebSocket connections
+        if client_id:
+            try:
+                # Close Pipecat WebSocket
+                if client_id in registry.pipecat_connections:
+                    await registry.disconnect(client_id, is_pipecat=True)
+                    logger.info(f"Closed Pipecat WebSocket for session {session_id}")
+
+                # Close client WebSockets
+                if registry.get_client_output(client_id):
+                    await registry.disconnect(client_id, client_direction="output")
+                if registry.get_client_input(client_id):
+                    await registry.disconnect(client_id, client_direction="input")
+            except Exception as e:
+                logger.error(f"Error closing WebSocket connections: {e}")
+
+        # 4. Clean up in-memory state
+        if client_id and client_id in MEETING_DETAILS:
+            MEETING_DETAILS.pop(client_id, None)
+            logger.info(f"Cleaned up meeting details for session {session_id}")
+
+        # 5. Update session status
         session.status = SessionStatus.ENDED
-        save_session(session)
+        store_update_session(session_id, session)
+        logger.info(f"Session {session_id} ended successfully")
 
-        # Trigger summary generation (placeholder for now)
+        # 6. Broadcast session_state event to any connected clients
+        try:
+            await broadcast_session_event(
+                session_id,
+                "session_state",
+                {
+                    "status": session.status.value,
+                    "ended": True,
+                },
+            )
+        except Exception as e:
+            logger.warning(f"Error broadcasting session end event: {e}")
+
+        # 7. Trigger summary generation (async - does not block return)
         summary_available = await self._generate_summary(session_id)
 
-        logger.info(f"Session {session_id} ended")
-
-        return EndSessionResponse(
-            status=session.status,
-            summary_available=summary_available,
-        )
+        return {
+            "status": session.status,
+            "summary_available": summary_available,
+        }
 
     async def pause_facilitation(self, session_id: str) -> Session:
         """Pause AI facilitation (kill switch).
 
+        Immediately pauses AI interventions while keeping the session active.
+        This is the kill switch functionality that gives participants control.
+
         Args:
             session_id: The session identifier.
 
         Returns:
-            Updated Session.
+            The updated Session object with status "paused".
 
         Raises:
             ValueError: If session not found or not in progress.
         """
-        session = get_session(session_id)
+        session = store_get_session(session_id)
         if not session:
             raise ValueError("Session not found")
 
@@ -393,28 +470,41 @@ class SessionService:
             raise ValueError("Session not in progress")
 
         session.status = SessionStatus.PAUSED
-        save_session(session)
+        store_update_session(session_id, session)
+        logger.info(f"Paused facilitation for session {session_id}")
 
         # Notify Pipecat to stop interventions
         await self._notify_pipecat(session.client_id, {"action": "pause"})
 
-        logger.info(f"Session {session_id} paused")
+        # Broadcast pause event to connected clients
+        from core.session_store import broadcast_session_event
+
+        await broadcast_session_event(
+            session_id,
+            "session_state",
+            {
+                "status": session.status.value,
+                "facilitator_paused": True,
+            },
+        )
 
         return session
 
     async def resume_facilitation(self, session_id: str) -> Session:
         """Resume AI facilitation after pause.
 
+        Re-enables AI interventions for a previously paused session.
+
         Args:
             session_id: The session identifier.
 
         Returns:
-            Updated Session.
+            The updated Session object with status "in_progress".
 
         Raises:
             ValueError: If session not found or not paused.
         """
-        session = get_session(session_id)
+        session = store_get_session(session_id)
         if not session:
             raise ValueError("Session not found")
 
@@ -422,56 +512,82 @@ class SessionService:
             raise ValueError("Session not paused")
 
         session.status = SessionStatus.IN_PROGRESS
-        save_session(session)
+        store_update_session(session_id, session)
+        logger.info(f"Resumed facilitation for session {session_id}")
 
         # Notify Pipecat to resume interventions
         await self._notify_pipecat(session.client_id, {"action": "resume"})
 
-        logger.info(f"Session {session_id} resumed")
+        # Broadcast resume event to connected clients
+        from core.session_store import broadcast_session_event
+
+        await broadcast_session_event(
+            session_id,
+            "session_state",
+            {
+                "status": session.status.value,
+                "facilitator_paused": False,
+            },
+        )
 
         return session
 
-    async def get_summary(self, session_id: str) -> Optional[SessionSummary]:
-        """Get the summary for a session.
-
-        Args:
-            session_id: The session identifier.
-
-        Returns:
-            SessionSummary if available, None otherwise.
-        """
-        return get_session_summary(session_id)
-
     async def _generate_summary(self, session_id: str) -> bool:
-        """Generate post-session summary.
+        """Generate post-session summary using OpenAI.
 
         Args:
             session_id: The session identifier.
 
         Returns:
-            True if summary was generated, False otherwise.
+            True if summary was generated and stored, False otherwise.
         """
-        session = get_session(session_id)
+        session = store_get_session(session_id)
         if not session:
+            logger.warning(f"Cannot generate summary: session {session_id} not found")
             return False
 
-        # Placeholder summary - will be replaced with OpenAI generation
-        summary = SessionSummary(
-            session_id=session_id,
-            duration_minutes=session.duration_minutes,
-            consensus_summary="Session completed. Summary generation pending.",
-            action_items=[],
-            balance=TalkBalanceMetrics(
-                participant_a={"id": "", "name": "", "percentage": 50},
-                participant_b={"id": "", "name": "", "percentage": 50},
-                status="balanced",
-            ),
-            intervention_count=0,
-            key_agreements=[],
-        )
+        # Import summary service here to avoid circular imports
+        from app.services.summary_service import summary_service
+        from core.session_store import store_summary
 
-        save_session_summary(summary)
-        return True
+        try:
+            # Prepare participants data
+            participants = [
+                {"id": p.id, "name": p.name, "role": p.role}
+                for p in session.participants
+            ]
+
+            # TODO: Get actual balance metrics and intervention history from session
+            # For now, use defaults
+            balance_metrics = None
+            intervention_history = None
+            transcript = None
+
+            # Generate summary via SummaryService
+            summary = await summary_service.generate_summary(
+                session_id=session_id,
+                goal=session.goal,
+                duration_minutes=session.duration_minutes,
+                participants=participants,
+                balance_metrics=balance_metrics,
+                intervention_history=intervention_history,
+                transcript=transcript,
+            )
+
+            if summary:
+                # Store the summary
+                store_summary(session_id, summary)
+                logger.info(f"Generated and stored summary for session {session_id}")
+                return True
+            else:
+                logger.warning(
+                    f"Summary generation returned None for session {session_id}"
+                )
+                return False
+
+        except Exception as e:
+            logger.error(f"Error generating summary for session {session_id}: {e}")
+            return False
 
     async def _notify_pipecat(self, client_id: Optional[str], message: dict) -> None:
         """Send a control message to Pipecat process.
@@ -482,6 +598,9 @@ class SessionService:
         """
         if not client_id:
             return
+        # TODO: Implement WebSocket message to Pipecat
+        logger.debug(f"Pipecat notification placeholder: {client_id} -> {message}")
 
-        # Placeholder - would send message via WebSocket to Pipecat
-        logger.debug(f"Pipecat notification for {client_id}: {message}")
+
+# Create global service instance
+session_service = SessionService()

@@ -1,42 +1,38 @@
-"""In-memory session storage for Diadi sessions.
+"""Session storage for Diadi facilitation sessions.
 
-This module provides in-memory storage for session data during Alpha.
-Future: Replace with database (Postgres, Redis) for persistence.
+In-memory session storage for the Alpha release.
+Future: Replace with database (PostgreSQL, Redis).
 """
 
 from typing import Dict, List, Optional
+
 from fastapi import WebSocket
 
-from app.models import Session, SessionStatus, SessionSummary
+from app.models import Session, SessionSummary
 
-
-# =============================================================================
-# Global Session Storage
-# =============================================================================
-
-# Main session storage: session_id -> Session
+# In-memory session storage (Alpha)
+# Maps session_id -> Session object
 SESSION_STORE: Dict[str, Session] = {}
 
-# Session summaries: session_id -> SessionSummary
-SESSION_SUMMARIES: Dict[str, SessionSummary] = {}
-
-# WebSocket connections for session events: session_id -> list of WebSockets
+# Session events for WebSocket broadcast
+# Maps session_id -> list of connected WebSockets
 SESSION_EVENTS: Dict[str, List[WebSocket]] = {}
 
-# Invite token lookup: invite_token -> session_id
-INVITE_TOKEN_INDEX: Dict[str, str] = {}
+# Session summaries storage (Alpha)
+# Maps session_id -> SessionSummary object
+SESSION_SUMMARIES: Dict[str, SessionSummary] = {}
 
 
 # =============================================================================
-# Helper Functions
+# Helper Functions for Session CRUD Operations
 # =============================================================================
 
 
 def get_session(session_id: str) -> Optional[Session]:
-    """Get a session by ID.
+    """Retrieve a session by ID.
 
     Args:
-        session_id: The session identifier.
+        session_id: The unique session identifier.
 
     Returns:
         The Session object if found, None otherwise.
@@ -45,103 +41,90 @@ def get_session(session_id: str) -> Optional[Session]:
 
 
 def get_session_by_invite_token(invite_token: str) -> Optional[Session]:
-    """Get a session by its invite token.
+    """Retrieve a session by its invite token.
 
     Args:
-        invite_token: The invitation token.
+        invite_token: The unique invite token.
 
     Returns:
         The Session object if found, None otherwise.
     """
-    session_id = INVITE_TOKEN_INDEX.get(invite_token)
-    if session_id:
-        return SESSION_STORE.get(session_id)
+    for session in SESSION_STORE.values():
+        if session.invite_token == invite_token:
+            return session
     return None
 
 
-def save_session(session: Session) -> None:
-    """Save or update a session.
+def create_session(session: Session) -> Session:
+    """Store a new session.
 
     Args:
-        session: The Session object to save.
+        session: The Session object to store.
+
+    Returns:
+        The stored Session object.
     """
     SESSION_STORE[session.id] = session
-    # Update invite token index
-    if session.invite_token:
-        INVITE_TOKEN_INDEX[session.invite_token] = session.id
+    return session
+
+
+def update_session(session_id: str, session: Session) -> Optional[Session]:
+    """Update an existing session.
+
+    Args:
+        session_id: The unique session identifier.
+        session: The updated Session object.
+
+    Returns:
+        The updated Session object if found, None otherwise.
+    """
+    if session_id not in SESSION_STORE:
+        return None
+    SESSION_STORE[session_id] = session
+    return session
 
 
 def delete_session(session_id: str) -> bool:
-    """Delete a session.
+    """Delete a session by ID.
 
     Args:
-        session_id: The session identifier.
+        session_id: The unique session identifier.
 
     Returns:
         True if the session was deleted, False if not found.
     """
-    session = SESSION_STORE.pop(session_id, None)
-    if session:
-        # Clean up invite token index
-        if session.invite_token:
-            INVITE_TOKEN_INDEX.pop(session.invite_token, None)
-        # Clean up summary
-        SESSION_SUMMARIES.pop(session_id, None)
-        # Clean up event connections
-        SESSION_EVENTS.pop(session_id, None)
+    if session_id in SESSION_STORE:
+        del SESSION_STORE[session_id]
+        # Also cleanup any associated WebSocket connections
+        if session_id in SESSION_EVENTS:
+            del SESSION_EVENTS[session_id]
+        # Also cleanup any associated summary
+        if session_id in SESSION_SUMMARIES:
+            del SESSION_SUMMARIES[session_id]
         return True
     return False
 
 
-def list_sessions(
-    status: Optional[SessionStatus] = None,
-    limit: int = 20,
-    offset: int = 0,
-) -> tuple[List[Session], int]:
-    """List sessions with optional filtering.
+def list_sessions(status: Optional[str] = None) -> List[Session]:
+    """List all sessions, optionally filtered by status.
 
     Args:
-        status: Optional status filter.
-        limit: Maximum number of sessions to return.
-        offset: Number of sessions to skip.
+        status: Optional status filter (e.g., "draft", "in_progress").
 
     Returns:
-        Tuple of (list of sessions, total count).
+        List of Session objects matching the filter, sorted by created_at descending.
     """
     sessions = list(SESSION_STORE.values())
-
-    # Filter by status if provided
     if status:
-        sessions = [s for s in sessions if s.status == status]
-
+        sessions = [s for s in sessions if s.status.value == status]
     # Sort by created_at descending (newest first)
     sessions.sort(key=lambda s: s.created_at, reverse=True)
-
-    total = len(sessions)
-    paginated = sessions[offset : offset + limit]
-
-    return paginated, total
+    return sessions
 
 
-def get_session_summary(session_id: str) -> Optional[SessionSummary]:
-    """Get the summary for a session.
-
-    Args:
-        session_id: The session identifier.
-
-    Returns:
-        The SessionSummary if available, None otherwise.
-    """
-    return SESSION_SUMMARIES.get(session_id)
-
-
-def save_session_summary(summary: SessionSummary) -> None:
-    """Save a session summary.
-
-    Args:
-        summary: The SessionSummary to save.
-    """
-    SESSION_SUMMARIES[summary.session_id] = summary
+# =============================================================================
+# WebSocket Event Connection Management
+# =============================================================================
 
 
 def register_event_connection(session_id: str, websocket: WebSocket) -> None:
@@ -149,7 +132,7 @@ def register_event_connection(session_id: str, websocket: WebSocket) -> None:
 
     Args:
         session_id: The session identifier.
-        websocket: The WebSocket connection.
+        websocket: The WebSocket connection to register.
     """
     if session_id not in SESSION_EVENTS:
         SESSION_EVENTS[session_id] = []
@@ -157,17 +140,17 @@ def register_event_connection(session_id: str, websocket: WebSocket) -> None:
 
 
 def unregister_event_connection(session_id: str, websocket: WebSocket) -> None:
-    """Unregister a WebSocket connection for session events.
+    """Unregister a WebSocket connection from session events.
 
     Args:
         session_id: The session identifier.
-        websocket: The WebSocket connection.
+        websocket: The WebSocket connection to unregister.
     """
     if session_id in SESSION_EVENTS:
         try:
             SESSION_EVENTS[session_id].remove(websocket)
         except ValueError:
-            pass  # Already removed
+            pass  # WebSocket not in list
 
 
 def get_event_connections(session_id: str) -> List[WebSocket]:
@@ -177,6 +160,78 @@ def get_event_connections(session_id: str) -> List[WebSocket]:
         session_id: The session identifier.
 
     Returns:
-        List of WebSocket connections.
+        List of WebSocket connections for the session.
     """
     return SESSION_EVENTS.get(session_id, [])
+
+
+async def broadcast_session_event(
+    session_id: str, event_type: str, data: dict
+) -> None:
+    """Broadcast an event to all connected clients for a session.
+
+    Args:
+        session_id: The session identifier.
+        event_type: The type of event (e.g., "session_state", "balance_update").
+        data: The event data to broadcast.
+    """
+    from datetime import datetime
+
+    connections = get_event_connections(session_id)
+    event = {
+        "type": event_type,
+        "data": data,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+    for ws in connections:
+        try:
+            await ws.send_json(event)
+        except Exception:
+            # Connection closed, will be cleaned up on disconnect
+            pass
+
+
+# =============================================================================
+# Session Summary Storage
+# =============================================================================
+
+
+def store_summary(session_id: str, summary: SessionSummary) -> SessionSummary:
+    """Store a session summary.
+
+    Args:
+        session_id: The session identifier.
+        summary: The SessionSummary object to store.
+
+    Returns:
+        The stored SessionSummary object.
+    """
+    SESSION_SUMMARIES[session_id] = summary
+    return summary
+
+
+def get_summary(session_id: str) -> Optional[SessionSummary]:
+    """Retrieve a session summary by session ID.
+
+    Args:
+        session_id: The session identifier.
+
+    Returns:
+        The SessionSummary object if found, None otherwise.
+    """
+    return SESSION_SUMMARIES.get(session_id)
+
+
+def delete_summary(session_id: str) -> bool:
+    """Delete a session summary by session ID.
+
+    Args:
+        session_id: The session identifier.
+
+    Returns:
+        True if the summary was deleted, False if not found.
+    """
+    if session_id in SESSION_SUMMARIES:
+        del SESSION_SUMMARIES[session_id]
+        return True
+    return False

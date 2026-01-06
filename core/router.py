@@ -105,7 +105,9 @@ class MessageRouter:
                 try:
                     if connection:
                         await connection.send_text(message)
-                        self.logger.debug(f"Broadcast text message to client {client_id}")
+                        self.logger.debug(
+                            f"Broadcast text message to client {client_id}"
+                        )
                 except Exception as e:
                     self.logger.debug(f"Error broadcasting to client {client_id}: {e}")
 
@@ -119,7 +121,9 @@ class MessageRouter:
 
         pipecat = self.registry.get_pipecat(client_id)
         if pipecat:
-            self.logger.info(f"[AUDIO ROUTING] Forwarding {len(message)} bytes to Pipecat for {client_id[:8]}...")
+            self.logger.info(
+                f"[AUDIO ROUTING] Forwarding {len(message)} bytes to Pipecat for {client_id[:8]}..."
+            )
             try:
                 serialized_frame = self.converter.raw_to_protobuf(message)
                 await pipecat.send_bytes(serialized_frame)
@@ -136,7 +140,9 @@ class MessageRouter:
                 else:
                     self.logger.error(f"Error sending to Pipecat: {str(e)}")
         else:
-            self.logger.warning(f"[AUDIO ROUTING] No Pipecat connection found for {client_id[:8]}...")
+            self.logger.warning(
+                f"[AUDIO ROUTING] No Pipecat connection found for {client_id[:8]}..."
+            )
 
     async def send_from_pipecat(self, message: bytes, client_id: str):
         """Extract audio from Protobuf frame and send to client."""

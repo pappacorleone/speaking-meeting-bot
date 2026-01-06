@@ -1,14 +1,14 @@
 """Data models for the Speaking Meeting Bot API."""
 
-from typing import Any, Dict, List, Optional
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 
 
 # =============================================================================
-# Diadi Session Models
+# Diadi Session Enums
 # =============================================================================
 
 
@@ -34,7 +34,7 @@ class Platform(str, Enum):
 
 
 class FacilitatorPersona(str, Enum):
-    """Available facilitator personas."""
+    """Available AI facilitator personas."""
 
     NEUTRAL_MEDIATOR = "neutral_mediator"
     DEEP_EMPATH = "deep_empath"
@@ -59,6 +59,11 @@ class InterventionModality(str, Enum):
     VOICE = "voice"
 
 
+# =============================================================================
+# Diadi Session Models
+# =============================================================================
+
+
 class Participant(BaseModel):
     """A participant in a Diadi session."""
 
@@ -68,7 +73,8 @@ class Participant(BaseModel):
         ..., description="Role in the session: 'creator' or 'invitee'"
     )
     consented: bool = Field(
-        default=False, description="Whether the participant has consented to AI facilitation"
+        default=False,
+        description="Whether the participant has consented to AI facilitation",
     )
 
 
@@ -183,7 +189,9 @@ class SessionSummary(BaseModel):
     )
 
 
-# Session API Request/Response Models
+# =============================================================================
+# Diadi Session Request/Response Models
+# =============================================================================
 
 
 class CreateSessionRequest(BaseModel):
@@ -199,7 +207,8 @@ class CreateSessionRequest(BaseModel):
     )
     duration_minutes: int = Field(default=30, description="Session duration in minutes")
     scheduled_at: Optional[str] = Field(
-        None, description="ISO8601 timestamp for scheduled sessions, or null for immediate"
+        None,
+        description="ISO8601 timestamp for scheduled sessions, or null for immediate",
     )
     platform: Platform = Field(default=Platform.MEET, description="Meeting platform")
 
@@ -243,7 +252,9 @@ class ConsentResponse(BaseModel):
     """Response after recording consent."""
 
     status: SessionStatus = Field(..., description="Updated session status")
-    participants: List[Participant] = Field(..., description="Updated participants list")
+    participants: List[Participant] = Field(
+        ..., description="Updated participants list"
+    )
 
 
 class StartSessionRequest(BaseModel):
@@ -261,12 +272,34 @@ class StartSessionResponse(BaseModel):
     event_url: str = Field(..., description="WebSocket URL for session events")
 
 
+class SessionEventPayload(BaseModel):
+    """Payload for WebSocket session events."""
+
+    type: str = Field(
+        ...,
+        description="Event type: 'balance_update' | 'intervention' | 'session_state' | etc.",
+    )
+    data: Dict[str, Any] = Field(..., description="Event data payload")
+    timestamp: str = Field(
+        default_factory=lambda: datetime.utcnow().isoformat(),
+        description="ISO8601 timestamp of the event",
+    )
+
+
+class PauseResumeResponse(BaseModel):
+    """Response model for pause/resume actions."""
+
+    status: SessionStatus = Field(
+        ..., description="Session status after pause/resume"
+    )
+
+
 class EndSessionResponse(BaseModel):
     """Response after ending a session."""
 
     status: SessionStatus = Field(..., description="Session status (ended)")
     summary_available: bool = Field(
-        ..., description="Whether the summary is ready"
+        default=False, description="Whether the summary is ready"
     )
 
 
@@ -279,7 +312,7 @@ class SessionListResponse(BaseModel):
 
 
 # =============================================================================
-# Original Bot Models
+# Existing Bot Models
 # =============================================================================
 
 
@@ -315,9 +348,10 @@ class BotRequest(BaseModel):
                 "enable_tools": True,
                 "extra": {"company": "ACME Corp", "meeting_purpose": "Weekly sync"},
                 "prompt": "You are Meeting Assistant, a concise and professional \
-                AI bot that helps summarize key points and keep the meeting on track. Speak clearly and stay on topic."
+                AI bot that helps summarize key points and keep the meeting on track. Speak clearly and stay on topic.",
             }
         }
+
 
 class JoinResponse(BaseModel):
     """Response model for a bot joining a meeting"""
@@ -325,6 +359,10 @@ class JoinResponse(BaseModel):
     bot_id: str = Field(
         ...,
         description="The MeetingBaas bot ID used for API operations with MeetingBaas",
+    )
+    client_id: str = Field(
+        ...,
+        description="Internal client ID for WebSocket connections and Pipecat process tracking",
     )
 
 
@@ -345,18 +383,21 @@ class LeaveBotRequest(BaseModel):
 
 class PersonaImageRequest(BaseModel):
     """Request model for generating persona images."""
+
     name: str = Field(..., description="Name of the persona")
     description: str = Field(None, description="Description of the persona")
     gender: Optional[str] = Field(None, description="Gender of the persona")
-    characteristics: Optional[List[str]] = Field(None, description="List of characteristics like blue eyes, etc.")
+    characteristics: Optional[List[str]] = Field(
+        None, description="List of characteristics like blue eyes, etc."
+    )
+
 
 class PersonaImageResponse(BaseModel):
     """Response model for generated persona images."""
+
     name: str = Field(..., description="Name of the persona")
     image_url: str = Field(..., description="URL of the generated image")
     generated_at: datetime = Field(..., description="Timestamp of generation")
 
     class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {datetime: lambda v: v.isoformat()}

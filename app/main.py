@@ -35,14 +35,22 @@ pipecat_ws_logger.setLevel(logging.WARNING)
 async def api_key_middleware(request: Request, call_next):
     """Middleware to check for MeetingBaas API key in headers."""
     # Skip API key check for docs, openapi, and health endpoints
-    if request.url.path in ["/docs", "/openapi.json", "/redoc", "/health", "/health/detailed"]:
+    if request.url.path in [
+        "/docs",
+        "/openapi.json",
+        "/redoc",
+        "/health",
+        "/health/detailed",
+    ]:
         return await call_next(request)
 
     api_key = request.headers.get("x-meeting-baas-api-key")
     if not api_key:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"message": "Missing MeetingBaas API key in x-meeting-baas-api-key header"},
+            content={
+                "message": "Missing MeetingBaas API key in x-meeting-baas-api-key header"
+            },
         )
 
     # Add the API key to the request state for use in routes
@@ -97,7 +105,7 @@ def create_app() -> FastAPI:
             "name": "x-meeting-baas-api-key",
             "description": "MeetingBaas API key for authentication",
         }
-        
+
         schemas = components.setdefault("schemas", {})
         schemas.update(
             {
@@ -107,44 +115,42 @@ def create_app() -> FastAPI:
                     "properties": {
                         "name": {
                             "type": "string",
-                            "description": "Name of the persona to generate an image for"
+                            "description": "Name of the persona to generate an image for",
                         },
                         "description": {
                             "type": "string",
-                            "description": "Detailed description of the persona's appearance and characteristics"
+                            "description": "Detailed description of the persona's appearance and characteristics",
                         },
                         "gender": {
                             "type": "string",
                             "description": "Gender of the persona (optional)",
-                            "enum": ["male", "female", "non-binary"]
+                            "enum": ["male", "female", "non-binary"],
                         },
                         "characteristics": {
                             "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
-                            "description": "List of specific characteristics or features of the persona"
-                        }
-                    }
+                            "items": {"type": "string"},
+                            "description": "List of specific characteristics or features of the persona",
+                        },
+                    },
                 },
                 "PersonaImageResponse": {
                     "type": "object",
                     "properties": {
                         "name": {
                             "type": "string",
-                            "description": "Name of the persona"
+                            "description": "Name of the persona",
                         },
                         "image_url": {
                             "type": "string",
-                            "description": "URL of the generated image"
+                            "description": "URL of the generated image",
                         },
                         "generated_at": {
                             "type": "string",
                             "format": "date-time",
-                            "description": "Timestamp when the image was generated"
-                        }
-                    }
-                }
+                            "description": "Timestamp when the image was generated",
+                        },
+                    },
+                },
             }
         )
 
@@ -154,7 +160,9 @@ def create_app() -> FastAPI:
         # Update the paths to include the required description parameter
         if "paths" in openapi_schema:
             if "/personas/generate-image" in openapi_schema["paths"]:
-                openapi_schema["paths"]["/personas/generate-image"]["post"]["requestBody"] = {
+                openapi_schema["paths"]["/personas/generate-image"]["post"][
+                    "requestBody"
+                ] = {
                     "required": True,
                     "content": {
                         "application/json": {
@@ -162,7 +170,7 @@ def create_app() -> FastAPI:
                                 "$ref": "#/components/schemas/PersonaImageRequest"
                             }
                         }
-                    }
+                    },
                 }
 
         openapi_schema["servers"] = [
@@ -254,24 +262,30 @@ def create_app() -> FastAPI:
             "persona_count": persona_count,
             "openai_api": api_status.get("openai", False),
             "cartesia_api": api_status.get("cartesia", False),
-            "deepgram_api": api_status.get("deepgram", api_status.get("stt_provider", False)),
+            "deepgram_api": api_status.get(
+                "deepgram", api_status.get("stt_provider", False)
+            ),
             "ngrok_available": ngrok_available,
         }
 
-        all_ok = all([
-            checks["personas_loaded"],
-            checks["openai_api"],
-            checks["cartesia_api"],
-            checks["deepgram_api"],
-            checks["ngrok_available"],
-        ])
+        all_ok = all(
+            [
+                checks["personas_loaded"],
+                checks["openai_api"],
+                checks["cartesia_api"],
+                checks["deepgram_api"],
+                checks["ngrok_available"],
+            ]
+        )
 
         return {
             "status": "ok" if all_ok else "degraded",
             "service": "speaking-meeting-bot",
             "version": "1.0.0",
             "checks": checks,
-            "message": None if all_ok else "Some services unavailable - check 'checks' for details",
+            "message": None
+            if all_ok
+            else "Some services unavailable - check 'checks' for details",
         }
 
     return app
@@ -325,25 +339,31 @@ def start_server(host: str = "0.0.0.0", port: int = 7014, local_dev: bool = Fals
     log_path = r"c:\Users\kmond\meeting bot\speaking-meeting-bot\.cursor\debug.log"
     import json as _json
     import time as _time
+
     try:
         with open(log_path, "a", encoding="utf-8") as _f:
-            _f.write(_json.dumps({
-                "sessionId": "debug-session",
-                "runId": "run1",
-                "hypothesisId": "K",
-                "location": "app/main.py:build_args",
-                "message": "Building uvicorn command args",
-                "data": {
-                    "sys_executable": sys.executable,
-                    "cwd": os.getcwd(),
-                    "app_module_exists": os.path.exists("app/__init__.py")
-                },
-                "timestamp": int(_time.time() * 1000)
-            }) + "\n")
+            _f.write(
+                _json.dumps(
+                    {
+                        "sessionId": "debug-session",
+                        "runId": "run1",
+                        "hypothesisId": "K",
+                        "location": "app/main.py:build_args",
+                        "message": "Building uvicorn command args",
+                        "data": {
+                            "sys_executable": sys.executable,
+                            "cwd": os.getcwd(),
+                            "app_module_exists": os.path.exists("app/__init__.py"),
+                        },
+                        "timestamp": int(_time.time() * 1000),
+                    }
+                )
+                + "\n"
+            )
     except Exception:
         pass
     # #endregion
-    
+
     args = [
         sys.executable,
         "-m",
@@ -369,34 +389,40 @@ def start_server(host: str = "0.0.0.0", port: int = 7014, local_dev: bool = Fals
     # Import and run uvicorn directly instead of spawning a subprocess
     # This avoids path resolution issues with os.execv on Windows
     import uvicorn
-    
+
     # #region agent log
     log_path = r"c:\Users\kmond\meeting bot\speaking-meeting-bot\.cursor\debug.log"
     import json as _json
     import time as _time
+
     try:
         with open(log_path, "a", encoding="utf-8") as _f:
-            _f.write(_json.dumps({
-                "sessionId": "debug-session",
-                "runId": "run1",
-                "hypothesisId": "M",
-                "location": "app/main.py:start_uvicorn",
-                "message": "Starting uvicorn directly",
-                "data": {
-                    "host": host,
-                    "port": server_port,
-                    "local_dev": local_dev,
-                    "cwd": os.getcwd()
-                },
-                "timestamp": int(_time.time() * 1000)
-            }) + "\n")
+            _f.write(
+                _json.dumps(
+                    {
+                        "sessionId": "debug-session",
+                        "runId": "run1",
+                        "hypothesisId": "M",
+                        "location": "app/main.py:start_uvicorn",
+                        "message": "Starting uvicorn directly",
+                        "data": {
+                            "host": host,
+                            "port": server_port,
+                            "local_dev": local_dev,
+                            "cwd": os.getcwd(),
+                        },
+                        "timestamp": int(_time.time() * 1000),
+                    }
+                )
+                + "\n"
+            )
     except Exception:
         pass
     # #endregion
-    
+
     # Import the app
     from app import app
-    
+
     # Run uvicorn directly
     uvicorn.run(
         app,
@@ -412,7 +438,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--port",
         type=int,
-        default=int(os.getenv("PORT", "7014")), # Read from env var, fallback to 7014
+        default=int(os.getenv("PORT", "7014")),  # Read from env var, fallback to 7014
         help="Port to listen on",
     )
     parser.add_argument(
