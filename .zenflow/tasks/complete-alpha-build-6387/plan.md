@@ -1009,7 +1009,8 @@ Build countdown timer.
 - Updated `components/live/index.ts` barrel export
 - Verified with `npm run build` ✓
 
-### [ ] Step: 6.4 Live Facilitation Room Page
+### [x] Step: 6.4 Live Facilitation Room Page
+<!-- chat-id: 3ff66ead-661b-4ba4-a0f0-e61ac46209a1 -->
 
 Assemble live session page.
 
@@ -1019,6 +1020,29 @@ Assemble live session page.
 - Layout: TalkBalance, Timer, AIStatus, GoalSnippet
 
 **Reference:** requirements.md Section 6.7 Active Session Design
+
+**Completed:** Created Live Facilitation Room page with all components:
+- `app/(dashboard)/sessions/[id]/live/page.tsx` - Main live session page with:
+  - Session data fetching via React Query with session store integration
+  - WebSocket integration via `useSessionEvents` hook for real-time updates
+  - Event handlers for: balance_update, time_remaining, ai_status, goal_drift, session_state, intervention
+  - Connection state management with reconnection banner UI
+- Layout components:
+  - `SessionHeader` - Partner name and AI status indicator
+  - `MetricsPanel` - TalkBalance, SessionTimer, and GoalSnippet in card layout
+  - `SessionControls` - End session button and Pause Facilitation kill switch
+  - `ConnectionBanner` - Visual indicator for connecting/reconnecting/disconnected states
+- Created `components/live/goal-snippet.tsx` - New component with:
+  - `GoalSnippet` - Main component showing goal with on/off-track status and drift warning
+  - `GoalSnippetInline` - Compact HUD overlay variant
+  - `GoalCard` - Full card variant for sidebar use
+- Created `app/(dashboard)/sessions/[id]/page.tsx` - Session detail page that:
+  - Shows pre-session waiting room for draft/pending_consent/ready states
+  - Redirects to `/live` for in_progress/paused states
+  - Shows post-session summary for ended state
+  - Shows archived message for archived state
+- Updated `components/live/index.ts` to export GoalSnippet variants
+- Verified build passes: `npm run build` ✓
 
 ---
 

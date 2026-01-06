@@ -26,3 +26,9 @@ export {
   SessionTimerLarge,
   SessionTimerDual,
 } from './session-timer';
+
+export {
+  GoalSnippet,
+  GoalSnippetInline,
+  GoalCard,
+} from './goal-snippet';
