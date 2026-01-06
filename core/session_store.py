@@ -8,7 +8,7 @@ from typing import Dict, List, Optional
 
 from fastapi import WebSocket
 
-from app.models import Session
+from app.models import Session, SessionSummary
 
 # In-memory session storage (Alpha)
 # Maps session_id -> Session object
@@ -17,6 +17,10 @@ SESSION_STORE: Dict[str, Session] = {}
 # Session events for WebSocket broadcast
 # Maps session_id -> list of connected WebSockets
 SESSION_EVENTS: Dict[str, List[WebSocket]] = {}
+
+# Session summaries storage (Alpha)
+# Maps session_id -> SessionSummary object
+SESSION_SUMMARIES: Dict[str, SessionSummary] = {}
 
 
 # =============================================================================
@@ -170,3 +174,49 @@ async def broadcast_session_event(session_id: str, event: dict) -> None:
         except Exception:
             # Connection closed, will be cleaned up on disconnect
             pass
+
+
+# =============================================================================
+# Session Summary Storage
+# =============================================================================
+
+
+def store_summary(session_id: str, summary: SessionSummary) -> SessionSummary:
+    """Store a session summary.
+
+    Args:
+        session_id: The session identifier.
+        summary: The SessionSummary object to store.
+
+    Returns:
+        The stored SessionSummary object.
+    """
+    SESSION_SUMMARIES[session_id] = summary
+    return summary
+
+
+def get_summary(session_id: str) -> Optional[SessionSummary]:
+    """Retrieve a session summary by session ID.
+
+    Args:
+        session_id: The session identifier.
+
+    Returns:
+        The SessionSummary object if found, None otherwise.
+    """
+    return SESSION_SUMMARIES.get(session_id)
+
+
+def delete_summary(session_id: str) -> bool:
+    """Delete a session summary by session ID.
+
+    Args:
+        session_id: The session identifier.
+
+    Returns:
+        True if the summary was deleted, False if not found.
+    """
+    if session_id in SESSION_SUMMARIES:
+        del SESSION_SUMMARIES[session_id]
+        return True
+    return False

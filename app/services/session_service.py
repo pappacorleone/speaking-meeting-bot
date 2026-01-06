@@ -538,17 +538,55 @@ class SessionService:
             session_id: The session identifier.
 
         Returns:
-            True if summary was generated, False otherwise.
+            True if summary was generated and stored, False otherwise.
         """
         session = store_get_session(session_id)
         if not session:
+            logger.warning(f"Cannot generate summary: session {session_id} not found")
             return False
 
-        # TODO: Implement full summary generation in Phase 9
-        # via app/services/summary_service.py
-        logger.info(f"Summary generation placeholder for session {session_id}")
+        # Import summary service here to avoid circular imports
+        from app.services.summary_service import summary_service
+        from core.session_store import store_summary
 
-        return True
+        try:
+            # Prepare participants data
+            participants = [
+                {"id": p.id, "name": p.name, "role": p.role}
+                for p in session.participants
+            ]
+
+            # TODO: Get actual balance metrics and intervention history from session
+            # For now, use defaults
+            balance_metrics = None
+            intervention_history = None
+            transcript = None
+
+            # Generate summary via SummaryService
+            summary = await summary_service.generate_summary(
+                session_id=session_id,
+                goal=session.goal,
+                duration_minutes=session.duration_minutes,
+                participants=participants,
+                balance_metrics=balance_metrics,
+                intervention_history=intervention_history,
+                transcript=transcript,
+            )
+
+            if summary:
+                # Store the summary
+                store_summary(session_id, summary)
+                logger.info(f"Generated and stored summary for session {session_id}")
+                return True
+            else:
+                logger.warning(
+                    f"Summary generation returned None for session {session_id}"
+                )
+                return False
+
+        except Exception as e:
+            logger.error(f"Error generating summary for session {session_id}: {e}")
+            return False
 
     async def _notify_pipecat(self, client_id: Optional[str], message: dict) -> None:
         """Send a control message to Pipecat process.

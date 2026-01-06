@@ -1274,7 +1274,8 @@ Implement session end logic.
 
 ## Phase 9: Post-Session
 
-### [ ] Step: 9.1 Summary Generation Service
+### [x] Step: 9.1 Summary Generation Service
+<!-- chat-id: f03834ec-0b41-461c-9174-4b2bd3ac7b33 -->
 
 Create summary generation logic.
 
@@ -1283,6 +1284,24 @@ Create summary generation logic.
 - Implement `generate_summary()` using OpenAI
 
 **Reference:** spec.md Section 4.2 _generate_summary()
+
+**Completed:** Created `app/services/summary_service.py` with full summary generation:
+- `SummaryService` class with OpenAI AsyncOpenAI client integration
+- `generate_summary()` method that:
+  - Takes session_id, goal, duration, participants, balance_metrics, intervention_history, transcript
+  - Uses GPT-4o with JSON response format for structured output
+  - Returns `SessionSummary` with consensus_summary, action_items, key_agreements
+  - Includes fallback summary when OpenAI is unavailable or errors occur
+- Helper methods:
+  - `_get_system_prompt()` - Constructive summary generation instructions
+  - `_build_summary_context()` - Builds context from session data
+  - `_build_balance_metrics()` - Creates TalkBalanceMetrics from data
+  - `_create_fallback_summary()` - Graceful fallback when API fails
+- Added `SESSION_SUMMARIES` storage to `core/session_store.py`:
+  - `store_summary()`, `get_summary()`, `delete_summary()` helper functions
+- Updated `session_service._generate_summary()` to use SummaryService
+- Global `summary_service` instance for easy import
+- Verified with `ruff check` and `ruff format` - All checks passed
 
 ### [ ] Step: 9.2 Summary Endpoint
 
