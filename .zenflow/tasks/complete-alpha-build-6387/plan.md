@@ -1107,7 +1107,8 @@ Create frontend intervention queue.
 - Selectors: selectHasCurrentIntervention, selectQueueLength, selectCurrentPriority, selectIsCriticalIntervention, selectAcknowledgementRate, selectRecentHistory, selectInterventionsByType, selectIsInCooldown
 - Verified build passes: `npm run build` ✓
 
-### [ ] Step: 7.3 Intervention Overlay Component
+### [x] Step: 7.3 Intervention Overlay Component
+<!-- chat-id: d03b446c-f823-496c-93ea-b1d3499ea48f -->
 
 Build intervention display.
 
@@ -1117,7 +1118,41 @@ Build intervention display.
 
 **Reference:** requirements.md Section 6.8 Intervention UI Design
 
-### [ ] Step: 7.4 Intervention Variants
+**Completed:** Created intervention overlay and all variant components in `web/src/components/intervention/`:
+- `intervention-overlay.tsx` - Main overlay component with:
+  - `InterventionOverlay` - Full-screen modal overlay integrating with intervention store
+  - `InterventionBanner` - Bottom banner variant for non-modal display
+  - `InterventionToast` - Minimal toast-style notification
+  - Auto-dismiss timer integration via `getAutoDismissTimeout()`
+  - Priority-based styling (critical=red, high=dark, medium=secondary, low=light)
+  - Click-outside dismiss (except critical priority)
+  - Animated entrance with `animate-in fade-in zoom-in-95`
+- `balance-prompt.tsx` - Balance intervention UI:
+  - `BalancePrompt` - Full card with balance bar visualization, percentages, severity colors
+  - `BalancePromptBanner` - Compact banner variant
+- `silence-prompt.tsx` - Silence intervention UI:
+  - `SilencePrompt` - Card with animated silence indicator, conversation starters
+  - `SilencePromptBanner` - Compact banner variant
+- `time-warning.tsx` - Time warning intervention UI:
+  - `TimeWarning` - Card with countdown ring, urgency colors, time management tips
+  - `TimeWarningBanner` - Compact banner variant
+  - `TimeWarningHUD` - Minimal HUD overlay for persistent display
+- `escalation-alert.tsx` - Escalation/tension intervention UI:
+  - `EscalationAlert` - Full card with tension meter, suggested responses, pause/continue actions
+  - `EscalationBanner` - Bottom banner per design reference
+- `icebreaker-modal.tsx` - Icebreaker intervention UI:
+  - `IcebreakerModal` - Full-screen modal with agent avatar, session goal reminder, prompt
+  - `IcebreakerPrompt` - Inline prompt variant
+  - `IcebreakerCard` - Compact card variant
+- `goal-resync.tsx` - Goal drift intervention UI:
+  - `GoalResync` - Card with original goal, drift duration, refocus action
+  - `GoalResyncOverlay` - Full-screen loading overlay per design reference
+  - `GoalResyncBanner` - Compact banner variant
+  - `GoalReminder` - Small inline goal reminder
+- `index.ts` - Barrel exports for all components
+- Verified build passes: `npm run build` ✓
+
+### [x] Step: 7.4 Intervention Variants
 
 Build specific intervention UIs.
 
@@ -1126,6 +1161,14 @@ Build specific intervention UIs.
 - Create icebreaker modal
 
 **Reference:** requirements.md Section 7.6 Intervention Templates
+
+**Completed:** All intervention variants implemented as part of Step 7.3 above. Each variant includes:
+- Main component for modal/card display
+- Banner/compact variant for less intrusive display
+- Proper styling per requirements.md Section 6.8
+- Integration with intervention store for dismiss/acknowledge actions
+- Auto-dismiss progress bars where applicable
+- Accessible ARIA attributes
 
 ---
 
