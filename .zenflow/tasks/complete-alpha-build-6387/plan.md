@@ -730,7 +730,8 @@ Build consent UI.
 
 **Completed:** Implemented as part of Step 4.2 in `components/session/consent-form.tsx`
 
-### [ ] Step: 4.4 Waiting Room Component
+### [x] Step: 4.4 Waiting Room Component
+<!-- chat-id: 9c7964ac-5a93-4262-a68c-df448fb4cb3c -->
 
 Build waiting room UI.
 
@@ -741,6 +742,19 @@ Build waiting room UI.
 - Add copy invite link button
 
 **Reference:** requirements.md Section 6.6 Waiting Room Design
+
+**Completed:** Created `components/session/waiting-room.tsx` with:
+- `WaitingRoom` - Main component with responsive mobile and desktop layouts
+- Mobile view: Partner avatar with status ring, "Waiting for [partner]..." headline, progress bar showing readiness status, status message, copy invite link button
+- Desktop view: Card layout with two-column design - left side shows system readiness checklist (Mic, Agent, Partner status with green/gray dots), right side shows partner preview card with avatar and status badge
+- `PartnerAvatar` - Avatar component with status ring (green for ready/joined, amber for joining, gray for waiting)
+- `ReadinessStatusDot` - Status indicator dot (green ready, amber initializing with animation, gray pending)
+- Helper functions: `getPartnerStatusLabel()`, `createDefaultReadinessItems()`
+- Props: partnerName, partnerAvatarUrl, partnerStatus, readinessItems, inviteLink, meetingUrl, goal, onStartSession, isStarting
+- Copy invite link button with clipboard API and success state
+- External meeting link support for Zoom/Meet/Teams
+- Start Session button that enables when all systems ready and partner joined
+- Verified with `npm run build` ✓
 
 ---
 
