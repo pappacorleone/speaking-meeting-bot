@@ -973,13 +973,41 @@ Build AI status display.
 - Updated `components/live/index.ts` barrel export
 - Verified with `npm run build` ✓
 
-### [ ] Step: 6.3 Session Timer
+### [x] Step: 6.3 Session Timer
+<!-- chat-id: 8a189b23-1ad5-490f-8d83-9ed0b4e060a5 -->
 
 Build countdown timer.
 
 **Tasks:**
 - Create `components/live/session-timer.tsx`
 - Display elapsed time and time remaining
+
+**Completed:** Created `web/src/components/live/session-timer.tsx` with multiple variants:
+- `SessionTimer` - Main component with status indicator dot and time display:
+  - Displays elapsed or remaining time in mm:ss or hh:mm:ss format
+  - Color coding based on time status: normal (green), warning (< 5 min, amber), critical (< 2 min, red)
+  - Progress bar showing completion percentage
+  - Configurable: compact mode, show elapsed vs remaining
+  - Timer interval with `onTick` callback for incrementing elapsed seconds
+  - Proper ARIA attributes: `role="timer"`, `aria-label`
+- `SessionTimerSkeleton` - Loading skeleton for the timer
+- `SessionTimerWithLabel` - Timer with descriptive label (top or left position)
+- `SessionTimerHUD` - Compact overlay variant for video backgrounds:
+  - Pill-shaped with semi-transparent dark background
+  - Status dot (green/amber/red) and white text
+  - Designed for visibility on video feeds
+- `SessionTimerLarge` - Large display variant for prominent timer placement:
+  - Large 3xl font with status indicator
+  - Status badge showing time state
+  - Full progress bar
+  - Optional dual display (elapsed + remaining)
+- `SessionTimerDual` - Side-by-side elapsed and remaining display:
+  - Shows both times with labels
+  - Full-width progress bar with position marker
+  - Duration label
+- Helper functions: `formatTime()`, `calculateTimeRemaining()`, `getTimeStatus()`, `getStatusColors()`, `getStatusLabel()`
+- Updated `components/live/index.ts` barrel export
+- Verified with `npm run build` ✓
 
 ### [ ] Step: 6.4 Live Facilitation Room Page
 
