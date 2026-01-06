@@ -1707,13 +1707,35 @@ npm run type-check  # ✔ No TypeScript errors
 
 go through the merge conflicts one by one and resolve them
 
-**Completed:** Verified merge conflict status:
-- Branch `complete-alpha-build-6387` is already up to date with `origin/main`
-- Common ancestor is `1e2fe93` (latest main commit)
-- Branch is 34+ commits ahead of main, 0 commits behind
-- No merge in progress (`git status` shows clean working directory)
-- No PR currently open for this branch
-- **Result: No merge conflicts to resolve** - the branch is properly based on latest main
+**Completed:** Resolved merge conflicts with `diadi_alpha` branch:
+
+**Conflicts Resolved:**
+1. **app/models.py** - Merged changes from both branches:
+   - Kept `InterventionType` and `InterventionModality` enums from diadi_alpha
+   - Kept detailed `Field()` descriptions from diadi_alpha
+   - Added `SessionEventPayload` and `PauseResumeResponse` from HEAD
+   - Added `SessionListResponse` for pagination support
+
+2. **app/routes.py** - Cleaned up duplicate route definitions:
+   - Kept HEAD's complete session route implementations with full error handling
+   - Removed duplicate simplified routes from diadi_alpha (lines 1217-1533)
+   - Fixed import conflicts by keeping unified import statement
+
+3. **app/services/session_service.py** - Kept HEAD's robust implementation:
+   - OpenAI-powered summary generation via SummaryService
+   - Full session lifecycle with MeetingBaas and Pipecat integration
+   - WebSocket event broadcasting for real-time updates
+   - Proper cleanup in end_session with process termination
+
+4. **core/session_store.py** - Merged best of both:
+   - Kept HEAD's `broadcast_session_event()` function for WebSocket updates
+   - Kept HEAD's summary storage functions (`store_summary`, `get_summary`, `delete_summary`)
+   - Added sorting by `created_at` descending in `list_sessions()`
+
+**Verification:**
+- `ruff format` - All files formatted
+- `ruff check` - No errors
+- `git push` - Successfully pushed merge commit `bfef3a3`
 ## Test Results
 
 *Final test results recorded below*
