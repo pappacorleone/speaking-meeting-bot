@@ -24,38 +24,15 @@
 Technical specification has been created based on the comprehensive requirements from the Diadi documentation.
 
 **Artifacts created:**
-- `spec.md` - Full technical specification covering:
-  - Technical context (language, dependencies)
-  - System architecture
-  - Frontend implementation details
-  - Backend extensions required
-  - Data models
-  - API contracts
-  - Real-time communication design
-  - Persona system extensions
-  - Delivery phases
-  - Verification approach
-
-- `requirements.md` - Consolidated requirements document covering:
-  - Product vision and strategy
-  - Target users and personas
-  - Core values and constraints
-  - Alpha scope
-  - UX design specifications
-  - Functional requirements
-  - Technical requirements
-  - Data model
-  - API requirements
-  - Non-functional requirements
-  - Success metrics
+- `spec.md` - Full technical specification
+- `requirements.md` - Consolidated requirements document
 
 ---
 
-## Implementation Plan
+## Phase 1: Backend Foundation
 
-### Phase 1: Backend Foundation
+### [ ] Step: 1.1 Session Data Models
 
-#### [ ] Step 1.1: Session Data Models
 Add Session Pydantic models to `app/models.py`.
 
 **Tasks:**
@@ -75,7 +52,8 @@ ruff check app/models.py
 ruff format app/models.py
 ```
 
-#### [ ] Step 1.2: Session Store
+### [ ] Step: 1.2 Session Store
+
 Create `core/session_store.py` for in-memory session storage.
 
 **Tasks:**
@@ -90,7 +68,8 @@ Create `core/session_store.py` for in-memory session storage.
 ruff check core/session_store.py
 ```
 
-#### [ ] Step 1.3: Session Service Skeleton
+### [ ] Step: 1.3 Session Service Skeleton
+
 Create `app/services/session_service.py` with basic structure.
 
 **Tasks:**
@@ -107,7 +86,8 @@ Create `app/services/session_service.py` with basic structure.
 ruff check app/services/session_service.py
 ```
 
-#### [ ] Step 1.4: Session CRUD Routes
+### [ ] Step: 1.4 Session CRUD Routes
+
 Add session management routes to `app/routes.py`.
 
 **Tasks:**
@@ -121,10 +101,10 @@ Add session management routes to `app/routes.py`.
 **Verification:**
 ```bash
 ruff check app/routes.py
-# Manual test: curl -X POST http://localhost:7014/sessions -H "Content-Type: application/json" -d '{"goal": "Test", "relationshipContext": "Test", "partnerName": "Partner"}'
 ```
 
-#### [ ] Step 1.5: Extend /bots Response
+### [ ] Step: 1.5 Extend /bots Response
+
 Modify existing `/bots` endpoint to return `client_id`.
 
 **Tasks:**
@@ -138,7 +118,8 @@ Modify existing `/bots` endpoint to return `client_id`.
 ruff check app/routes.py
 ```
 
-#### [ ] Step 1.6: Create Diadi Personas
+### [ ] Step: 1.6 Create Diadi Personas
+
 Create three new personas in `config/personas/`.
 
 **Tasks:**
@@ -151,13 +132,13 @@ Create three new personas in `config/personas/`.
 
 **Verification:**
 - Verify personas load via PersonaManager
-- Check `python -c "from config.persona_utils import PersonaManager; pm = PersonaManager(); print(pm.get_persona('neutral_mediator'))"`
 
 ---
 
-### Phase 2: Frontend Foundation
+## Phase 2: Frontend Foundation
 
-#### [ ] Step 2.1: Initialize Next.js Project
+### [ ] Step: 2.1 Initialize Next.js Project
+
 Set up Next.js 14 project in `web/` directory.
 
 **Tasks:**
@@ -173,7 +154,8 @@ Set up Next.js 14 project in `web/` directory.
 cd web && npm run build
 ```
 
-#### [ ] Step 2.2: Configure Tailwind Theme
+### [ ] Step: 2.2 Configure Tailwind Theme
+
 Set up Diadi design system in Tailwind.
 
 **Tasks:**
@@ -184,10 +166,8 @@ Set up Diadi design system in Tailwind.
 
 **Reference:** spec.md Section 3.2 Design System Implementation
 
-**Verification:**
-- Visual inspection of test page with theme colors
+### [ ] Step: 2.3 Install and Configure shadcn/ui
 
-#### [ ] Step 2.3: Install and Configure shadcn/ui
 Set up component library.
 
 **Tasks:**
@@ -200,7 +180,8 @@ Set up component library.
 cd web && npm run build
 ```
 
-#### [ ] Step 2.4: Create API Client
+### [ ] Step: 2.4 Create API Client
+
 Set up API client in `lib/api/`.
 
 **Tasks:**
@@ -215,7 +196,8 @@ Set up API client in `lib/api/`.
 cd web && npm run type-check
 ```
 
-#### [ ] Step 2.5: Define TypeScript Types
+### [ ] Step: 2.5 Define TypeScript Types
+
 Create type definitions in `types/`.
 
 **Tasks:**
@@ -230,7 +212,8 @@ Create type definitions in `types/`.
 cd web && npm run type-check
 ```
 
-#### [ ] Step 2.6: Implement Navigation Components
+### [ ] Step: 2.6 Implement Navigation Components
+
 Build responsive navigation.
 
 **Tasks:**
@@ -241,10 +224,8 @@ Build responsive navigation.
 
 **Reference:** requirements.md Section 6.2 Navigation Design
 
-**Verification:**
-- Visual inspection at 360px and 1280px widths
+### [ ] Step: 2.7 Create Hub Page
 
-#### [ ] Step 2.7: Create Hub Page
 Build main hub/dashboard page.
 
 **Tasks:**
@@ -256,15 +237,12 @@ Build main hub/dashboard page.
 
 **Reference:** requirements.md Section 6.3 Hub Screen Design
 
-**Verification:**
-- Visual inspection matching mockups
-- Empty state displays when no sessions
-
 ---
 
-### Phase 3: Session Creation
+## Phase 3: Session Creation
 
-#### [ ] Step 3.1: Wizard State Management
+### [ ] Step: 3.1 Wizard State Management
+
 Create wizard form state context.
 
 **Tasks:**
@@ -277,7 +255,8 @@ Create wizard form state context.
 cd web && npm run type-check
 ```
 
-#### [ ] Step 3.2: Step 0 - Identity & Bond
+### [ ] Step: 3.2 Step 0 - Identity & Bond
+
 Build first wizard step.
 
 **Tasks:**
@@ -287,7 +266,8 @@ Build first wizard step.
 
 **Reference:** requirements.md Section 6.4 Step 0
 
-#### [ ] Step 3.3: Step 1 - Session Goal
+### [ ] Step: 3.3 Step 1 - Session Goal
+
 Build goal step.
 
 **Tasks:**
@@ -297,7 +277,8 @@ Build goal step.
 
 **Reference:** requirements.md Section 6.4
 
-#### [ ] Step 3.4: Step 2 - Facilitator Calibration
+### [ ] Step: 3.4 Step 2 - Facilitator Calibration
+
 Build facilitator selection step.
 
 **Tasks:**
@@ -307,7 +288,8 @@ Build facilitator selection step.
 
 **Reference:** requirements.md Section 6.4 Step 2
 
-#### [ ] Step 3.5: Step 3 - Review & Connect
+### [ ] Step: 3.5 Step 3 - Review & Connect
+
 Build review step.
 
 **Tasks:**
@@ -315,7 +297,8 @@ Build review step.
 - Display summary of all entered data
 - Show edit links to return to previous steps
 
-#### [ ] Step 3.6: Step 4 - Launch Hub
+### [ ] Step: 3.6 Step 4 - Launch Hub
+
 Build final launch step.
 
 **Tasks:**
@@ -324,7 +307,8 @@ Build final launch step.
 - Add platform selection dropdown
 - Add meeting URL input field
 
-#### [ ] Step 3.7: Session Creation Page
+### [ ] Step: 3.7 Session Creation Page
+
 Assemble wizard into page.
 
 **Tasks:**
@@ -337,9 +321,10 @@ Assemble wizard into page.
 
 ---
 
-### Phase 4: Invitation & Consent
+## Phase 4: Invitation & Consent
 
-#### [ ] Step 4.1: Invite Token Lookup & Consent Backend Endpoints
+### [ ] Step: 4.1 Invite Token & Consent Backend
+
 Add invite token lookup and consent routes to backend.
 
 **Tasks:**
@@ -356,7 +341,8 @@ Add invite token lookup and consent routes to backend.
 ruff check app/routes.py app/services/session_service.py
 ```
 
-#### [ ] Step 4.2: Invite Page
+### [ ] Step: 4.2 Invite Page
+
 Build partner invitation page.
 
 **Tasks:**
@@ -367,7 +353,8 @@ Build partner invitation page.
 
 **Reference:** requirements.md Section 6.5 Partner Invitation Design
 
-#### [ ] Step 4.3: Consent Form Component
+### [ ] Step: 4.3 Consent Form Component
+
 Build consent UI.
 
 **Tasks:**
@@ -377,7 +364,8 @@ Build consent UI.
 
 **Reference:** requirements.md Section 7.3 Consent Information
 
-#### [ ] Step 4.4: Waiting Room Component
+### [ ] Step: 4.4 Waiting Room Component
+
 Build waiting room UI.
 
 **Tasks:**
@@ -390,9 +378,10 @@ Build waiting room UI.
 
 ---
 
-### Phase 5: Live Session Infrastructure
+## Phase 5: Live Session Infrastructure
 
-#### [ ] Step 5.1: Session Start Backend
+### [ ] Step: 5.1 Session Start Backend
+
 Implement session start logic.
 
 **Tasks:**
@@ -403,7 +392,8 @@ Implement session start logic.
 
 **Reference:** spec.md Section 4.2 start_session()
 
-#### [ ] Step 5.2: Session Events WebSocket
+### [ ] Step: 5.2 Session Events WebSocket
+
 Add WebSocket endpoint for session events.
 
 **Tasks:**
@@ -414,7 +404,8 @@ Add WebSocket endpoint for session events.
 
 **Reference:** spec.md Section 7.1 WebSocket Handler Extension
 
-#### [ ] Step 5.3: Balance Tracker Module
+### [ ] Step: 5.3 Balance Tracker Module
+
 Create balance tracking logic.
 
 **Tasks:**
@@ -424,7 +415,8 @@ Create balance tracking logic.
 
 **Reference:** spec.md Section 4.4 Balance Tracker
 
-#### [ ] Step 5.4: Frontend WebSocket Hook
+### [ ] Step: 5.4 Frontend WebSocket Hook
+
 Create WebSocket hook for session events.
 
 **Tasks:**
@@ -434,7 +426,8 @@ Create WebSocket hook for session events.
 
 **Reference:** spec.md Section 7.3 Frontend WebSocket Hook
 
-#### [ ] Step 5.5: Session UI Store
+### [ ] Step: 5.5 Session UI Store
+
 Create Zustand store for live session state.
 
 **Tasks:**
@@ -445,9 +438,10 @@ Create Zustand store for live session state.
 
 ---
 
-### Phase 6: Live Session UI
+## Phase 6: Live Session UI
 
-#### [ ] Step 6.1: Talk Balance Component
+### [ ] Step: 6.1 Talk Balance Component
+
 Build real-time balance indicator.
 
 **Tasks:**
@@ -457,7 +451,8 @@ Build real-time balance indicator.
 
 **Reference:** requirements.md Section 6.7 Active Session Design
 
-#### [ ] Step 6.2: AI Status Indicator
+### [ ] Step: 6.2 AI Status Indicator
+
 Build AI status display.
 
 **Tasks:**
@@ -467,14 +462,16 @@ Build AI status display.
 
 **Reference:** spec.md Section 3.3 AIStatusIndicator Component
 
-#### [ ] Step 6.3: Session Timer
+### [ ] Step: 6.3 Session Timer
+
 Build countdown timer.
 
 **Tasks:**
 - Create `components/live/session-timer.tsx`
 - Display elapsed time and time remaining
 
-#### [ ] Step 6.4: Live Facilitation Room Page
+### [ ] Step: 6.4 Live Facilitation Room Page
+
 Assemble live session page.
 
 **Tasks:**
@@ -486,9 +483,10 @@ Assemble live session page.
 
 ---
 
-### Phase 7: Intervention System
+## Phase 7: Intervention System
 
-#### [ ] Step 7.1: Intervention Engine
+### [ ] Step: 7.1 Intervention Engine
+
 Create backend intervention logic.
 
 **Tasks:**
@@ -498,14 +496,16 @@ Create backend intervention logic.
 
 **Reference:** spec.md Section 4.5 Intervention Engine
 
-#### [ ] Step 7.2: Intervention Store
+### [ ] Step: 7.2 Intervention Store
+
 Create frontend intervention queue.
 
 **Tasks:**
 - Create `stores/intervention-store.ts`
 - Add state: queue, current intervention
 
-#### [ ] Step 7.3: Intervention Overlay Component
+### [ ] Step: 7.3 Intervention Overlay Component
+
 Build intervention display.
 
 **Tasks:**
@@ -514,7 +514,8 @@ Build intervention display.
 
 **Reference:** requirements.md Section 6.8 Intervention UI Design
 
-#### [ ] Step 7.4: Intervention Variants
+### [ ] Step: 7.4 Intervention Variants
+
 Build specific intervention UIs.
 
 **Tasks:**
@@ -525,9 +526,10 @@ Build specific intervention UIs.
 
 ---
 
-### Phase 8: Kill Switch & Session End
+## Phase 8: Kill Switch & Session End
 
-#### [ ] Step 8.1: Pause/Resume Backend
+### [ ] Step: 8.1 Pause/Resume Backend
+
 Add pause/resume endpoints.
 
 **Tasks:**
@@ -536,7 +538,8 @@ Add pause/resume endpoints.
 
 **Reference:** spec.md Section 6.1 Pause/Resume endpoints
 
-#### [ ] Step 8.2: Kill Switch Component
+### [ ] Step: 8.2 Kill Switch Component
+
 Build pause facilitation UI.
 
 **Tasks:**
@@ -545,7 +548,8 @@ Build pause facilitation UI.
 
 **Reference:** requirements.md Section 7.7 Kill Switch Requirements
 
-#### [ ] Step 8.3: Session End Backend
+### [ ] Step: 8.3 Session End Backend
+
 Implement session end logic.
 
 **Tasks:**
@@ -557,9 +561,10 @@ Implement session end logic.
 
 ---
 
-### Phase 9: Post-Session
+## Phase 9: Post-Session
 
-#### [ ] Step 9.1: Summary Generation Service
+### [ ] Step: 9.1 Summary Generation Service
+
 Create summary generation logic.
 
 **Tasks:**
@@ -568,7 +573,8 @@ Create summary generation logic.
 
 **Reference:** spec.md Section 4.2 _generate_summary()
 
-#### [ ] Step 9.2: Summary Endpoint
+### [ ] Step: 9.2 Summary Endpoint
+
 Add summary retrieval endpoint.
 
 **Tasks:**
@@ -576,7 +582,8 @@ Add summary retrieval endpoint.
 
 **Reference:** spec.md Section 6.1 GET /sessions/{id}/summary
 
-#### [ ] Step 9.3: Post-Session Recap UI
+### [ ] Step: 9.3 Post-Session Recap UI
+
 Build recap components.
 
 **Tasks:**
@@ -585,7 +592,8 @@ Build recap components.
 
 **Reference:** requirements.md Section 6.9 Post-Session Recap Design
 
-#### [ ] Step 9.4: Session Detail Page
+### [ ] Step: 9.4 Session Detail Page
+
 Build unified session detail page.
 
 **Tasks:**
@@ -594,16 +602,18 @@ Build unified session detail page.
 
 ---
 
-### Phase 10: Polish & Testing
+## Phase 10: Polish & Testing
 
-#### [ ] Step 10.1: Responsive Testing
+### [ ] Step: 10.1 Responsive Testing
+
 Verify mobile/desktop layouts.
 
 **Tasks:**
 - Test all pages at 360x640 (mobile) and 1280x720 (desktop)
 - Fix any layout issues
 
-#### [ ] Step 10.2: Accessibility Audit
+### [ ] Step: 10.2 Accessibility Audit
+
 Ensure accessibility compliance.
 
 **Tasks:**
@@ -613,7 +623,8 @@ Ensure accessibility compliance.
 
 **Reference:** requirements.md Section 11.2 Accessibility
 
-#### [ ] Step 10.3: Error Handling
+### [ ] Step: 10.3 Error Handling
+
 Implement error states.
 
 **Tasks:**
@@ -623,7 +634,8 @@ Implement error states.
 
 **Reference:** spec.md Section 11.4 Reliability
 
-#### [ ] Step 10.4: Performance Optimization
+### [ ] Step: 10.4 Performance Optimization
+
 Optimize bundle and load times.
 
 **Tasks:**
@@ -633,7 +645,8 @@ Optimize bundle and load times.
 
 **Reference:** requirements.md Section 11.1 Performance
 
-#### [ ] Step 10.5: Integration Testing
+### [ ] Step: 10.5 Integration Testing
+
 Test complete flows.
 
 **Tasks:**
