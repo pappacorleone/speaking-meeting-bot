@@ -11,6 +11,7 @@
 - DIADI_FRONTEND_PRD.md (original PRD)
 - DIADI_FRONTEND_TECH_SPEC.md (original tech spec)
 - PRD_DIADI_FRONTEND.md (early PRD draft)
+- meeting-agent-platform-ux-recommendations.md (multi-person meeting facilitation UX)
 
 **Design References:**
 - docs/Diadi screens/* (94 UI mockup screenshots - UX designs extracted in Section 6)

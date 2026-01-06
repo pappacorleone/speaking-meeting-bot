@@ -684,6 +684,52 @@ class SessionService:
         session.status = SessionStatus.IN_PROGRESS
         await self._notify_pipecat(session.client_id, {"action": "resume"})
         return session
+
+    async def _generate_summary(self, session_id: str) -> bool:
+        """Generate post-session summary using OpenAI.
+
+        Args:
+            session_id: The session identifier.
+
+        Returns:
+            True if summary was generated, False otherwise.
+        """
+        session = SESSION_STORE.get(session_id)
+        if not session:
+            return False
+
+        # Placeholder summary - will be replaced with full OpenAI generation
+        # in app/services/summary_service.py
+        from app.models import SessionSummary, TalkBalanceMetrics
+
+        summary = SessionSummary(
+            session_id=session_id,
+            duration_minutes=session.duration_minutes,
+            consensus_summary="Session completed. Summary generation pending.",
+            action_items=[],
+            balance=TalkBalanceMetrics(
+                participant_a={"id": "", "name": "", "percentage": 50},
+                participant_b={"id": "", "name": "", "percentage": 50},
+                status="balanced",
+            ),
+            intervention_count=0,
+            key_agreements=[],
+        )
+
+        # Store summary (would use SESSION_SUMMARIES in full implementation)
+        return True
+
+    async def _notify_pipecat(self, client_id: Optional[str], message: dict) -> None:
+        """Send a control message to Pipecat process.
+
+        Args:
+            client_id: The client ID for the Pipecat connection.
+            message: The message to send.
+        """
+        if not client_id:
+            return
+        # Placeholder - would send message via WebSocket to Pipecat
+        pass
 ```
 
 ### 4.3 Session Store
@@ -1032,8 +1078,8 @@ class Session(BaseModel):
     client_id: Optional[str] = None
 
 class TalkBalanceMetrics(BaseModel):
-    participant_a: Dict[str, any]  # {id, name, percentage}
-    participant_b: Dict[str, any]
+    participant_a: Dict[str, Any]  # {id, name, percentage}
+    participant_b: Dict[str, Any]
     status: str  # "balanced" | "mild_imbalance" | "severe_imbalance"
 
 class InterventionRecord(BaseModel):
@@ -1492,15 +1538,21 @@ Headers:
 ### 7.1 WebSocket Handler Extension
 
 **`app/websockets.py` addition:**
+
+Note: The existing codebase uses `websocket_router = APIRouter()` pattern. Add to existing router:
+
 ```python
 from fastapi import WebSocket, WebSocketDisconnect
 from core.session_store import SESSION_STORE, SESSION_EVENTS
 from core.balance_tracker import BalanceTracker
 from core.intervention_engine import InterventionEngine
+from datetime import datetime
 import asyncio
 import json
 
-@app.websocket("/sessions/{session_id}/events")
+# Add to existing websocket_router (already defined in app/websockets.py)
+
+@websocket_router.websocket("/sessions/{session_id}/events")
 async def session_events_websocket(websocket: WebSocket, session_id: str):
     """WebSocket endpoint for real-time session events."""
     await websocket.accept()
@@ -1578,11 +1630,16 @@ class BalanceTrackingProcessor(FrameProcessor):
         self.event_callback = event_callback
         self.last_emit = datetime.utcnow()
         self.emit_interval = timedelta(seconds=1.5)
+        self.unknown_speaker_count = 0  # Counter for unknown speakers
 
     async def process_frame(self, frame, direction):
         if isinstance(frame, TranscriptionFrame):
-            # Update speaker tracking
-            speaker_id = frame.speaker_id  # From diarization
+            # Update speaker tracking with fallback for missing speaker_id
+            speaker_id = getattr(frame, 'speaker_id', None)
+            if not speaker_id:
+                # Fallback: assign temporary speaker ID when diarization unavailable
+                self.unknown_speaker_count += 1
+                speaker_id = f"unknown_speaker_{self.unknown_speaker_count % 2}"
             self.balance_tracker.update_speaker(speaker_id, is_speaking=True)
 
             # Emit balance update periodically
@@ -1613,6 +1670,7 @@ const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 16000]; // Exponential backoff
 export function useSessionEvents(sessionId: string | null) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttempt = useRef(0);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1634,12 +1692,13 @@ export function useSessionEvents(sessionId: string | null) {
 
     ws.onclose = () => {
       setIsConnected(false);
-      // Attempt reconnection
+      // Attempt reconnection with cleanup
       const delay = RECONNECT_DELAYS[
         Math.min(reconnectAttempt.current, RECONNECT_DELAYS.length - 1)
       ];
       reconnectAttempt.current++;
-      setTimeout(connect, delay);
+      // Store timeout ref for cleanup on unmount
+      reconnectTimeoutRef.current = setTimeout(connect, delay);
     };
 
     ws.onerror = () => {
@@ -1671,7 +1730,12 @@ export function useSessionEvents(sessionId: string | null) {
   useEffect(() => {
     connect();
     return () => {
+      // Clean up WebSocket connection
       wsRef.current?.close();
+      // Clean up any pending reconnection timeout to prevent memory leaks
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
     };
   }, [connect]);
 
@@ -1712,9 +1776,9 @@ You are a calm, balanced facilitator focused on fair dialogue. You help both par
 - Never use accusatory language
 
 ## Metadata
-- image: [Generated via Replicate]
+- image: TBD (generated at runtime via Replicate SDXL)
 - entry_message: "Hello, I'm here to help facilitate your conversation. Take your time, and know that I'm here to support you both."
-- cartesia_voice_id: [Matched via VoiceUtils]
+- cartesia_voice_id: TBD (matched at runtime via VoiceUtils based on gender/characteristics)
 - gender: neutral
 - relevant_links: []
 ```
@@ -1738,9 +1802,9 @@ You are a warm, emotionally attuned facilitator. You prioritize emotional safety
 - Focus on feelings over facts
 
 ## Metadata
-- image: [Generated via Replicate]
+- image: TBD (generated at runtime via Replicate SDXL)
 - entry_message: "Welcome. I'm here to hold space for both of you. This is a safe place to share what's on your heart."
-- cartesia_voice_id: [Matched via VoiceUtils]
+- cartesia_voice_id: TBD (matched at runtime via VoiceUtils based on gender/characteristics)
 - gender: female
 - relevant_links: []
 ```
@@ -1764,9 +1828,9 @@ You are a focused, action-oriented facilitator. You help participants move from 
 - Focus on outcomes and next steps
 
 ## Metadata
-- image: [Generated via Replicate]
+- image: TBD (generated at runtime via Replicate SDXL)
 - entry_message: "Let's make this conversation count. I'll help you stay focused and reach decisions you both feel good about."
-- cartesia_voice_id: [Matched via VoiceUtils]
+- cartesia_voice_id: TBD (matched at runtime via VoiceUtils based on gender/characteristics)
 - gender: male
 - relevant_links: []
 ```
@@ -2090,8 +2154,18 @@ npm run test:integration
 NEXT_PUBLIC_API_URL=http://localhost:7014
 NEXT_PUBLIC_WS_URL=ws://localhost:7014
 
-# Backend (additions)
-# None - uses existing MEETING_BAAS_API_KEY, OPENAI_API_KEY, etc.
+# Backend (existing - required for Diadi sessions)
+MEETING_BAAS_API_KEY=      # Required: MeetingBaas API authentication
+OPENAI_API_KEY=            # Required: OpenAI/GPT-4 for LLM and summary generation
+CARTESIA_API_KEY=          # Required: Text-to-speech
+DEEPGRAM_API_KEY=          # Required: Speech-to-text (or GLADIA_API_KEY)
+BASE_URL=                  # Recommended: WebSocket base URL for production
+
+# Backend (optional)
+REPLICATE_KEY=             # Optional: AI image generation for personas
+UTFS_KEY=                  # Optional: UploadThing image hosting
+APP_ID=                    # Optional: UploadThing app ID
+NGROK_AUTHTOKEN=           # Optional: Local development tunneling
 ```
 
 ## Appendix B: API Error Codes

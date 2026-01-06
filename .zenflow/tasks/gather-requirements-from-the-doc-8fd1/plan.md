@@ -160,6 +160,10 @@ Set up Next.js 14 project in `web/` directory.
 - Configure `tsconfig.json` with strict mode
 - Add `.gitignore` entries for `node_modules/`, `.next/`, etc.
 - Install dependencies: `zustand`, `@tanstack/react-query`, `zod`
+- Configure TanStack Query provider in `app/layout.tsx`:
+  - Create `lib/query-client.ts` with QueryClient configuration
+  - Wrap app with `QueryClientProvider` in root layout
+- Create `.env.local` with `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL`
 
 **Verification:**
 ```bash
@@ -364,20 +368,23 @@ Assemble wizard into page.
 
 ### Phase 4: Invitation & Consent
 
-#### [ ] Step 4.1: Consent Backend Endpoints
-Add consent routes to backend.
+#### [ ] Step 4.1: Invite Token Lookup & Consent Backend Endpoints
+Add invite token lookup and consent routes to backend.
 
 **Tasks:**
+- Add `GET /sessions/invite/{invite_token}` endpoint to lookup session by invite token
+- Implement `get_session_by_token()` in SessionService
 - Add `POST /sessions/{id}/consent` endpoint
 - Implement `record_consent()` in SessionService
 - Update session status on dual consent (pending_consent → ready)
 - Handle decline privately (archive session without notifying creator)
 
-**Reference:** spec.md Section 6.1 POST /sessions/{id}/consent
+**Reference:** spec.md Section 6.1 Session Endpoints
 
 **Verification:**
 ```bash
 ruff check app/routes.py app/services/session_service.py
+# Manual test: curl http://localhost:7014/sessions/invite/{token}
 # Manual test consent flow
 ```
 
