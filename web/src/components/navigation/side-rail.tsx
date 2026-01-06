@@ -63,19 +63,25 @@ export function SideRail({
         <button
           type="button"
           onClick={handleToggleExpanded}
-          className="rounded-lg p-1.5 hover:bg-sidebar-accent transition-colors"
+          className="rounded-lg p-1.5 hover:bg-sidebar-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
           aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+          aria-expanded={isExpanded}
+          aria-controls="sidebar-navigation"
         >
           {isExpanded ? (
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-5 w-5" aria-hidden="true" />
           ) : (
-            <ChevronRight className="h-5 w-5" />
+            <ChevronRight className="h-5 w-5" aria-hidden="true" />
           )}
         </button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-2 py-4">
+      <nav
+        id="sidebar-navigation"
+        aria-label="Main navigation"
+        className="flex-1 space-y-1 px-2 py-4"
+      >
         {NAV_ITEMS.map((item) => (
           <NavItem
             key={item.href}
@@ -104,9 +110,11 @@ export function SideRail({
             variant="secondary"
             className="w-full"
             title="New Session"
+            aria-label="New Session"
           >
             <a href="/sessions/new">
-              <Plus className="h-5 w-5" />
+              <Plus className="h-5 w-5" aria-hidden="true" />
+              <span className="sr-only">New Session</span>
             </a>
           </Button>
         )}

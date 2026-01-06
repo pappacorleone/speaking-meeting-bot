@@ -16,6 +16,7 @@ import {
   useInterventionStore,
   getAutoDismissTimeout,
 } from '@/stores/intervention-store';
+import { useModalAccessibility } from '@/hooks/use-focus-trap';
 import type {
   InterventionWithMeta,
   InterventionType,
@@ -496,6 +497,14 @@ export function InterventionOverlay({
     }
   }, [current, dismiss, onDismiss]);
 
+  // Focus trapping and escape key handling for accessibility
+  // Only allow escape to dismiss non-critical interventions
+  const canDismissWithEscape = current?.priority !== 'critical';
+  const containerRef = useModalAccessibility<HTMLDivElement>(
+    !!(current && isOverlayVisible),
+    canDismissWithEscape ? handleDismiss : () => {}
+  );
+
   // Set up auto-dismiss timer
   useEffect(() => {
     // Clear existing timer
@@ -525,6 +534,7 @@ export function InterventionOverlay({
 
   return (
     <div
+      ref={containerRef}
       className={cn(
         'fixed inset-0 z-50 flex items-center justify-center p-4',
         // Semi-transparent backdrop
@@ -538,10 +548,12 @@ export function InterventionOverlay({
     >
       {/* Click outside to dismiss (only for non-critical) */}
       {current.priority !== 'critical' && (
-        <div
-          className="absolute inset-0"
+        <button
+          type="button"
+          className="absolute inset-0 cursor-default"
           onClick={handleDismiss}
-          aria-label="Dismiss intervention"
+          aria-label="Click outside to dismiss intervention"
+          tabIndex={-1}
         />
       )}
 

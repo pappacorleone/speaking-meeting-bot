@@ -28,7 +28,7 @@
 
     /* Muted elements */
     --muted: 0 0% 96.1%; /* Light gray background */
-    --muted-foreground: 0 0% 45.1%; /* #8B8B8B */
+    --muted-foreground: 0 0% 35%; /* #595959 - adjusted for 4.5:1 contrast ratio on white */
 
     /* Accent (warm cream) */
     --accent: 0 0% 96.1%; /* #F5F3EF */

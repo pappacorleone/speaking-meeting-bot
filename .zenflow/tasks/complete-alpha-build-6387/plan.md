@@ -1435,7 +1435,8 @@ npm run build  # ✓ Passed
 
 All pages now properly adapt to both mobile (360x640) and desktop (1280x720) viewports.
 
-### [ ] Step: 10.2 Accessibility Audit
+### [x] Step: 10.2 Accessibility Audit
+<!-- chat-id: 283993c5-4e31-4ed8-bcdd-cb212ec27b88 -->
 
 Ensure accessibility compliance.
 
@@ -1445,6 +1446,56 @@ Ensure accessibility compliance.
 - Add keyboard navigation
 
 **Reference:** requirements.md Section 11.2 Accessibility
+
+**Completed:** Comprehensive accessibility improvements across the frontend:
+
+**1. Contrast Ratio Fixes:**
+- Updated `--muted-foreground` in `globals.css` from 45.1% to 35% lightness (#595959)
+- This ensures 4.5:1 contrast ratio for text on white backgrounds per WCAG AA requirements
+
+**2. Keyboard Navigation:**
+- Created `components/ui/skip-link.tsx` with:
+  - `SkipLink` - "Skip to main content" link visible on focus
+  - `SkipLinks` - Multi-link variant for complex layouts
+- Updated `components/navigation/app-layout.tsx` to include skip link and `id="main-content"` target
+
+**3. Focus Trapping:**
+- Created `hooks/use-focus-trap.ts` with:
+  - `useFocusTrap` - Traps tab focus within container element
+  - `useEscapeKey` - Escape key handler for closing modals
+  - `useModalAccessibility` - Combined hook for modal dialogs
+- Updated `components/intervention/intervention-overlay.tsx` to use focus trapping
+- Changed click-outside dismiss from div to button for keyboard accessibility
+
+**4. Screen Reader Labels:**
+- Updated `components/navigation/nav-item.tsx`:
+  - Added `aria-label` for collapsed state
+  - Added `aria-current="page"` for active navigation
+  - Added `aria-pressed` for button variant
+  - Added `sr-only` labels when icons-only
+  - Added `aria-hidden` to decorative icons
+- Updated `components/navigation/side-rail.tsx`:
+  - Added `aria-expanded` and `aria-controls` to collapse toggle
+  - Added `aria-label="Main navigation"` to nav element
+  - Added `sr-only` text to icon-only "New Session" button
+
+**5. ARIA Attributes:**
+- Fixed `components/session/parameter-toggles.tsx`:
+  - Added missing `id` to description paragraph for `aria-describedby` reference
+
+**6. Accessible Loading States:**
+- Created `components/ui/loading.tsx` with:
+  - `LoadingSpinner` - With `role="status"` and `aria-label`
+  - `LoadingOverlay` - Full-screen with `aria-busy` and `aria-live="assertive"`
+  - `LoadingSkeleton` - Placeholder with screen reader text
+  - `LoadingDots` - Inline loading indicator
+
+**Build Verification:**
+```bash
+npm run build  # ✓ Passed
+```
+
+All accessibility improvements verified to compile without errors.
 
 ### [ ] Step: 10.3 Error Handling
 

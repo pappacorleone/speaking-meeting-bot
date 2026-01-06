@@ -83,7 +83,10 @@ export function ParameterToggles({
               >
                 {param.label}
               </Label>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p
+                id={`${switchId}-description`}
+                className="text-xs text-muted-foreground mt-1"
+              >
                 {param.description}
               </p>
             </div>
