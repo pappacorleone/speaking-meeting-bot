@@ -400,7 +400,8 @@ cd web && npm run build
 - `index.ts` - Barrel exports for clean imports
 - Verified with `npm run build` ✓
 
-### [ ] Step: 2.7 Create Hub Page
+### [x] Step: 2.7 Create Hub Page
+<!-- chat-id: 7de0290a-b68c-4b7a-ab6b-937655435ca5 -->
 
 Build main hub/dashboard page.
 
@@ -412,6 +413,23 @@ Build main hub/dashboard page.
 - Create `components/common/empty-state.tsx`
 
 **Reference:** requirements.md Section 6.3 Hub Screen Design
+
+**Completed:** Created Hub page with all components:
+- `components/common/empty-state.tsx` - Reusable empty state component with icon, title, description, and optional action button
+- `components/hub/active-session-card.tsx` - Prominent card for ready/in_progress sessions with status badge, goal preview, partner info, and Join/Resume CTA
+- `components/hub/recent-sessions-list.tsx` - List of recent sessions with status icons, date formatting, and "View All" link
+- `components/hub/search-bar.tsx` - Search input with icon for filtering sessions/partners
+- `app/(dashboard)/hub/page.tsx` - Main Hub page integrating all components:
+  - Header with "The Hub." title
+  - Search bar (desktop full, mobile simplified)
+  - Active session card section (if any ready/in_progress/paused session exists)
+  - Recent sessions list with search filtering
+  - Loading skeleton and error states
+  - Empty state for new users
+- `app/(dashboard)/layout.tsx` - Dashboard layout wrapping children with AppLayout
+- Updated `app/page.tsx` to redirect to `/hub`
+- Fixed `lib/api/types.ts` to use `session_id` matching backend
+- Verified with `npm run build` ✓
 
 ---
 
