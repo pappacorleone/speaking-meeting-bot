@@ -879,7 +879,8 @@ Create WebSocket hook for session events.
 - Barrel export in `hooks/index.ts`
 - Verified build passes: `npm run build` ✓
 
-### [ ] Step: 5.5 Session UI Store
+### [x] Step: 5.5 Session UI Store
+<!-- chat-id: cab647c6-de0c-4b61-94c2-95f3e5a35d7c -->
 
 Create Zustand store for live session state.
 
@@ -888,6 +889,21 @@ Create Zustand store for live session state.
 - Add state and actions
 
 **Reference:** spec.md Section 3.4 State Management
+
+**Completed:** Created Zustand stores in `web/src/stores/`:
+- `session-store.ts` - Live session UI state management:
+  - `SessionUIState` interface with: sessionId, session, isConnected, connectionError, lastEventAt, balance, aiStatus, timeRemaining, elapsedSeconds, participantStatuses, isOnGoal, goalDriftSeconds, facilitatorPaused, facilitatorConfig, isStarting, isEnding, isPausing
+  - `SessionUIActions` interface with: initSession, clearSession, setConnected, setConnectionError, setBalance, setAIStatus, setTimeRemaining, incrementElapsed, setParticipantStatus, clearParticipantStatuses, setGoalDrift, toggleFacilitator, setFacilitatorPaused, updateFacilitatorConfig, setStarting, setEnding, setPausing, updateSession, updateParticipants
+  - Selectors: selectIsSessionActive, selectIsSessionPaused, selectCanStartSession, selectTimeRemainingPercent, selectDominantSpeaker, selectAllParticipantsConnected, selectCurrentSpeaker
+  - Uses devtools middleware for debugging
+- `intervention-store.ts` - Intervention queue management:
+  - `InterventionState` interface with: queue, current, history, isOverlayVisible, isPreviewing, lastInterventionAt, cooldownActive, totalInterventions, acknowledgedCount, autoDismissedCount
+  - `InterventionActions` interface with: push, dismiss, acknowledge, clear, showOverlay, hideOverlay, setPreviewMode, processNext, clearHistory, setCooldown
+  - Priority-based queue sorting (critical > high > medium > low)
+  - Auto-dismiss support with helper function `getAutoDismissTimeout()`
+  - Selectors: selectHasCurrentIntervention, selectQueueLength, selectCurrentPriority, selectIsCriticalIntervention, selectAcknowledgementRate, selectRecentHistory, selectInterventionsByType, selectIsInCooldown
+- `index.ts` - Barrel exports for all stores, types, selectors, and helpers
+- Verified build passes: `npm run build` ✓
 
 ---
 
