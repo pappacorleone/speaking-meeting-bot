@@ -909,7 +909,8 @@ Create Zustand store for live session state.
 
 ## Phase 6: Live Session UI
 
-### [ ] Step: 6.1 Talk Balance Component
+### [x] Step: 6.1 Talk Balance Component
+<!-- chat-id: 68c57780-c3e4-46a1-8fb2-cf28217c3ba6 -->
 
 Build real-time balance indicator.
 
@@ -919,6 +920,23 @@ Build real-time balance indicator.
 - Show participant names and percentages
 
 **Reference:** requirements.md Section 6.7 Active Session Design
+
+**Completed:** Created `web/src/components/live/talk-balance.tsx` with three variants:
+- `TalkBalance` - Main component with horizontal bicolor bar:
+  - Header row showing participant names, percentages, and status badge
+  - Horizontal progress bar split proportionally between participants
+  - Color coding based on balance status (green=balanced, amber=mild, red=severe)
+  - Props: `balance`, `compact`, `showPercentages`, `showNames`, `className`
+  - Loading skeleton when balance is null
+  - Accessible with ARIA progressbar role
+- `TalkBalanceCompact` - Minimal HUD overlay variant:
+  - Just percentages and thin bar for video overlays
+  - Light colors for dark backgrounds
+- `TalkBalanceVertical` - Side panel variant:
+  - Vertical bars for each participant
+  - Useful for side panels and dashboards
+- Created `components/live/index.ts` barrel export
+- Verified with `npm run build` ✓
 
 ### [ ] Step: 6.2 AI Status Indicator
 
