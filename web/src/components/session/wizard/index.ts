@@ -16,3 +16,6 @@ export {
   type WizardStepConfig,
   type WizardState,
 } from "./wizard-provider";
+
+// Step Components
+export { StepIdentity } from "./step-identity";

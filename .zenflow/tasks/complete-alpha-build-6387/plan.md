@@ -472,7 +472,8 @@ cd web && npm run type-check
 - `components/session/index.ts` - Parent barrel export
 - Verified with `npm run build` ✓
 
-### [ ] Step: 3.2 Step 0 - Identity & Bond
+### [x] Step: 3.2 Step 0 - Identity & Bond
+<!-- chat-id: d17e2961-490b-4d4f-b1fd-42528cc10ada -->
 
 Build first wizard step.
 
@@ -482,6 +483,21 @@ Build first wizard step.
 - Add Zod validation schema
 
 **Reference:** requirements.md Section 6.4 Step 0
+
+**Completed:** Created Identity & Bond wizard step:
+- `components/ui/textarea.tsx` - New Textarea component for multi-line text input, styled to match Input component
+- `components/session/wizard/step-identity.tsx` - Step 0 component with:
+  - Step indicator showing "00 / IDENTITY & BOND"
+  - Headline: "Who are you connecting with?"
+  - Partner's Name text input with placeholder "e.g. David Miller"
+  - Relationship Context textarea with placeholder describing dynamics
+  - Character counter (0/500) for relationship context
+  - Error display for validation errors with proper ARIA attributes
+  - "Continue to Setup" CTA button with arrow icon
+  - Uses `useWizardFormData()` and `useWizardNavigation()` hooks
+- Updated `components/session/wizard/index.ts` to export `StepIdentity`
+- Zod validation already defined in wizard-provider.tsx (`stepIdentitySchema`)
+- Verified with `npm run build` ✓
 
 ### [ ] Step: 3.3 Step 1 - Session Goal
 
