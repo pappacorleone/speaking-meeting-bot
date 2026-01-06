@@ -139,7 +139,8 @@ ruff check app/routes.py
 - Proper error handling: 400 for validation errors, 404 for not found, 500 for server errors
 - Verified with `ruff check` and `ruff format` - All checks passed (pre-existing issues in file not related to new code)
 
-### [ ] Step: 1.5 Extend /bots Response
+### [x] Step: 1.5 Extend /bots Response
+<!-- chat-id: b0bb6d31-3b58-443b-b1e9-9efda954a126 -->
 
 Modify existing `/bots` endpoint to return `client_id`.
 
@@ -153,6 +154,11 @@ Modify existing `/bots` endpoint to return `client_id`.
 ```bash
 ruff check app/routes.py
 ```
+
+**Completed:** Extended `/bots` response to include `client_id`:
+- Updated `JoinResponse` model in `app/models.py` to include `client_id: str` field with description
+- Updated `/bots` route in `app/routes.py` to return both `bot_id` (MeetingBaas ID) and `client_id` (internal ID for WebSocket connections)
+- Verified with `ruff check` - no new issues introduced (pre-existing issues in files are unrelated)
 
 ### [ ] Step: 1.6 Create Diadi Personas
 

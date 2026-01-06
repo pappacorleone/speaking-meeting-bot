@@ -410,8 +410,8 @@ async def join_meeting(request: BotRequest, client_request: Request):
         # Store the process for later termination
         PIPECAT_PROCESSES[bot_client_id] = process
 
-        # Return only the bot_id in the response
-        return JoinResponse(bot_id=meetingbaas_bot_id)
+        # Return bot_id and client_id in the response
+        return JoinResponse(bot_id=meetingbaas_bot_id, client_id=bot_client_id)
     else:
         # Clean up MEETING_DETAILS if bot creation failed
         if bot_client_id in MEETING_DETAILS:

@@ -228,6 +228,10 @@ class JoinResponse(BaseModel):
         ...,
         description="The MeetingBaas bot ID used for API operations with MeetingBaas",
     )
+    client_id: str = Field(
+        ...,
+        description="Internal client ID for WebSocket connections and Pipecat process tracking",
+    )
 
 
 class LeaveResponse(BaseModel):
