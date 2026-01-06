@@ -16,6 +16,18 @@ from app.models import (
     LeaveBotRequest,
     PersonaImageRequest,
     PersonaImageResponse,
+    # Diadi Session models
+    Session,
+    SessionStatus,
+    CreateSessionRequest,
+    CreateSessionResponse,
+    ConsentRequest,
+    ConsentResponse,
+    StartSessionRequest,
+    StartSessionResponse,
+    EndSessionResponse,
+    SessionListResponse,
+    SessionSummary,
 )
 from app.services.image_service import image_service
 from config.persona_utils import persona_manager
@@ -38,7 +50,13 @@ from config.prompts import PERSONA_INTERACTION_INSTRUCTIONS
 # Import the new persona detail extraction service
 from app.services.persona_detail_extraction import extract_persona_details_from_prompt
 
+# Import session service
+from app.services.session_service import SessionService
+
 router = APIRouter()
+
+# Initialize session service
+session_service = SessionService()
 
 
 @router.post(
@@ -574,3 +592,322 @@ async def meetingbaas_webhook(request: Request):
     except Exception as e:
         logger.error(f"Error processing webhook: {e}")
         return {"status": "error", "message": str(e)}
+
+
+# =============================================================================
+# Diadi Session Endpoints
+# =============================================================================
+
+
+@router.post(
+    "/sessions",
+    tags=["sessions"],
+    response_model=CreateSessionResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        201: {"description": "Session successfully created"},
+        400: {"description": "Invalid request data"},
+    },
+)
+async def create_session(
+    request: CreateSessionRequest,
+    client_request: Request,
+) -> CreateSessionResponse:
+    """
+    Create a new Diadi facilitation session.
+
+    Creates a session in draft status and generates an invitation link
+    for the partner to join.
+    """
+    try:
+        # Get base URL from request for invite link generation
+        base_url = str(client_request.base_url).rstrip("/")
+        session_service.base_url = base_url
+
+        response = await session_service.create_session(request)
+        return response
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error creating session: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create session",
+        )
+
+
+@router.get(
+    "/sessions",
+    tags=["sessions"],
+    response_model=SessionListResponse,
+    responses={
+        200: {"description": "List of sessions"},
+    },
+)
+async def list_sessions(
+    status_filter: Optional[SessionStatus] = None,
+    limit: int = 20,
+    offset: int = 0,
+) -> SessionListResponse:
+    """
+    List Diadi sessions with optional filtering.
+
+    Returns sessions sorted by creation date (newest first).
+    """
+    sessions, total, has_more = await session_service.list_sessions(
+        status=status_filter,
+        limit=limit,
+        offset=offset,
+    )
+    return SessionListResponse(
+        sessions=sessions,
+        total=total,
+        has_more=has_more,
+    )
+
+
+@router.get(
+    "/sessions/{session_id}",
+    tags=["sessions"],
+    response_model=Session,
+    responses={
+        200: {"description": "Session details"},
+        404: {"description": "Session not found"},
+    },
+)
+async def get_session(session_id: str) -> Session:
+    """
+    Get details of a specific session.
+    """
+    session = await session_service.get_session(session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found",
+        )
+    return session
+
+
+@router.get(
+    "/sessions/invite/{invite_token}",
+    tags=["sessions"],
+    response_model=Session,
+    responses={
+        200: {"description": "Session details for invitation"},
+        404: {"description": "Invalid invitation token"},
+    },
+)
+async def get_session_by_invite(invite_token: str) -> Session:
+    """
+    Get session details by invite token.
+
+    Used by invitees to view session details before consenting.
+    """
+    session = await session_service.get_session_by_token(invite_token)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid invitation token",
+        )
+    return session
+
+
+@router.post(
+    "/sessions/{session_id}/consent",
+    tags=["sessions"],
+    response_model=ConsentResponse,
+    responses={
+        200: {"description": "Consent recorded"},
+        400: {"description": "Invalid request or token"},
+        404: {"description": "Session not found"},
+    },
+)
+async def record_consent(
+    session_id: str,
+    request: ConsentRequest,
+) -> ConsentResponse:
+    """
+    Record partner consent for a session.
+
+    When both parties have consented, the session status changes to 'ready'.
+    Declining is private - the session creator is not notified.
+    """
+    try:
+        response = await session_service.record_consent(session_id, request)
+        return response
+    except ValueError as e:
+        error_msg = str(e)
+        if "not found" in error_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_msg,
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_msg,
+        )
+
+
+@router.post(
+    "/sessions/{session_id}/start",
+    tags=["sessions"],
+    response_model=StartSessionResponse,
+    responses={
+        200: {"description": "Session started"},
+        400: {"description": "Session not ready or invalid meeting URL"},
+        404: {"description": "Session not found"},
+    },
+)
+async def start_session(
+    session_id: str,
+    request: StartSessionRequest,
+    client_request: Request,
+) -> StartSessionResponse:
+    """
+    Start a Diadi facilitation session.
+
+    Spawns the Pipecat process and creates the MeetingBaas bot to join
+    the specified meeting. Both parties must have consented first.
+    """
+    try:
+        # Get API key from request state
+        api_key = getattr(client_request.state, "api_key", "")
+        response = await session_service.start_session(session_id, request, api_key)
+        return response
+    except ValueError as e:
+        error_msg = str(e)
+        if "not found" in error_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_msg,
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_msg,
+        )
+
+
+@router.post(
+    "/sessions/{session_id}/end",
+    tags=["sessions"],
+    response_model=EndSessionResponse,
+    responses={
+        200: {"description": "Session ended"},
+        404: {"description": "Session not found"},
+    },
+)
+async def end_session(session_id: str) -> EndSessionResponse:
+    """
+    End a Diadi facilitation session.
+
+    Cleans up resources and triggers summary generation.
+    """
+    try:
+        response = await session_service.end_session(session_id)
+        return response
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+
+
+@router.post(
+    "/sessions/{session_id}/pause",
+    tags=["sessions"],
+    response_model=Session,
+    responses={
+        200: {"description": "Facilitation paused"},
+        400: {"description": "Session not in progress"},
+        404: {"description": "Session not found"},
+    },
+)
+async def pause_session(session_id: str) -> Session:
+    """
+    Pause AI facilitation (kill switch).
+
+    Immediately stops all AI interventions. Both parties are notified.
+    """
+    try:
+        session = await session_service.pause_facilitation(session_id)
+        return session
+    except ValueError as e:
+        error_msg = str(e)
+        if "not found" in error_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_msg,
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_msg,
+        )
+
+
+@router.post(
+    "/sessions/{session_id}/resume",
+    tags=["sessions"],
+    response_model=Session,
+    responses={
+        200: {"description": "Facilitation resumed"},
+        400: {"description": "Session not paused"},
+        404: {"description": "Session not found"},
+    },
+)
+async def resume_session(session_id: str) -> Session:
+    """
+    Resume AI facilitation after pause.
+
+    Requires explicit action - both parties see the resumed state.
+    """
+    try:
+        session = await session_service.resume_facilitation(session_id)
+        return session
+    except ValueError as e:
+        error_msg = str(e)
+        if "not found" in error_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_msg,
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_msg,
+        )
+
+
+@router.get(
+    "/sessions/{session_id}/summary",
+    tags=["sessions"],
+    response_model=SessionSummary,
+    responses={
+        200: {"description": "Session summary"},
+        404: {"description": "Session or summary not found"},
+    },
+)
+async def get_session_summary(session_id: str) -> SessionSummary:
+    """
+    Get the post-session summary.
+
+    Summary is generated after the session ends and includes:
+    - Consensus summary
+    - Key agreements
+    - Action items
+    - Talk balance metrics
+    - Intervention count
+    """
+    # First check if session exists
+    session = await session_service.get_session(session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found",
+        )
+
+    summary = await session_service.get_summary(session_id)
+    if not summary:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Summary not available yet",
+        )
+    return summary
