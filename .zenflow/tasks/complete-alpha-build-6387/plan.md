@@ -58,7 +58,8 @@ ruff format app/models.py
 - Models: `Participant`, `FacilitatorConfig`, `Session`, `TalkBalanceMetrics`, `InterventionRecord`, `SessionSummary`
 - Request/Response: `CreateSessionRequest`, `CreateSessionResponse`, `ConsentRequest`, `ConsentResponse`, `StartSessionRequest`, `StartSessionResponse`, `SessionEventPayload`
 
-### [ ] Step: 1.2 Session Store
+### [x] Step: 1.2 Session Store
+<!-- chat-id: fdb5b17f-06cb-408d-8621-1b0b68719dbe -->
 
 Create `core/session_store.py` for in-memory session storage.
 
@@ -73,6 +74,13 @@ Create `core/session_store.py` for in-memory session storage.
 ```bash
 ruff check core/session_store.py
 ```
+
+**Completed:** Created `core/session_store.py` with:
+- `SESSION_STORE: Dict[str, Session]` - In-memory session storage
+- `SESSION_EVENTS: Dict[str, List[WebSocket]]` - WebSocket connections per session
+- Helper functions: `get_session()`, `get_session_by_invite_token()`, `create_session()`, `update_session()`, `delete_session()`, `list_sessions()`
+- WebSocket management: `register_event_connection()`, `unregister_event_connection()`, `get_event_connections()`, `broadcast_session_event()`
+- Verified with `ruff check` - All checks passed
 
 ### [ ] Step: 1.3 Session Service Skeleton
 
