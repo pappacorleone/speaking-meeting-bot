@@ -1361,13 +1361,36 @@ Build recap components.
 - `index.ts` - Barrel exports for all recap components
 - Verified with `npm run build` ✓
 
-### [ ] Step: 9.4 Session Detail Page
+### [x] Step: 9.4 Session Detail Page
+<!-- chat-id: f5a40d8b-75b1-4e9c-af30-77e78052d115 -->
 
 Build unified session detail page.
 
 **Tasks:**
 - Update `app/(dashboard)/sessions/[id]/page.tsx`
 - Show pre-session, live redirect, or post-session view based on status
+
+**Completed:** Updated `app/(dashboard)/sessions/[id]/page.tsx` with full post-session recap integration:
+- Added imports for all recap components (`SynthesisBoard`, `KeyAgreements`, `ActionItems`, `RatingPrompt`, and their skeleton variants)
+- Added `transformSummary()` helper function to convert API snake_case summary to frontend camelCase
+- Expanded `PostSessionView` component with:
+  - Fetches session summary via `getSessionSummary()` using React Query
+  - Loading state with full skeleton placeholders for all recap sections
+  - Error state with retry functionality
+  - Fallback view when summary is not yet available
+  - Full recap view with all sections:
+    - `SynthesisBoard` - Main summary with consensus, metrics, share/download actions
+    - `KeyAgreements` - Grid of agreements reached during session
+    - `ActionItems` - List of action items from summary
+    - `RatingPrompt` - Post-session rating collection with skip option
+  - Share functionality using Web Share API with clipboard fallback
+  - Download PDF placeholder (TODO: implement PDF generation)
+- Updated main component to:
+  - Fetch session summary when status is "ended"
+  - Pass summary data to `PostSessionView`
+  - Track `isStarting` state for session start button
+  - Add `handleRetryLoadSummary` callback
+- Verified with `npm run build` ✓
 
 ---
 

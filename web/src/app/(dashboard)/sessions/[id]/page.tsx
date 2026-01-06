@@ -4,21 +4,32 @@
  * Unified session detail view that shows different content based on status:
  * - draft/pending_consent/ready: Waiting room view
  * - in_progress/paused: Redirect to live session
- * - ended: Post-session summary
+ * - ended: Post-session summary with full recap UI
  * - archived: Archived session view
  */
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { getSession, startSession } from '@/lib/api/sessions';
+import { getSession, startSession, getSessionSummary } from '@/lib/api/sessions';
 import { WaitingRoom, type ReadinessItem } from '@/components/session/waiting-room';
+import {
+  SynthesisBoard,
+  SynthesisBoardSkeleton,
+  KeyAgreements,
+  KeyAgreementsSkeleton,
+  ActionItems,
+  ActionItemsSkeleton,
+  RatingPrompt,
+  RatingPromptSkeleton,
+} from '@/components/recap';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { Session as ApiSession } from '@/lib/api/types';
-import type { Session, SessionStatus } from '@/types/session';
+import type { Session as ApiSession, SessionSummary as ApiSessionSummary } from '@/lib/api/types';
+import type { Session, SessionStatus, SessionSummary } from '@/types/session';
+import type { SessionRating } from '@/components/recap';
 
 // =============================================================================
 // Constants
@@ -60,6 +71,33 @@ function transformSession(apiSession: ApiSession): Session {
     inviteToken: apiSession.invite_token,
     botId: apiSession.bot_id,
     clientId: apiSession.client_id,
+  };
+}
+
+/**
+ * Transform API session summary (snake_case) to frontend summary (camelCase)
+ */
+function transformSummary(apiSummary: ApiSessionSummary): SessionSummary {
+  return {
+    sessionId: apiSummary.session_id,
+    durationMinutes: apiSummary.duration_minutes,
+    consensusSummary: apiSummary.consensus_summary,
+    actionItems: apiSummary.action_items,
+    balance: {
+      participantA: {
+        id: apiSummary.balance.participant_a.id,
+        name: apiSummary.balance.participant_a.name,
+        percentage: apiSummary.balance.participant_a.percentage,
+      },
+      participantB: {
+        id: apiSummary.balance.participant_b.id,
+        name: apiSummary.balance.participant_b.name,
+        percentage: apiSummary.balance.participant_b.percentage,
+      },
+      status: apiSummary.balance.status,
+    },
+    interventionCount: apiSummary.intervention_count,
+    keyAgreements: apiSummary.key_agreements,
   };
 }
 
@@ -197,46 +235,198 @@ function PreSessionView({
 }
 
 /**
- * Post-session summary view (placeholder for Phase 9)
+ * Post-session summary view with full recap UI
  */
-function PostSessionView({ session }: { session: Session }) {
+function PostSessionView({
+  session,
+  summary,
+  summaryLoading,
+  summaryError,
+  onRetryLoadSummary,
+}: {
+  session: Session;
+  summary: SessionSummary | null;
+  summaryLoading: boolean;
+  summaryError: Error | null;
+  onRetryLoadSummary: () => void;
+}) {
   const router = useRouter();
   const partner = getPartnerInfo(session.participants);
+  const [isRatingSubmitting, setIsRatingSubmitting] = useState(false);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
 
+  // Format the ended date - use createdAt as proxy since we don't track ended_at
+  const endedAt = session.createdAt;
+
+  // Handle rating submission
+  const handleRatingSubmit = useCallback(async (rating: SessionRating) => {
+    setIsRatingSubmitting(true);
+    try {
+      // TODO: Implement rating submission API endpoint
+      console.log('Rating submitted:', rating);
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setRatingSubmitted(true);
+    } finally {
+      setIsRatingSubmitting(false);
+    }
+  }, []);
+
+  const handleSkipRating = useCallback(() => {
+    setRatingSubmitted(true);
+  }, []);
+
+  // Handle share and download actions
+  const handleShare = useCallback(() => {
+    // TODO: Implement share functionality
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      navigator.share({
+        title: `Session Recap - ${session.title || partner.name}`,
+        text: summary?.consensusSummary || 'Session completed',
+        url: window.location.href,
+      }).catch(() => {
+        // Fallback to clipboard
+        navigator.clipboard.writeText(window.location.href);
+      });
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+    }
+  }, [session.title, partner.name, summary?.consensusSummary]);
+
+  const handleDownload = useCallback(() => {
+    // TODO: Implement PDF download functionality
+    console.log('Download PDF clicked');
+  }, []);
+
+  // Loading state for summary
+  if (summaryLoading) {
+    return (
+      <div className="p-4 space-y-6 max-w-4xl mx-auto">
+        <SynthesisBoardSkeleton />
+        <KeyAgreementsSkeleton />
+        <ActionItemsSkeleton />
+        <RatingPromptSkeleton />
+      </div>
+    );
+  }
+
+  // Error state for summary
+  if (summaryError && !summary) {
+    return (
+      <div className="p-4 space-y-4">
+        <h1 className="text-2xl font-serif mb-1">Session Complete</h1>
+        <p className="text-muted-foreground mb-6">
+          Your session with {partner.name} has ended.
+        </p>
+
+        <Card>
+          <CardContent className="py-8 text-center">
+            <div className="w-16 h-16 rounded-full bg-status-error/10 flex items-center justify-center mx-auto mb-4">
+              <ErrorIcon className="w-8 h-8 text-status-error" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Couldn&apos;t Load Summary</h3>
+            <p className="text-muted-foreground mb-4 max-w-sm mx-auto">
+              {summaryError.message || 'Failed to load session summary'}
+            </p>
+            <Button onClick={onRetryLoadSummary} variant="outline">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => router.push('/hub')}
+        >
+          Return to Hub
+        </Button>
+      </div>
+    );
+  }
+
+  // No summary available yet (fallback view)
+  if (!summary) {
+    return (
+      <div className="p-4 space-y-4">
+        <h1 className="text-2xl font-serif mb-1">Session Complete</h1>
+        <p className="text-muted-foreground mb-6">
+          Your session with {partner.name} has ended.
+        </p>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Session Summary</CardTitle>
+            <CardDescription>
+              Duration: {session.durationMinutes} minutes
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <h3 className="text-sm font-medium mb-1">Goal</h3>
+              <p className="text-sm text-muted-foreground italic">&ldquo;{session.goal}&rdquo;</p>
+            </div>
+
+            <div className="p-4 bg-muted/50 rounded-lg text-center text-sm text-muted-foreground">
+              Summary is being generated...
+            </div>
+          </CardContent>
+        </Card>
+
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => router.push('/hub')}
+        >
+          Return to Hub
+        </Button>
+      </div>
+    );
+  }
+
+  // Full recap view with summary
   return (
-    <div className="p-4 space-y-4">
-      <h1 className="text-2xl font-serif mb-1">Session Complete</h1>
-      <p className="text-muted-foreground mb-6">
-        Your session with {partner.name} has ended.
-      </p>
+    <div className="p-4 space-y-6 max-w-4xl mx-auto pb-8">
+      {/* Synthesis Board - Main summary section */}
+      <SynthesisBoard
+        summary={summary}
+        sessionTitle={session.title || `Session with ${partner.name}`}
+        endedAt={endedAt}
+        onBack={() => router.push('/hub')}
+        onShare={handleShare}
+        onDownload={handleDownload}
+      />
 
+      {/* Key Agreements Section */}
+      <KeyAgreements agreements={summary.keyAgreements} />
+
+      {/* Action Items Section */}
       <Card>
-        <CardHeader>
-          <CardTitle>Session Summary</CardTitle>
-          <CardDescription>
-            Duration: {session.durationMinutes} minutes
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h3 className="text-sm font-medium mb-1">Goal</h3>
-            <p className="text-sm text-muted-foreground italic">&ldquo;{session.goal}&rdquo;</p>
-          </div>
-
-          {/* Placeholder for summary content - will be implemented in Phase 9 */}
-          <div className="p-4 bg-muted/50 rounded-lg text-center text-sm text-muted-foreground">
-            Detailed summary and synthesis board coming soon...
-          </div>
+        <CardContent className="pt-6">
+          <ActionItems items={summary.actionItems} />
         </CardContent>
       </Card>
 
-      <Button
-        variant="outline"
-        className="w-full"
-        onClick={() => router.push('/hub')}
-      >
-        Return to Hub
-      </Button>
+      {/* Rating Prompt - only show if not submitted */}
+      {!ratingSubmitted && (
+        <RatingPrompt
+          sessionId={session.id}
+          onSubmit={handleRatingSubmit}
+          onSkip={handleSkipRating}
+          isSubmitting={isRatingSubmitting}
+        />
+      )}
+
+      {/* Return to Hub button */}
+      <div className="pt-4">
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => router.push('/hub')}
+        >
+          Return to Hub
+        </Button>
+      </div>
     </div>
   );
 }
@@ -298,6 +488,7 @@ export default function SessionDetailPage() {
   const params = useParams();
   const router = useRouter();
   const sessionId = params.id as string;
+  const [isStarting, setIsStarting] = useState(false);
 
   // Fetch session data
   const {
@@ -314,6 +505,22 @@ export default function SessionDetailPage() {
 
   const session = apiSession ? transformSession(apiSession) : null;
 
+  // Fetch session summary (only when session is ended)
+  const {
+    data: apiSummary,
+    isLoading: summaryLoading,
+    error: summaryError,
+    refetch: refetchSummary,
+  } = useQuery({
+    queryKey: ['session-summary', sessionId],
+    queryFn: () => getSessionSummary(sessionId, API_KEY),
+    enabled: !!sessionId && session?.status === 'ended',
+    retry: 3,
+    retryDelay: 1000,
+  });
+
+  const summary = apiSummary ? transformSummary(apiSummary) : null;
+
   // Redirect to live view if session is active
   useEffect(() => {
     if (session?.status === 'in_progress' || session?.status === 'paused') {
@@ -325,6 +532,7 @@ export default function SessionDetailPage() {
   const handleStartSession = async () => {
     if (!session) return;
 
+    setIsStarting(true);
     try {
       await startSession(
         sessionId,
@@ -335,9 +543,15 @@ export default function SessionDetailPage() {
       router.push(`/sessions/${sessionId}/live`);
     } catch (err) {
       console.error('Failed to start session:', err);
+      setIsStarting(false);
       // Error will be shown via query error state on refetch
     }
   };
+
+  // Retry loading summary handler
+  const handleRetryLoadSummary = useCallback(() => {
+    refetchSummary();
+  }, [refetchSummary]);
 
   // Loading state
   if (isLoading) {
@@ -366,12 +580,20 @@ export default function SessionDetailPage() {
 
   // Render based on session status
   const statusViews: Record<SessionStatus, JSX.Element> = {
-    draft: <PreSessionView session={session} onStartSession={handleStartSession} isStarting={false} />,
-    pending_consent: <PreSessionView session={session} onStartSession={handleStartSession} isStarting={false} />,
-    ready: <PreSessionView session={session} onStartSession={handleStartSession} isStarting={false} />,
+    draft: <PreSessionView session={session} onStartSession={handleStartSession} isStarting={isStarting} />,
+    pending_consent: <PreSessionView session={session} onStartSession={handleStartSession} isStarting={isStarting} />,
+    ready: <PreSessionView session={session} onStartSession={handleStartSession} isStarting={isStarting} />,
     in_progress: <SessionDetailSkeleton />, // Will redirect via useEffect
     paused: <SessionDetailSkeleton />, // Will redirect via useEffect
-    ended: <PostSessionView session={session} />,
+    ended: (
+      <PostSessionView
+        session={session}
+        summary={summary}
+        summaryLoading={summaryLoading}
+        summaryError={summaryError instanceof Error ? summaryError : summaryError ? new Error('Failed to load summary') : null}
+        onRetryLoadSummary={handleRetryLoadSummary}
+      />
+    ),
     archived: <ArchivedSessionView />,
   };
 
