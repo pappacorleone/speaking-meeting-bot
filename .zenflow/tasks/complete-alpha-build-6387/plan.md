@@ -1048,7 +1048,8 @@ Assemble live session page.
 
 ## Phase 7: Intervention System
 
-### [ ] Step: 7.1 Intervention Engine
+### [x] Step: 7.1 Intervention Engine
+<!-- chat-id: 0d67c344-2e6a-44f8-98ae-e26eaf66527f -->
 
 Create backend intervention logic.
 
@@ -1058,6 +1059,36 @@ Create backend intervention logic.
 - Configure thresholds from requirements
 
 **Reference:** spec.md Section 4.5 Intervention Engine
+
+**Completed:** Created `core/intervention_engine.py` with comprehensive intervention logic:
+- `InterventionType` enum: BALANCE, SILENCE, GOAL_DRIFT, TIME_WARNING, ESCALATION, ICEBREAKER
+- `InterventionModality` enum: VISUAL, VOICE
+- `InterventionPriority` enum: CRITICAL, HIGH, MEDIUM, LOW
+- `Intervention` dataclass with `to_dict()` for JSON serialization
+- `InterventionTemplates` class with human-written message templates:
+  - Balance (visual and voice variants)
+  - Silence prompts
+  - Time warnings (5 min, 2 min, 1 min)
+  - Goal drift prompts
+  - Escalation/tension prompts
+  - Icebreaker prompts
+- `InterventionEngine` class with:
+  - Configurable thresholds from requirements:
+    - MIN_INTERVENTION_INTERVAL: 30 seconds
+    - COOLDOWN_PERIOD: 2 minutes
+    - SILENCE_THRESHOLD: 15 seconds
+    - FIRST_MINUTES_QUIET: 3 minutes
+    - GOAL_DRIFT_THRESHOLD: 2 minutes
+    - TENSION_THRESHOLD: 0.7
+    - Time warnings at 5, 2, 1 minute remaining
+  - Blocker conditions: mid_sentence, emotional_disclosure, repair_in_progress, crisis_detected
+  - `can_intervene()` - checks all blocker conditions and timing constraints
+  - `evaluate()` - evaluates conditions in priority order and returns intervention
+  - Individual check methods: `_check_escalation()`, `_check_severe_balance()`, `_check_time_warning()`, `_check_silence()`, `_check_mild_balance()`, `_check_goal_drift()`
+  - `pause()` / `resume()` - kill switch support
+  - `create_icebreaker()` - for session start
+  - `get_stats()` / `get_history()` - for analytics
+- Verified with `ruff check` and `ruff format` - All checks passed
 
 ### [ ] Step: 7.2 Intervention Store
 
