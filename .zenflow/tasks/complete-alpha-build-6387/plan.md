@@ -499,7 +499,8 @@ Build first wizard step.
 - Zod validation already defined in wizard-provider.tsx (`stepIdentitySchema`)
 - Verified with `npm run build` ✓
 
-### [ ] Step: 3.3 Step 1 - Session Goal
+### [x] Step: 3.3 Step 1 - Session Goal
+<!-- chat-id: 89eba964-b556-49fa-b210-4c99927fb12f -->
 
 Build goal step.
 
@@ -509,6 +510,21 @@ Build goal step.
 - Add character counter for goal
 
 **Reference:** requirements.md Section 6.4
+
+**Completed:** Created Session Goal wizard step:
+- `components/session/wizard/step-goal.tsx` - Step 1 component with:
+  - Step indicator showing "01 / SESSION GOAL"
+  - Headline: "What do you want to accomplish?"
+  - Goal textarea with placeholder describing expected outcomes
+  - Character counter (0/500) with warning color when near limit
+  - Schedule datetime-local input (optional) with calendar icon
+  - Duration selection as button group (15/30/45/60/90 min options)
+  - Back button and "Continue to Facilitator" CTA
+  - Error display for validation errors with proper ARIA attributes
+  - Uses `useWizardFormData()` and `useWizardNavigation()` hooks
+- Updated `components/session/wizard/index.ts` to export `StepGoal`
+- Zod validation already defined in wizard-provider.tsx (`stepGoalSchema`)
+- Verified with `npm run build` ✓
 
 ### [ ] Step: 3.4 Step 2 - Facilitator Calibration
 
