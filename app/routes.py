@@ -12,6 +12,8 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.models import (
     BotRequest,
+    ConsentRequest,
+    ConsentResponse,
     CreateSessionRequest,
     CreateSessionResponse,
     JoinResponse,
@@ -744,6 +746,42 @@ async def list_sessions(
 
 
 @router.get(
+    "/sessions/invite/{invite_token}",
+    tags=["sessions"],
+    response_model=Session,
+    responses={
+        200: {"description": "Session details returned"},
+        404: {"description": "Session not found for invite token"},
+    },
+)
+async def get_session_by_invite_token(invite_token: str):
+    """
+    Get a session by its invite token.
+
+    This endpoint is used by partners to view session details before consenting.
+    The invite token is included in the invite link shared by the session creator.
+
+    Args:
+        invite_token: The unique invite token from the invite link.
+
+    Returns:
+        The Session object (with limited fields for privacy).
+
+    Raises:
+        HTTPException: 404 if no session found for the invite token.
+    """
+    session = session_service.get_session_by_invite_token(invite_token)
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found for invite token",
+        )
+
+    return session
+
+
+@router.get(
     "/sessions/{session_id}",
     tags=["sessions"],
     response_model=Session,
@@ -774,6 +812,71 @@ async def get_session(session_id: str):
         )
 
     return session
+
+
+@router.post(
+    "/sessions/{session_id}/consent",
+    tags=["sessions"],
+    response_model=ConsentResponse,
+    responses={
+        200: {"description": "Consent recorded successfully"},
+        400: {"description": "Invalid invite token or consent already recorded"},
+        404: {"description": "Session not found"},
+    },
+)
+async def record_consent(session_id: str, request: ConsentRequest):
+    """
+    Record partner consent for a session.
+
+    When a partner receives an invite link, they view the session details and
+    can choose to consent or decline. This endpoint records their decision.
+
+    - If consented: Partner is added to participants, and if both parties have
+      consented, the session status transitions to "ready".
+    - If declined: The session is archived privately (creator is not notified
+      of the specific reason).
+
+    Args:
+        session_id: The session identifier.
+        request: ConsentRequest with invite_token, invitee_name, and consented flag.
+
+    Returns:
+        ConsentResponse with updated status and participants list.
+
+    Raises:
+        HTTPException: 404 if session not found, 400 if invalid token.
+    """
+    try:
+        session = await session_service.record_consent(
+            session_id=session_id,
+            invite_token=request.invite_token,
+            invitee_name=request.invitee_name,
+            consented=request.consented,
+        )
+
+        return ConsentResponse(
+            status=session.status,
+            participants=session.participants,
+        )
+
+    except ValueError as e:
+        error_message = str(e)
+        if "not found" in error_message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_message,
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_message,
+            )
+    except Exception as e:
+        logger.error(f"Error recording consent: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to record consent",
+        )
 
 
 @router.post(

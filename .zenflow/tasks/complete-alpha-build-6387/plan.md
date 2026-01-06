@@ -649,7 +649,8 @@ Assemble wizard into page.
 
 ## Phase 4: Invitation & Consent
 
-### [ ] Step: 4.1 Invite Token & Consent Backend
+### [x] Step: 4.1 Invite Token & Consent Backend
+<!-- chat-id: c313a8cc-0a2b-4985-bcfd-5339f2981a9f -->
 
 Add invite token lookup and consent routes to backend.
 
@@ -666,6 +667,15 @@ Add invite token lookup and consent routes to backend.
 ```bash
 ruff check app/routes.py app/services/session_service.py
 ```
+
+**Completed:** Added invite token lookup and consent routes to `app/routes.py`:
+- `GET /sessions/invite/{invite_token}` - Look up session by invite token for partner to view details before consenting. Route placed before `GET /sessions/{session_id}` to ensure correct path matching.
+- `POST /sessions/{session_id}/consent` - Record partner consent with `ConsentRequest` containing invite_token, invitee_name, and consented flag. Returns `ConsentResponse` with updated status and participants.
+- Service methods `get_session_by_invite_token()` and `record_consent()` already implemented in Step 1.3
+- Dual consent logic: When partner consents, they're added to participants; if both parties have consented, session status transitions to "ready"
+- Decline logic: Session is archived privately without notifying creator
+- Proper error handling: 404 for session not found, 400 for invalid token
+- Verified with `ruff check` - no new issues introduced (pre-existing issues in files are unrelated)
 
 ### [ ] Step: 4.2 Invite Page
 
