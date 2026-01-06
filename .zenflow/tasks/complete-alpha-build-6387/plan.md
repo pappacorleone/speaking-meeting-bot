@@ -579,7 +579,8 @@ Build review step.
 - Updated `components/session/wizard/index.ts` to export `StepReview`
 - Verified with `npm run build` ✓
 
-### [ ] Step: 3.6 Step 4 - Launch Hub
+### [x] Step: 3.6 Step 4 - Launch Hub
+<!-- chat-id: 52206e24-bf7e-4f52-bfad-192d5b4fc3e7 -->
 
 Build final launch step.
 
@@ -588,6 +589,27 @@ Build final launch step.
 - Generate and display invite link
 - Add platform selection dropdown
 - Add meeting URL input field
+
+**Completed:** Created Launch Hub wizard step:
+- `components/session/wizard/step-launch.tsx` - Step 4 component with:
+  - Step indicator showing "04 / LAUNCH HUB"
+  - Headline: "Invite Your Partner" with subtitle about sharing link and connecting
+  - Invite Link Card:
+    - Read-only input displaying the generated invite link
+    - Copy button with success state ("Copied" with checkmark)
+    - Helper text explaining partner consent requirement
+  - Platform Selection:
+    - Radio card group with 4 options: Diadi, Zoom, Google Meet, Microsoft Teams
+    - Each card shows icon, name, description, and selection state
+    - Accessible with proper ARIA attributes (`role="radiogroup"`, `role="radio"`, `aria-checked`)
+  - Conditional Meeting URL Input:
+    - Only shows when external platform (Zoom/Meet/Teams) is selected
+    - URL validation with error display
+    - Helper text explaining AI facilitator will join the meeting
+  - Navigation: "Back to Review" and "Create Session" buttons
+  - Disabled states during submission
+- Updated `components/session/wizard/index.ts` to export `StepLaunch`
+- Verified with `npm run build` ✓
 
 ### [ ] Step: 3.7 Session Creation Page
 
