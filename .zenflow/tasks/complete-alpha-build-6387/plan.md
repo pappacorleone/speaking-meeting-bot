@@ -188,7 +188,8 @@ Create three new personas in `config/personas/`.
 
 ## Phase 2: Frontend Foundation
 
-### [ ] Step: 2.1 Initialize Next.js Project
+### [x] Step: 2.1 Initialize Next.js Project
+<!-- chat-id: 25a639fe-9117-4af7-9c4f-d6227e7c1601 -->
 
 Set up Next.js 14 project in `web/` directory.
 
@@ -204,6 +205,17 @@ Set up Next.js 14 project in `web/` directory.
 ```bash
 cd web && npm run build
 ```
+
+**Completed:** Next.js 14 project initialized in `web/` directory:
+- Created project with TypeScript, Tailwind, ESLint, App Router, and src directory
+- Enhanced `tsconfig.json` with additional strict options: `noUncheckedIndexedAccess`, `noUnusedLocals`, `noUnusedParameters`, `forceConsistentCasingInFileNames`
+- Updated root `.gitignore` with Next.js-specific entries (node_modules, .next, .env.local, etc.)
+- Installed dependencies: `zustand`, `@tanstack/react-query`, `zod`
+- Created `src/providers/query-provider.tsx` with QueryClient configuration
+- Updated `src/app/layout.tsx` to wrap children with QueryProvider
+- Created `.env.local` with `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL`
+- Created `.env.example` for documentation
+- Verified build passes: `npm run build` ✓
 
 ### [ ] Step: 2.2 Configure Tailwind Theme
 

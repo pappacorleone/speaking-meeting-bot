@@ -162,3 +162,16 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 .local_dev_mode
+
+# Next.js (web/)
+web/node_modules/
+web/.next/
+web/out/
+web/.env*.local
+web/npm-debug.log*
+web/yarn-debug.log*
+web/yarn-error.log*
+web/.pnpm-debug.log*
+web/.vercel
+web/*.tsbuildinfo
+web/next-env.d.ts
