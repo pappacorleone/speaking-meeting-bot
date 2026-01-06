@@ -557,7 +557,8 @@ Build facilitator selection step.
 - Updated `components/session/index.ts` to export `PersonaSelector` and `ParameterToggles`
 - Verified with `npm run build` ✓
 
-### [ ] Step: 3.5 Step 3 - Review & Connect
+### [x] Step: 3.5 Step 3 - Review & Connect
+<!-- chat-id: f179ae66-0a5e-4696-bf9a-0303c1f73578 -->
 
 Build review step.
 
@@ -565,6 +566,18 @@ Build review step.
 - Create `components/session/wizard/step-review.tsx`
 - Display summary of all entered data
 - Show edit links to return to previous steps
+
+**Completed:** Created Review & Connect wizard step:
+- `components/session/wizard/step-review.tsx` - Step 3 component with:
+  - Step indicator showing "03 / REVIEW & CONFIRM"
+  - Headline: "Finalize Setup" with subtitle "Initialize the encrypted facilitation chamber."
+  - Summary card displaying: Partner name, Goal (truncated to 2 lines), Mediator persona, Duration, Schedule (if set)
+  - Facilitator settings badges showing enabled behaviors (Interrupt Authority, Direct Inquiry, Silence Detection)
+  - Edit buttons (pencil icons) on each row to navigate back to relevant step via `goToStep()`
+  - Helper functions: `getPersonaDisplayName()`, `formatDuration()`, `formatScheduledDate()`
+  - "Back to Calibration" and "Accept & Initialize" navigation buttons
+- Updated `components/session/wizard/index.ts` to export `StepReview`
+- Verified with `npm run build` ✓
 
 ### [ ] Step: 3.6 Step 4 - Launch Hub
 

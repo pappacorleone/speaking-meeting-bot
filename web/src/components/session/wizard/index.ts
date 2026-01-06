@@ -21,3 +21,4 @@ export {
 export { StepIdentity } from "./step-identity";
 export { StepGoal } from "./step-goal";
 export { StepFacilitator } from "./step-facilitator";
+export { StepReview } from "./step-review";
