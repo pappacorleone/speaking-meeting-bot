@@ -325,35 +325,126 @@ class SessionService:
             "event_url": f"/sessions/{session_id}/events",
         }
 
-    async def end_session(self, session_id: str) -> Session:
+    async def end_session(self, session_id: str, api_key: str) -> Dict[str, Any]:
         """End the session, cleanup resources, generate summary.
+
+        This method handles the full session end lifecycle:
+        1. Validates session exists and can be ended
+        2. Terminates the Pipecat process
+        3. Calls MeetingBaas API to make the bot leave
+        4. Cleans up in-memory state
+        5. Broadcasts session_state event
+        6. Triggers summary generation (async)
 
         Args:
             session_id: The session identifier.
+            api_key: The MeetingBaas API key for bot removal.
 
         Returns:
-            The updated Session object.
+            Dict with status and summary_available flag.
 
         Raises:
-            ValueError: If session not found.
+            ValueError: If session not found or not in a state that can be ended.
         """
         session = store_get_session(session_id)
         if not session:
             raise ValueError("Session not found")
 
-        # TODO: Implement full end_session logic in Phase 8
-        # - Cleanup Pipecat process
-        # - Call leave_meeting_bot via MeetingBaas API
-        # - Trigger summary generation
+        # Session can be ended from in_progress or paused states
+        if session.status not in [SessionStatus.IN_PROGRESS, SessionStatus.PAUSED]:
+            raise ValueError(
+                f"Session cannot be ended (current status: {session.status.value})"
+            )
 
+        # Import dependencies here to avoid circular imports
+        from core.connection import MEETING_DETAILS, PIPECAT_PROCESSES, registry
+        from core.process import terminate_process_gracefully
+        from core.router import router as message_router
+        from scripts.meetingbaas_api import leave_meeting_bot
+        from core.session_store import broadcast_session_event
+
+        client_id = session.client_id
+        bot_id = session.bot_id
+
+        # 1. Terminate the Pipecat process
+        if client_id and client_id in PIPECAT_PROCESSES:
+            process = PIPECAT_PROCESSES[client_id]
+            if process and process.poll() is None:  # Process is still running
+                try:
+                    # Mark client as closing to prevent further messages
+                    message_router.mark_closing(client_id)
+
+                    if terminate_process_gracefully(process, timeout=3.0):
+                        logger.info(
+                            f"Gracefully terminated Pipecat process for session {session_id}"
+                        )
+                    else:
+                        logger.warning(
+                            f"Had to forcefully kill Pipecat process for session {session_id}"
+                        )
+                except Exception as e:
+                    logger.error(f"Error terminating Pipecat process: {e}")
+
+            # Remove from process tracking
+            PIPECAT_PROCESSES.pop(client_id, None)
+
+        # 2. Call MeetingBaas API to make the bot leave
+        if bot_id:
+            try:
+                result = leave_meeting_bot(bot_id=bot_id, api_key=api_key)
+                if result:
+                    logger.info(f"Bot {bot_id} successfully left the meeting")
+                else:
+                    logger.warning(f"Failed to remove bot {bot_id} from meeting")
+            except Exception as e:
+                logger.error(f"Error calling leave_meeting_bot: {e}")
+
+        # 3. Close WebSocket connections
+        if client_id:
+            try:
+                # Close Pipecat WebSocket
+                if client_id in registry.pipecat_connections:
+                    await registry.disconnect(client_id, is_pipecat=True)
+                    logger.info(f"Closed Pipecat WebSocket for session {session_id}")
+
+                # Close client WebSockets
+                if registry.get_client_output(client_id):
+                    await registry.disconnect(client_id, client_direction="output")
+                if registry.get_client_input(client_id):
+                    await registry.disconnect(client_id, client_direction="input")
+            except Exception as e:
+                logger.error(f"Error closing WebSocket connections: {e}")
+
+        # 4. Clean up in-memory state
+        if client_id and client_id in MEETING_DETAILS:
+            MEETING_DETAILS.pop(client_id, None)
+            logger.info(f"Cleaned up meeting details for session {session_id}")
+
+        # 5. Update session status
         session.status = SessionStatus.ENDED
         store_update_session(session_id, session)
-        logger.info(f"Ended session {session_id}")
+        logger.info(f"Session {session_id} ended successfully")
 
-        # Trigger summary generation (async)
-        await self._generate_summary(session_id)
+        # 6. Broadcast session_state event to any connected clients
+        try:
+            await broadcast_session_event(
+                session_id,
+                "session_state",
+                {
+                    "status": session.status.value,
+                    "ended": True,
+                },
+            )
+        except Exception as e:
+            logger.warning(f"Error broadcasting session end event: {e}")
 
-        return session
+        # 7. Trigger summary generation (async - does not block return)
+        summary_available = await self._generate_summary(session_id)
+
+        return {
+            "status": session.status,
+            "summary_available": summary_available,
+        }
 
     async def pause_facilitation(self, session_id: str) -> Session:
         """Pause AI facilitation (kill switch).

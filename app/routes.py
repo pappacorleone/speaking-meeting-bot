@@ -16,6 +16,7 @@ from app.models import (
     ConsentResponse,
     CreateSessionRequest,
     CreateSessionResponse,
+    EndSessionResponse,
     JoinResponse,
     LeaveBotRequest,
     PauseResumeResponse,
@@ -1066,6 +1067,73 @@ async def resume_session(session_id: str):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to resume session",
+        )
+
+
+@router.post(
+    "/sessions/{session_id}/end",
+    tags=["sessions"],
+    response_model=EndSessionResponse,
+    responses={
+        200: {"description": "Session ended successfully"},
+        400: {"description": "Session cannot be ended (not in progress or paused)"},
+        404: {"description": "Session not found"},
+    },
+)
+async def end_session(session_id: str, client_request: Request):
+    """
+    End a Diadi facilitation session.
+
+    This endpoint ends the session by:
+    1. Terminating the Pipecat AI process
+    2. Making the MeetingBaas bot leave the meeting
+    3. Closing all WebSocket connections
+    4. Cleaning up in-memory state
+    5. Broadcasting session end event to connected clients
+    6. Triggering async summary generation
+
+    The session must be in "in_progress" or "paused" status to be ended.
+
+    Args:
+        session_id: The session identifier.
+
+    Returns:
+        EndSessionResponse with status "ended" and summaryAvailable flag.
+
+    Raises:
+        HTTPException: 404 if session not found, 400 if session cannot be ended.
+    """
+    # Get API key from request state (set by middleware)
+    api_key = client_request.state.api_key
+
+    try:
+        result = await session_service.end_session(
+            session_id=session_id,
+            api_key=api_key,
+        )
+
+        return EndSessionResponse(
+            status=result["status"],
+            summary_available=result["summary_available"],
+        )
+
+    except ValueError as e:
+        error_message = str(e)
+        if "not found" in error_message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_message,
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_message,
+            )
+    except Exception as e:
+        logger.error(f"Error ending session {session_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to end session",
         )
 
 

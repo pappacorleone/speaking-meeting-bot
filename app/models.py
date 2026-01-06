@@ -185,6 +185,13 @@ class PauseResumeResponse(BaseModel):
     status: SessionStatus
 
 
+class EndSessionResponse(BaseModel):
+    """Response model for ending a session."""
+
+    status: SessionStatus
+    summary_available: bool = False
+
+
 # =============================================================================
 # Existing Bot Models
 # =============================================================================

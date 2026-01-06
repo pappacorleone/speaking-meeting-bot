@@ -1241,7 +1241,8 @@ Build pause facilitation UI.
 - Updated `components/live/index.ts` barrel export
 - Verified with `npm run build` ✓
 
-### [ ] Step: 8.3 Session End Backend
+### [x] Step: 8.3 Session End Backend
+<!-- chat-id: 1f38397e-e9c7-4932-8c46-5a48acfcfe36 -->
 
 Implement session end logic.
 
@@ -1251,6 +1252,23 @@ Implement session end logic.
 - Call `leave_meeting_bot()`
 
 **Reference:** spec.md Section 4.2 end_session()
+
+**Completed:** Implemented full session end backend:
+- Added `EndSessionResponse` model to `app/models.py` with `status` and `summary_available` fields
+- Updated `end_session()` in `app/services/session_service.py` with full lifecycle:
+  1. Validates session exists and is in `in_progress` or `paused` status
+  2. Terminates Pipecat process via `terminate_process_gracefully()`
+  3. Calls `leave_meeting_bot()` to remove bot from MeetingBaas
+  4. Closes WebSocket connections (Pipecat, client input/output)
+  5. Cleans up in-memory state (MEETING_DETAILS, PIPECAT_PROCESSES)
+  6. Updates session status to ENDED
+  7. Broadcasts `session_state` event with `ended: true` to connected clients
+  8. Triggers async summary generation (placeholder for Phase 9)
+- Added `POST /sessions/{session_id}/end` endpoint to `app/routes.py`:
+  - Requires `x-meeting-baas-api-key` header
+  - Returns `EndSessionResponse` with status "ended" and summaryAvailable flag
+  - Proper error handling: 404 for not found, 400 for invalid state, 500 for server errors
+- Verified with `ruff format --check` - all files properly formatted
 
 ---
 
