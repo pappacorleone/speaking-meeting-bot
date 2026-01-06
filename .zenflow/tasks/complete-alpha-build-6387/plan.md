@@ -1174,7 +1174,8 @@ Build specific intervention UIs.
 
 ## Phase 8: Kill Switch & Session End
 
-### [ ] Step: 8.1 Pause/Resume Backend
+### [x] Step: 8.1 Pause/Resume Backend
+<!-- chat-id: fb30329e-0c5d-4835-9325-03647dada617 -->
 
 Add pause/resume endpoints.
 
@@ -1183,6 +1184,26 @@ Add pause/resume endpoints.
 - Add `POST /sessions/{id}/resume` endpoint
 
 **Reference:** spec.md Section 6.1 Pause/Resume endpoints
+
+**Completed:** Added pause/resume backend functionality:
+- Added `PauseResumeResponse` model to `app/models.py` with status field
+- Added `POST /sessions/{session_id}/pause` endpoint to `app/routes.py`:
+  - Validates session exists and is in_progress
+  - Calls `session_service.pause_facilitation()`
+  - Returns `PauseResumeResponse` with status "paused"
+  - Proper error handling: 404 for not found, 400 if not in progress
+- Added `POST /sessions/{session_id}/resume` endpoint to `app/routes.py`:
+  - Validates session exists and is paused
+  - Calls `session_service.resume_facilitation()`
+  - Returns `PauseResumeResponse` with status "in_progress"
+  - Proper error handling: 404 for not found, 400 if not paused
+- Updated `session_service.pause_facilitation()` with:
+  - Status validation (must be IN_PROGRESS to pause)
+  - Broadcasts `session_state` event to WebSocket clients with `facilitator_paused: true`
+- Updated `session_service.resume_facilitation()` with:
+  - Status validation (must be PAUSED to resume)
+  - Broadcasts `session_state` event to WebSocket clients with `facilitator_paused: false`
+- Verified with `ruff format --check` - all files properly formatted
 
 ### [ ] Step: 8.2 Kill Switch Component
 

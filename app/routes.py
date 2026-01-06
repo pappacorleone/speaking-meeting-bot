@@ -18,6 +18,7 @@ from app.models import (
     CreateSessionResponse,
     JoinResponse,
     LeaveBotRequest,
+    PauseResumeResponse,
     PersonaImageRequest,
     PersonaImageResponse,
     Session,
@@ -964,6 +965,107 @@ async def start_session(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to start session",
+        )
+
+
+@router.post(
+    "/sessions/{session_id}/pause",
+    tags=["sessions"],
+    response_model=PauseResumeResponse,
+    responses={
+        200: {"description": "Facilitation paused successfully"},
+        400: {"description": "Session not in progress"},
+        404: {"description": "Session not found"},
+    },
+)
+async def pause_session(session_id: str):
+    """
+    Pause AI facilitation for a session (kill switch).
+
+    This immediately pauses AI interventions while keeping the session active.
+    The session status transitions from "in_progress" to "paused".
+    Participants can still continue their conversation without AI assistance.
+
+    Args:
+        session_id: The session identifier.
+
+    Returns:
+        PauseResumeResponse with status "paused".
+
+    Raises:
+        HTTPException: 404 if session not found, 400 if not in progress.
+    """
+    try:
+        session = await session_service.pause_facilitation(session_id)
+        return PauseResumeResponse(status=session.status)
+
+    except ValueError as e:
+        error_message = str(e)
+        if "not found" in error_message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_message,
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_message,
+            )
+    except Exception as e:
+        logger.error(f"Error pausing session {session_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to pause session",
+        )
+
+
+@router.post(
+    "/sessions/{session_id}/resume",
+    tags=["sessions"],
+    response_model=PauseResumeResponse,
+    responses={
+        200: {"description": "Facilitation resumed successfully"},
+        400: {"description": "Session not paused"},
+        404: {"description": "Session not found"},
+    },
+)
+async def resume_session(session_id: str):
+    """
+    Resume AI facilitation for a paused session.
+
+    This re-enables AI interventions for a previously paused session.
+    The session status transitions from "paused" back to "in_progress".
+
+    Args:
+        session_id: The session identifier.
+
+    Returns:
+        PauseResumeResponse with status "in_progress".
+
+    Raises:
+        HTTPException: 404 if session not found, 400 if not paused.
+    """
+    try:
+        session = await session_service.resume_facilitation(session_id)
+        return PauseResumeResponse(status=session.status)
+
+    except ValueError as e:
+        error_message = str(e)
+        if "not found" in error_message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_message,
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_message,
+            )
+    except Exception as e:
+        logger.error(f"Error resuming session {session_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to resume session",
         )
 
 

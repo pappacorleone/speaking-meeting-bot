@@ -179,6 +179,12 @@ class SessionEventPayload(BaseModel):
     timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
 
 
+class PauseResumeResponse(BaseModel):
+    """Response model for pause/resume actions."""
+
+    status: SessionStatus
+
+
 # =============================================================================
 # Existing Bot Models
 # =============================================================================

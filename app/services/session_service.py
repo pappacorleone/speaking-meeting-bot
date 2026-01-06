@@ -358,50 +358,85 @@ class SessionService:
     async def pause_facilitation(self, session_id: str) -> Session:
         """Pause AI facilitation (kill switch).
 
+        Immediately pauses AI interventions while keeping the session active.
+        This is the kill switch functionality that gives participants control.
+
         Args:
             session_id: The session identifier.
 
         Returns:
-            The updated Session object.
+            The updated Session object with status "paused".
 
         Raises:
-            ValueError: If session not found.
+            ValueError: If session not found or not in progress.
         """
         session = store_get_session(session_id)
         if not session:
             raise ValueError("Session not found")
 
+        if session.status != SessionStatus.IN_PROGRESS:
+            raise ValueError("Session not in progress")
+
         session.status = SessionStatus.PAUSED
         store_update_session(session_id, session)
         logger.info(f"Paused facilitation for session {session_id}")
 
-        # TODO: Notify Pipecat to stop interventions
+        # Notify Pipecat to stop interventions
         await self._notify_pipecat(session.client_id, {"action": "pause"})
+
+        # Broadcast pause event to connected clients
+        from core.session_store import broadcast_session_event
+
+        await broadcast_session_event(
+            session_id,
+            "session_state",
+            {
+                "status": session.status.value,
+                "facilitator_paused": True,
+            },
+        )
 
         return session
 
     async def resume_facilitation(self, session_id: str) -> Session:
         """Resume AI facilitation after pause.
 
+        Re-enables AI interventions for a previously paused session.
+
         Args:
             session_id: The session identifier.
 
         Returns:
-            The updated Session object.
+            The updated Session object with status "in_progress".
 
         Raises:
-            ValueError: If session not found.
+            ValueError: If session not found or not paused.
         """
         session = store_get_session(session_id)
         if not session:
             raise ValueError("Session not found")
 
+        if session.status != SessionStatus.PAUSED:
+            raise ValueError("Session not paused")
+
         session.status = SessionStatus.IN_PROGRESS
         store_update_session(session_id, session)
         logger.info(f"Resumed facilitation for session {session_id}")
 
-        # TODO: Notify Pipecat to resume interventions
+        # Notify Pipecat to resume interventions
         await self._notify_pipecat(session.client_id, {"action": "resume"})
+
+        # Broadcast resume event to connected clients
+        from core.session_store import broadcast_session_event
+
+        await broadcast_session_event(
+            session_id,
+            "session_state",
+            {
+                "status": session.status.value,
+                "facilitator_paused": False,
+            },
+        )
 
         return session
 
