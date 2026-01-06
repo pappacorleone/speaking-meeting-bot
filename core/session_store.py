@@ -98,6 +98,9 @@ def delete_session(session_id: str) -> bool:
         # Also cleanup any associated WebSocket connections
         if session_id in SESSION_EVENTS:
             del SESSION_EVENTS[session_id]
+        # Also cleanup any associated summary
+        if session_id in SESSION_SUMMARIES:
+            del SESSION_SUMMARIES[session_id]
         return True
     return False
 
@@ -109,11 +112,13 @@ def list_sessions(status: Optional[str] = None) -> List[Session]:
         status: Optional status filter (e.g., "draft", "in_progress").
 
     Returns:
-        List of Session objects matching the filter.
+        List of Session objects matching the filter, sorted by created_at descending.
     """
     sessions = list(SESSION_STORE.values())
     if status:
         sessions = [s for s in sessions if s.status.value == status]
+    # Sort by created_at descending (newest first)
+    sessions.sort(key=lambda s: s.created_at, reverse=True)
     return sessions
 
 
@@ -160,14 +165,24 @@ def get_event_connections(session_id: str) -> List[WebSocket]:
     return SESSION_EVENTS.get(session_id, [])
 
 
-async def broadcast_session_event(session_id: str, event: dict) -> None:
+async def broadcast_session_event(
+    session_id: str, event_type: str, data: dict
+) -> None:
     """Broadcast an event to all connected clients for a session.
 
     Args:
         session_id: The session identifier.
-        event: The event dictionary to broadcast.
+        event_type: The type of event (e.g., "session_state", "balance_update").
+        data: The event data to broadcast.
     """
+    from datetime import datetime
+
     connections = get_event_connections(session_id)
+    event = {
+        "type": event_type,
+        "data": data,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
     for ws in connections:
         try:
             await ws.send_json(event)

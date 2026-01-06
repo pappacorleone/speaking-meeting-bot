@@ -23,6 +23,8 @@ from app.models import (
     PersonaImageRequest,
     PersonaImageResponse,
     Session,
+    SessionListResponse,
+    SessionStatus,
     SessionSummary,
     StartSessionRequest,
     StartSessionResponse,

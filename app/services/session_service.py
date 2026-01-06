@@ -66,6 +66,7 @@ class SessionService:
             title=f"Session with {partner_name}",
             goal=goal,
             relationship_context=relationship_context,
+            partner_name=partner_name,
             platform=platform,
             duration_minutes=duration_minutes,
             scheduled_at=scheduled_at,
@@ -360,8 +361,8 @@ class SessionService:
         from core.connection import MEETING_DETAILS, PIPECAT_PROCESSES, registry
         from core.process import terminate_process_gracefully
         from core.router import router as message_router
-        from scripts.meetingbaas_api import leave_meeting_bot
         from core.session_store import broadcast_session_event
+        from scripts.meetingbaas_api import leave_meeting_bot
 
         client_id = session.client_id
         bot_id = session.bot_id
