@@ -15,7 +15,7 @@
 import { useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { getSession, endSession, logError } from '@/lib/api';
+import { getSession, endSession, pauseSession, resumeSession, logError } from '@/lib/api';
 import { useSessionEvents } from '@/hooks/use-session-events';
 import { useSessionStore } from '@/stores/session-store';
 import { useInterventionStore } from '@/stores/intervention-store';
@@ -48,7 +48,10 @@ import type { Intervention } from '@/types/intervention';
 // Constants
 // =============================================================================
 
-const API_KEY = process.env.NEXT_PUBLIC_MEETING_BAAS_API_KEY || 'dev-key';
+const API_KEY =
+  process.env.NEXT_PUBLIC_MEETING_BAAS_API_KEY ||
+  process.env.NEXT_PUBLIC_API_KEY ||
+  "dev-key";
 
 // =============================================================================
 // Helper Functions
@@ -59,7 +62,7 @@ const API_KEY = process.env.NEXT_PUBLIC_MEETING_BAAS_API_KEY || 'dev-key';
  */
 function transformSession(apiSession: ApiSession): Session {
   return {
-    id: apiSession.session_id,
+    id: apiSession.id,
     title: apiSession.title,
     goal: apiSession.goal,
     relationshipContext: apiSession.relationship_context,
@@ -406,6 +409,7 @@ export default function LiveSessionPage() {
     setEnding,
     setPausing,
     updateSession,
+    updateParticipants,
   } = useSessionStore();
 
   // Intervention Store
@@ -476,13 +480,25 @@ export default function LiveSessionPage() {
   const handleSessionState = useCallback(
     (data: SessionStateData) => {
       updateSession({ status: data.status });
+      if (typeof data.facilitatorPaused === "boolean") {
+        setFacilitatorPaused(data.facilitatorPaused);
+      }
+      if (data.aiStatus) {
+        setAIStatus(data.aiStatus);
+      }
+      if (data.durationMinutes) {
+        updateSession({ durationMinutes: data.durationMinutes });
+      }
+      if (data.participants) {
+        updateParticipants(data.participants);
+      }
 
       // If session ended, redirect to summary
       if (data.status === 'ended') {
         router.push(`/sessions/${sessionId}`);
       }
     },
-    [updateSession, router, sessionId]
+    [updateSession, updateParticipants, setFacilitatorPaused, setAIStatus, router, sessionId]
   );
 
   const handleIntervention = useCallback(
@@ -556,13 +572,22 @@ export default function LiveSessionPage() {
     }
   }, [sessionId, setEnding, router]);
 
-  const handlePauseFacilitator = useCallback(() => {
+  const handlePauseFacilitator = useCallback(async () => {
+    if (!sessionId) return;
     setPausing(true);
-    // Toggle pause state
-    setFacilitatorPaused(!facilitatorPaused);
-    // TODO: Call pause/resume API endpoint when implemented
-    setTimeout(() => setPausing(false), 500);
-  }, [facilitatorPaused, setPausing, setFacilitatorPaused]);
+    try {
+      const response = facilitatorPaused
+        ? await resumeSession(sessionId, API_KEY)
+        : await pauseSession(sessionId, API_KEY);
+      const paused = response.status === "paused";
+      setFacilitatorPaused(paused);
+      updateSession({ status: response.status as Session["status"] });
+    } catch (err) {
+      console.error("Failed to toggle facilitation:", err);
+    } finally {
+      setPausing(false);
+    }
+  }, [sessionId, facilitatorPaused, setPausing, setFacilitatorPaused, updateSession]);
 
   // ---------------------------------------------------------------------
   // Render

@@ -108,7 +108,7 @@ class InterventionTemplates:
 
     # Balance interventions
     BALANCE_VISUAL = "{name} hasn't shared their perspective yet"
-    BALANCE_VISUAL_ALT = "I notice {name} has been quieter—would you like to share?"
+    BALANCE_VISUAL_ALT = "I notice {name} has been quieter - would you like to share?"
     BALANCE_VOICE = (
         "I notice the conversation has been a bit one-sided. "
         "{name}, would you like to share your thoughts?"
@@ -125,7 +125,7 @@ class InterventionTemplates:
     TIME_5_MIN = "You have about 5 minutes left."
     TIME_5_MIN_TOPIC = (
         "You have about 5 minutes left. You mentioned wanting to discuss "
-        "{topic}—would you like to touch on that?"
+        "{topic} - would you like to touch on that?"
     )
     TIME_2_MIN = "About 2 minutes remaining."
     TIME_1_MIN = "One minute left to wrap up."

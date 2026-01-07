@@ -3,7 +3,9 @@
 Handles session lifecycle, state transitions, and business logic.
 """
 
+import json
 import secrets
+import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -21,12 +23,96 @@ from core.session_store import (
     get_session as store_get_session,
     get_session_by_invite_token as store_get_session_by_token,
     list_sessions as store_list_sessions,
+    get_balance_snapshot,
+    get_intervention_history,
+    pause_session_timer,
+    resume_session_timer,
+    store_balance_metrics,
+    start_balance_tracker,
+    start_intervention_engine,
+    start_session_timer,
+    stop_balance_tracker,
+    stop_intervention_engine,
+    stop_session_timer,
     update_session as store_update_session,
 )
+
+ALLOWED_DURATIONS = {15, 30, 45, 60}
+MEET_URL_PATTERN = re.compile(r"^https://meet\.google\.com/[a-z0-9-]+(?:\?.*)?$", re.IGNORECASE)
 
 
 class SessionService:
     """Manages session lifecycle and state transitions."""
+
+    def _normalize_meeting_url(self, meeting_url: Optional[str]) -> Optional[str]:
+        if meeting_url is None:
+            return None
+        cleaned = meeting_url.strip()
+        return cleaned or None
+
+    def _validate_duration(self, duration_minutes: int) -> None:
+        if duration_minutes not in ALLOWED_DURATIONS:
+            raise ValueError("Duration must be one of 15, 30, 45, or 60 minutes")
+
+    def _validate_meeting_url(
+        self, platform: Platform, meeting_url: Optional[str]
+    ) -> Optional[str]:
+        normalized = self._normalize_meeting_url(meeting_url)
+
+        if platform == Platform.DIADI:
+            return normalized
+
+        if not normalized:
+            raise ValueError("Meeting URL is required for external platforms")
+
+        if platform == Platform.MEET and not MEET_URL_PATTERN.match(normalized):
+            raise ValueError("Meeting URL must be a valid Google Meet link")
+
+        return normalized
+
+    def _build_session_state_payload(
+        self,
+        session: Session,
+        ai_status: Optional[str] = None,
+        facilitator_paused: Optional[bool] = None,
+    ) -> Dict[str, Any]:
+        paused = facilitator_paused
+        if paused is None:
+            paused = session.status == SessionStatus.PAUSED
+
+        status_value = session.status.value
+        if ai_status is None:
+            if paused:
+                ai_status = "paused"
+            elif status_value == SessionStatus.IN_PROGRESS.value:
+                ai_status = "listening"
+            else:
+                ai_status = "idle"
+
+        return {
+            "status": status_value,
+            "goal": session.goal,
+            "durationMinutes": session.duration_minutes,
+            "participants": [
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "role": p.role,
+                    "consented": p.consented,
+                }
+                for p in session.participants
+            ],
+            "facilitatorConfig": {
+                "persona": session.facilitator.persona.value,
+                "interruptAuthority": session.facilitator.interrupt_authority,
+                "directInquiry": session.facilitator.direct_inquiry,
+                "silenceDetection": session.facilitator.silence_detection,
+            },
+            "botId": session.bot_id,
+            "clientId": session.client_id,
+            "facilitatorPaused": paused,
+            "aiStatus": ai_status,
+        }
 
     async def create_session(
         self,
@@ -41,7 +127,7 @@ class SessionService:
         meeting_url: Optional[str] = None,
         skip_consent: bool = False,
     ) -> Session:
-        """Create a new session in draft status.
+        """Create a new session in pending_consent status (or ready in dev mode).
 
         Args:
             creator_name: Name of the session creator.
@@ -58,6 +144,9 @@ class SessionService:
         Returns:
             The created Session object.
         """
+        self._validate_duration(duration_minutes)
+        meeting_url = self._validate_meeting_url(platform, meeting_url)
+
         session_id = secrets.token_urlsafe(16)
         invite_token = secrets.token_urlsafe(32)
         creator_id = secrets.token_urlsafe(8)
@@ -198,7 +287,7 @@ class SessionService:
     async def start_session(
         self,
         session_id: str,
-        meeting_url: str,
+        meeting_url: Optional[str],
         api_key: str,
         websocket_base_url: str,
     ) -> Dict[str, Any]:
@@ -206,7 +295,7 @@ class SessionService:
 
         Args:
             session_id: The session identifier.
-            meeting_url: The meeting platform URL.
+            meeting_url: Optional meeting platform URL (required for external platforms).
             api_key: The MeetingBaas API key for bot creation.
             websocket_base_url: Base URL for WebSocket connections.
 
@@ -224,6 +313,11 @@ class SessionService:
             raise ValueError(
                 f"Session not ready to start (current status: {session.status.value})"
             )
+        if session.platform == Platform.DIADI:
+            raise ValueError("Diadi platform is coming soon")
+
+        meeting_url = meeting_url or session.meeting_url
+        meeting_url = self._validate_meeting_url(session.platform, meeting_url)
 
         # Import dependencies here to avoid circular imports
         from config.persona_utils import persona_manager
@@ -343,6 +437,21 @@ class SessionService:
         store_update_session(session_id, session)
         logger.info(f"Session {session_id} started successfully")
 
+        # Start time tracking and broadcast initial state
+        start_session_timer(session_id, session.duration_minutes)
+        start_balance_tracker(session)
+        start_intervention_engine(session)
+        try:
+            from core.session_store import broadcast_session_event
+
+            await broadcast_session_event(
+                session_id,
+                "session_state",
+                self._build_session_state_payload(session),
+            )
+        except Exception as e:
+            logger.warning(f"Failed to broadcast session start state: {e}")
+
         return {
             "status": session.status,
             "bot_id": meetingbaas_bot_id,
@@ -450,21 +559,52 @@ class SessionService:
         store_update_session(session_id, session)
         logger.info(f"Session {session_id} ended successfully")
 
+        # Capture intervention history before cleanup
+        intervention_history = get_intervention_history(session_id)
+
+        balance_metrics = None
+        balance_snapshot = get_balance_snapshot(session_id)
+        if balance_snapshot and balance_snapshot.get("status") != "waiting_for_speakers":
+            balance_metrics = {
+                "participant_a": {
+                    "id": balance_snapshot["participantA"]["id"],
+                    "name": balance_snapshot["participantA"]["name"],
+                    "percentage": balance_snapshot["participantA"]["percentage"],
+                },
+                "participant_b": {
+                    "id": balance_snapshot["participantB"]["id"],
+                    "name": balance_snapshot["participantB"]["name"],
+                    "percentage": balance_snapshot["participantB"]["percentage"],
+                },
+                "status": balance_snapshot["status"],
+            }
+            store_balance_metrics(session_id, balance_metrics)
+
+        # Stop time tracking and runtime engines
+        stop_session_timer(session_id)
+        stop_intervention_engine(session_id)
+        stop_balance_tracker(session_id)
+
         # 6. Broadcast session_state event to any connected clients
         try:
             await broadcast_session_event(
                 session_id,
                 "session_state",
                 {
-                    "status": session.status.value,
-                    "ended": True,
+                    **self._build_session_state_payload(
+                        session, ai_status="idle", facilitator_paused=False
+                    ),
                 },
             )
         except Exception as e:
             logger.warning(f"Error broadcasting session end event: {e}")
 
         # 7. Trigger summary generation (async - does not block return)
-        summary_available = await self._generate_summary(session_id)
+        summary_available = await self._generate_summary(
+            session_id,
+            balance_metrics=balance_metrics,
+            intervention_history=intervention_history,
+        )
 
         return {
             "status": session.status,
@@ -500,6 +640,8 @@ class SessionService:
         # Notify Pipecat to stop interventions
         await self._notify_pipecat(session.client_id, {"action": "pause"})
 
+        pause_session_timer(session_id)
+
         # Broadcast pause event to connected clients
         from core.session_store import broadcast_session_event
 
@@ -507,8 +649,9 @@ class SessionService:
             session_id,
             "session_state",
             {
-                "status": session.status.value,
-                "facilitator_paused": True,
+                **self._build_session_state_payload(
+                    session, ai_status="paused", facilitator_paused=True
+                ),
             },
         )
 
@@ -542,6 +685,8 @@ class SessionService:
         # Notify Pipecat to resume interventions
         await self._notify_pipecat(session.client_id, {"action": "resume"})
 
+        resume_session_timer(session_id)
+
         # Broadcast resume event to connected clients
         from core.session_store import broadcast_session_event
 
@@ -549,18 +694,26 @@ class SessionService:
             session_id,
             "session_state",
             {
-                "status": session.status.value,
-                "facilitator_paused": False,
+                **self._build_session_state_payload(
+                    session, ai_status="listening", facilitator_paused=False
+                ),
             },
         )
 
         return session
 
-    async def _generate_summary(self, session_id: str) -> bool:
+    async def _generate_summary(
+        self,
+        session_id: str,
+        balance_metrics: Optional[Dict[str, Any]] = None,
+        intervention_history: Optional[List[Dict[str, Any]]] = None,
+    ) -> bool:
         """Generate post-session summary using OpenAI.
 
         Args:
             session_id: The session identifier.
+            balance_metrics: Optional talk balance metrics to include.
+            intervention_history: Optional intervention history to include.
 
         Returns:
             True if summary was generated and stored, False otherwise.
@@ -581,10 +734,7 @@ class SessionService:
                 for p in session.participants
             ]
 
-            # TODO: Get actual balance metrics and intervention history from session
-            # For now, use defaults
-            balance_metrics = None
-            intervention_history = None
+            # TODO: Wire in live balance metrics when available.
             transcript = None
 
             # Generate summary via SummaryService
@@ -622,8 +772,26 @@ class SessionService:
         """
         if not client_id:
             return
-        # TODO: Implement WebSocket message to Pipecat
-        logger.debug(f"Pipecat notification placeholder: {client_id} -> {message}")
+        from core.connection import registry
+        from datetime import datetime
+
+        pipecat_ws = registry.get_pipecat(client_id)
+        if not pipecat_ws:
+            return
+
+        payload = {
+            "type": "control",
+            "data": message,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+        try:
+            from protobufs import frames_pb2
+
+            frame = frames_pb2.Frame()
+            frame.text.text = json.dumps(payload)
+            await pipecat_ws.send_bytes(frame.SerializeToString())
+        except Exception as e:
+            logger.debug(f"Failed to notify Pipecat {client_id}: {e}")
 
 
 # Create global service instance

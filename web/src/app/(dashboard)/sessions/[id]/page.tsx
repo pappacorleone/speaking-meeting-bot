@@ -35,7 +35,10 @@ const RatingPromptSkeleton = lazy(() => import('@/components/recap/rating-prompt
 // Constants
 // =============================================================================
 
-const API_KEY = process.env.NEXT_PUBLIC_MEETING_BAAS_API_KEY || 'dev-key';
+const API_KEY =
+  process.env.NEXT_PUBLIC_MEETING_BAAS_API_KEY ||
+  process.env.NEXT_PUBLIC_API_KEY ||
+  "dev-key";
 
 // =============================================================================
 // Helper Functions
@@ -46,7 +49,7 @@ const API_KEY = process.env.NEXT_PUBLIC_MEETING_BAAS_API_KEY || 'dev-key';
  */
 function transformSession(apiSession: ApiSession): Session {
   return {
-    id: apiSession.session_id,
+    id: apiSession.id,
     title: apiSession.title,
     goal: apiSession.goal,
     relationshipContext: apiSession.relationship_context,
@@ -550,7 +553,7 @@ export default function SessionDetailPage() {
     try {
       await startSession(
         sessionId,
-        { meeting_url: session.meetingUrl || '' },
+        { meeting_url: session.meetingUrl || undefined },
         API_KEY
       );
       // Redirect to live view

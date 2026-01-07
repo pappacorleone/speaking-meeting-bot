@@ -9,14 +9,13 @@ import { ArrowRight, ArrowLeft, Clock, Calendar } from "lucide-react";
 
 /**
  * Duration options for session length
- * Minimum: 15 minutes, Maximum: 90 minutes (per spec)
+ * Allowed: 15/30/45/60 minutes (per spec)
  */
 const DURATION_OPTIONS = [
   { value: 15, label: "15 min" },
   { value: 30, label: "30 min" },
   { value: 45, label: "45 min" },
   { value: 60, label: "60 min" },
-  { value: 90, label: "90 min" },
 ] as const;
 
 /**
@@ -25,7 +24,7 @@ const DURATION_OPTIONS = [
  * Second step of the session creation wizard where users define:
  * - Session goal (what they want to accomplish)
  * - Schedule (optional - now or later)
- * - Duration (15-90 minutes)
+ * - Duration (15/30/45/60 minutes)
  *
  * Reference: requirements.md Section 6.4 / 7.2
  */
@@ -46,9 +45,9 @@ export function StepGoal() {
     prevStep();
   };
 
-  // Character count for goal (max 500)
+  // Character count for goal (max 200)
   const goalLength = formData.goal.length;
-  const goalMaxLength = 500;
+  const goalMaxLength = 200;
   const isGoalNearLimit = goalLength > goalMaxLength * 0.8;
 
   return (

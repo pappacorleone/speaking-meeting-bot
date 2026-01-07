@@ -36,15 +36,19 @@ interface PlatformOption {
   description: string;
   icon: React.ReactNode;
   requiresUrl: boolean;
+  isAvailable?: boolean;
+  badge?: string;
 }
 
 const PLATFORM_OPTIONS: PlatformOption[] = [
   {
     id: "diadi",
     name: "Diadi",
-    description: "Use Diadi's built-in video chat",
+    description: "Built-in video chat (coming soon)",
     icon: <Sparkles className="h-5 w-5" />,
     requiresUrl: false,
+    isAvailable: false,
+    badge: "Coming soon",
   },
   {
     id: "zoom",
@@ -84,10 +88,17 @@ interface PlatformCardProps {
 }
 
 function PlatformCard({ option, isSelected, onSelect }: PlatformCardProps) {
+  const isDisabled = option.isAvailable === false;
+
   return (
     <button
       type="button"
-      onClick={onSelect}
+      onClick={() => {
+        if (!isDisabled) {
+          onSelect();
+        }
+      }}
+      disabled={isDisabled}
       className={`
         relative flex items-center gap-4 p-4 rounded-lg border text-left
         transition-all duration-200
@@ -96,9 +107,11 @@ function PlatformCard({ option, isSelected, onSelect }: PlatformCardProps) {
             ? "border-secondary bg-secondary/5 ring-2 ring-secondary"
             : "border-border hover:border-secondary/50 hover:bg-muted/50"
         }
+        ${isDisabled ? "opacity-60 cursor-not-allowed" : ""}
       `}
       role="radio"
       aria-checked={isSelected}
+      aria-disabled={isDisabled}
     >
       {/* Icon */}
       <div
@@ -118,8 +131,15 @@ function PlatformCard({ option, isSelected, onSelect }: PlatformCardProps) {
         </span>
       </div>
 
+      {/* Badge */}
+      {option.badge && (
+        <div className="absolute top-2 right-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+          {option.badge}
+        </div>
+      )}
+
       {/* Selection indicator */}
-      {isSelected && (
+      {isSelected && !option.badge && (
         <div className="absolute top-2 right-2">
           <div className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center">
             <Check className="h-3 w-3 text-secondary-foreground" />
@@ -130,11 +150,17 @@ function PlatformCard({ option, isSelected, onSelect }: PlatformCardProps) {
   );
 }
 
-export function StepLaunch() {
+interface StepLaunchProps {
+  onCreateSession?: () => void;
+  isSubmitting?: boolean;
+}
+
+export function StepLaunch({ onCreateSession, isSubmitting }: StepLaunchProps) {
   const { formData, setFieldValue, getFieldError } = useWizardFormData();
   const { prevStep, canGoBack, isLastStep } = useWizardNavigation();
-  const { isSubmitting, validateCurrentStep } = useWizard();
+  const { isSubmitting: submittingFromContext, validateCurrentStep } = useWizard();
   const [copied, setCopied] = useState(false);
+  const submitting = isSubmitting ?? submittingFromContext;
 
   const inviteLink = generateInviteLink();
   const selectedPlatform = PLATFORM_OPTIONS.find(
@@ -180,9 +206,10 @@ export function StepLaunch() {
     if (!validateCurrentStep()) {
       return;
     }
-    // The actual API call will be handled by the parent page component
-    // This step just validates and signals completion
-    // For now, we log completion - the next step (3.7) will wire this up
+    if (onCreateSession) {
+      onCreateSession();
+      return;
+    }
     console.log("Session ready to create:", formData);
   };
 
@@ -317,12 +344,12 @@ export function StepLaunch() {
 
       {/* Navigation buttons */}
       <div className="mt-8 pt-6 border-t border-border flex flex-col-reverse sm:flex-row gap-3">
-        {canGoBack && (
+          {canGoBack && (
           <Button
             variant="outline"
             onClick={handleBack}
             className="w-full sm:w-auto"
-            disabled={isSubmitting}
+            disabled={submitting}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Review
@@ -331,9 +358,9 @@ export function StepLaunch() {
         <Button
           onClick={handleCreateSession}
           className="w-full sm:w-auto sm:ml-auto"
-          disabled={isSubmitting}
+          disabled={submitting}
         >
-          {isSubmitting ? (
+          {submitting ? (
             "Creating Session..."
           ) : isLastStep ? (
             "Create Session"

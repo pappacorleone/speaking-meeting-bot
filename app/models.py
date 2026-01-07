@@ -243,8 +243,14 @@ class CreateSessionRequest(BaseModel):
 class CreateSessionResponse(BaseModel):
     """Response after creating a session."""
 
-    session_id: str = Field(..., description="Unique session identifier")
-    status: SessionStatus = Field(..., description="Session status (draft)")
+    id: str = Field(..., description="Unique session identifier")
+    session_id: Optional[str] = Field(
+        None,
+        description="Deprecated alias for id (kept temporarily for compatibility)",
+    )
+    status: SessionStatus = Field(
+        ..., description="Session status (pending_consent or ready)"
+    )
     invite_link: str = Field(..., description="Full URL for partner invitation")
     invite_token: str = Field(..., description="Token for invitation")
 
@@ -269,7 +275,9 @@ class ConsentResponse(BaseModel):
 class StartSessionRequest(BaseModel):
     """Request to start a session."""
 
-    meeting_url: str = Field(..., description="URL of the meeting to join")
+    meeting_url: Optional[str] = Field(
+        None, description="URL of the meeting to join (required for external platforms)"
+    )
 
 
 class StartSessionResponse(BaseModel):
@@ -317,7 +325,7 @@ class SessionListResponse(BaseModel):
 
     sessions: List[Session] = Field(..., description="List of sessions")
     total: int = Field(..., description="Total number of sessions")
-    has_more: bool = Field(..., description="Whether there are more sessions")
+    hasMore: bool = Field(..., description="Whether there are more sessions")
 
 
 # =============================================================================

@@ -137,6 +137,21 @@ class BalanceTracker:
                 metrics.total_speaking_time_ms += int(duration)
             metrics.is_speaking = False
 
+    def add_speaking_duration(self, speaker_id: str, duration_ms: int) -> None:
+        """Add speaking time directly (used when diarization provides durations).
+
+        Args:
+            speaker_id: Unique identifier for the speaker.
+            duration_ms: Duration to add in milliseconds.
+        """
+        if duration_ms <= 0:
+            return
+
+        if speaker_id not in self.speakers:
+            self.speakers[speaker_id] = SpeakerMetrics()
+
+        self.speakers[speaker_id].total_speaking_time_ms += int(duration_ms)
+
     def get_current_speaking_time(self, speaker_id: str) -> int:
         """Get total speaking time including current turn.
 

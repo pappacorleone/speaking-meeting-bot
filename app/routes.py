@@ -697,6 +697,7 @@ async def create_session(
         invite_link = f"{base_url}/invite/{session.invite_token}"
 
         return CreateSessionResponse(
+            id=session.id,
             session_id=session.id,
             status=session.status,
             invite_link=invite_link,
@@ -719,7 +720,7 @@ async def create_session(
 @router.get(
     "/sessions",
     tags=["sessions"],
-    response_model=Dict[str, Any],
+    response_model=SessionListResponse,
     responses={
         200: {"description": "List of sessions returned"},
     },
@@ -747,11 +748,11 @@ async def list_sessions(
     paginated_sessions = sessions[offset : offset + limit]
     has_more = (offset + limit) < total
 
-    return {
-        "sessions": paginated_sessions,
-        "total": total,
-        "hasMore": has_more,
-    }
+    return SessionListResponse(
+        sessions=paginated_sessions,
+        total=total,
+        hasMore=has_more,
+    )
 
 
 @router.get(

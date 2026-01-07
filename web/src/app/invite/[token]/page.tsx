@@ -71,7 +71,7 @@ export default function InvitePage() {
     if (!session) return;
 
     await consentMutation.mutateAsync({
-      sessionId: session.session_id,
+      sessionId: session.id,
       data: {
         invite_token: token,
         invitee_name: inviteeName,
@@ -85,7 +85,7 @@ export default function InvitePage() {
     if (!session) return;
 
     await consentMutation.mutateAsync({
-      sessionId: session.session_id,
+      sessionId: session.id,
       data: {
         invite_token: token,
         invitee_name: "", // Name not needed for decline

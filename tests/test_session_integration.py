@@ -75,7 +75,9 @@ class TestSessionCRUD:
 
         assert response.status_code == 201
         data = response.json()
+        assert "id" in data
         assert "session_id" in data
+        assert data["id"] == data["session_id"]
         assert data["status"] == "pending_consent"
         assert "invite_link" in data
         assert "invite_token" in data
@@ -91,6 +93,41 @@ class TestSessionCRUD:
         response = await client.post("/sessions", json=request_data, headers=HEADERS)
 
         assert response.status_code == 422  # Validation error
+
+    @pytest.mark.asyncio
+    async def test_create_session_requires_meeting_url_for_external(self, client):
+        """Test meeting URL requirement for external platforms."""
+        request_data = {
+            "partner_name": "Test Partner",
+            "goal": "Discuss next steps",
+            "relationship_context": "Colleagues preparing a launch",
+            "facilitator": {"persona": "neutral_mediator"},
+            "duration_minutes": 30,
+            "platform": "meet",
+        }
+
+        response = await client.post("/sessions", json=request_data, headers=HEADERS)
+
+        assert response.status_code == 400
+        assert "Meeting URL is required" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_create_session_rejects_invalid_meet_url(self, client):
+        """Test Meet URL validation on session creation."""
+        request_data = {
+            "partner_name": "Test Partner",
+            "goal": "Discuss next steps",
+            "relationship_context": "Colleagues preparing a launch",
+            "facilitator": {"persona": "neutral_mediator"},
+            "duration_minutes": 30,
+            "platform": "meet",
+            "meeting_url": "https://example.com/invalid",
+        }
+
+        response = await client.post("/sessions", json=request_data, headers=HEADERS)
+
+        assert response.status_code == 400
+        assert "Google Meet" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_list_sessions(self, client):
@@ -148,7 +185,7 @@ class TestSessionCRUD:
             },
             headers=HEADERS,
         )
-        session_id = create_response.json()["session_id"]
+        session_id = create_response.json()["id"]
 
         # Get session by ID
         response = await client.get(f"/sessions/{session_id}", headers=HEADERS)
@@ -230,7 +267,7 @@ class TestInviteAndConsent:
             headers=HEADERS,
         )
         data = create_response.json()
-        session_id = data["session_id"]
+        session_id = data["id"]
         invite_token = data["invite_token"]
 
         # Record consent
@@ -265,7 +302,7 @@ class TestInviteAndConsent:
             headers=HEADERS,
         )
         data = create_response.json()
-        session_id = data["session_id"]
+        session_id = data["id"]
         invite_token = data["invite_token"]
 
         # Decline consent
@@ -298,7 +335,7 @@ class TestInviteAndConsent:
             },
             headers=HEADERS,
         )
-        session_id = create_response.json()["session_id"]
+        session_id = create_response.json()["id"]
 
         # Try consent with wrong token
         consent_response = await client.post(
@@ -343,6 +380,7 @@ class TestSessionLifecycle:
                 "facilitator": {"persona": "neutral_mediator"},
                 "duration_minutes": 30,
                 "platform": "zoom",
+                "meeting_url": "https://zoom.us/j/123456789",
             },
             headers=HEADERS,
         )
@@ -350,7 +388,7 @@ class TestSessionLifecycle:
 
         # Record consent to make it ready
         await client.post(
-            f"/sessions/{data['session_id']}/consent",
+            f"/sessions/{data['id']}/consent",
             json={
                 "invite_token": data["invite_token"],
                 "invitee_name": "Partner Name",
@@ -359,7 +397,7 @@ class TestSessionLifecycle:
             headers=HEADERS,
         )
 
-        return data["session_id"]
+        return data["id"]
 
     @pytest.mark.asyncio
     @patch("app.services.session_service.create_meeting_bot")
@@ -397,10 +435,11 @@ class TestSessionLifecycle:
                 "facilitator": {"persona": "neutral_mediator"},
                 "duration_minutes": 30,
                 "platform": "zoom",
+                "meeting_url": "https://zoom.us/j/123456789",
             },
             headers=HEADERS,
         )
-        session_id = create_response.json()["session_id"]
+        session_id = create_response.json()["id"]
 
         # Try to start without consent
         response = await client.post(
@@ -557,7 +596,7 @@ class TestSessionSummary:
             },
             headers=HEADERS,
         )
-        session_id = create_response.json()["session_id"]
+        session_id = create_response.json()["id"]
 
         # Try to get summary (not available yet)
         response = await client.get(f"/sessions/{session_id}/summary", headers=HEADERS)
@@ -645,7 +684,7 @@ class TestFacilitatorPersonas:
         assert response.status_code == 201
 
         # Get session to verify persona
-        session_id = response.json()["session_id"]
+        session_id = response.json()["id"]
         get_response = await client.get(f"/sessions/{session_id}", headers=HEADERS)
         data = get_response.json()
         assert data["facilitator"]["persona"] == "neutral_mediator"
@@ -667,7 +706,7 @@ class TestFacilitatorPersonas:
 
         assert response.status_code == 201
 
-        session_id = response.json()["session_id"]
+        session_id = response.json()["id"]
         get_response = await client.get(f"/sessions/{session_id}", headers=HEADERS)
         data = get_response.json()
         assert data["facilitator"]["persona"] == "deep_empath"
@@ -689,7 +728,7 @@ class TestFacilitatorPersonas:
 
         assert response.status_code == 201
 
-        session_id = response.json()["session_id"]
+        session_id = response.json()["id"]
         get_response = await client.get(f"/sessions/{session_id}", headers=HEADERS)
         data = get_response.json()
         assert data["facilitator"]["persona"] == "decision_catalyst"

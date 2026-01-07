@@ -9,6 +9,7 @@ import {
   StepGoal,
   StepFacilitator,
   StepReview,
+  StepLaunch,
 } from "@/components/session/wizard";
 import { createSession } from "@/lib/api/sessions";
 import type { CreateSessionRequest } from "@/lib/api/types";
@@ -108,194 +109,6 @@ function ErrorAlert({ message }: { message: string }) {
   );
 }
 
-// Internal StepLaunch with custom create handler
-interface StepLaunchInternalProps {
-  onCreateSession: () => void;
-  isSubmitting: boolean;
-}
-
-function StepLaunchInternal({ onCreateSession, isSubmitting }: StepLaunchInternalProps) {
-  const [copied, setCopied] = useState(false);
-  const { formData, setFieldValue, getFieldError, prevStep, canGoBack } = useWizard();
-
-  // Generate placeholder invite link (real link comes from API response)
-  const inviteLink = typeof window !== "undefined"
-    ? `${window.location.origin}/invite/preview-token`
-    : "/invite/preview-token";
-
-  const showMeetingUrlInput = formData.platform !== "diadi";
-
-  const handleCopyInviteLink = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(inviteLink);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy invite link:", err);
-    }
-  }, [inviteLink]);
-
-  const meetingUrlError = getFieldError("meetingUrl");
-
-  // Platform options for display
-  const platformOptions = [
-    { id: "diadi" as const, name: "Diadi", description: "Use Diadi's built-in video chat", icon: "✨" },
-    { id: "zoom" as const, name: "Zoom", description: "Join via Zoom meeting", icon: "📹" },
-    { id: "meet" as const, name: "Google Meet", description: "Join via Google Meet", icon: "🖥️" },
-    { id: "teams" as const, name: "Microsoft Teams", description: "Join via Microsoft Teams", icon: "👥" },
-  ];
-
-  return (
-    <div className="flex flex-col h-full">
-      {/* Step indicator */}
-      <div className="mb-6">
-        <span className="text-xs font-medium tracking-widest text-muted-foreground">
-          04 / LAUNCH HUB
-        </span>
-      </div>
-
-      {/* Headline */}
-      <h1 className="text-3xl md:text-4xl font-serif text-foreground mb-2">
-        Invite Your Partner
-      </h1>
-      <p className="text-sm text-muted-foreground mb-8">
-        Share the invite link and choose how you&apos;ll connect.
-      </p>
-
-      {/* Content */}
-      <div className="flex-1 space-y-6">
-        {/* Invite Link Card */}
-        <Card className="p-6">
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-                Partner Invite Link
-              </label>
-              <p className="text-xs text-muted-foreground mt-1">
-                Share this link with {formData.partnerName || "your partner"} to
-                invite them to the session.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <input
-                value={inviteLink}
-                readOnly
-                className="flex-1 bg-muted/50 font-mono text-sm h-10 rounded-lg px-4 border border-input"
-                aria-label="Invite link"
-              />
-              <button
-                type="button"
-                onClick={handleCopyInviteLink}
-                className="shrink-0 min-w-[100px] h-10 px-4 rounded-lg border border-input bg-background hover:bg-muted text-sm font-medium"
-              >
-                {copied ? "✓ Copied" : "Copy"}
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Your partner will need to consent before the session can begin.
-            </p>
-          </div>
-        </Card>
-
-        {/* Platform Selection */}
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-              Meeting Platform
-            </label>
-            <p className="text-xs text-muted-foreground mt-1">
-              Choose how you&apos;ll connect for your session.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" role="radiogroup">
-            {platformOptions.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => {
-                  setFieldValue("platform", option.id);
-                  if (option.id === "diadi") {
-                    setFieldValue("meetingUrl", "");
-                  }
-                }}
-                className={`
-                  relative flex items-center gap-4 p-4 rounded-lg border text-left
-                  transition-all duration-200
-                  ${
-                    formData.platform === option.id
-                      ? "border-secondary bg-secondary/5 ring-2 ring-secondary"
-                      : "border-border hover:border-secondary/50 hover:bg-muted/50"
-                  }
-                `}
-                role="radio"
-                aria-checked={formData.platform === option.id}
-              >
-                <span className="text-2xl">{option.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <span className="font-medium text-foreground">{option.name}</span>
-                  <span className="block text-xs text-muted-foreground">
-                    {option.description}
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Meeting URL Input (conditional) */}
-        {showMeetingUrlInput && (
-          <div className="space-y-2">
-            <label
-              htmlFor="meeting-url"
-              className="text-xs font-medium tracking-widest text-muted-foreground uppercase"
-            >
-              Meeting Link
-            </label>
-            <input
-              id="meeting-url"
-              type="url"
-              value={formData.meetingUrl || ""}
-              onChange={(e) => setFieldValue("meetingUrl", e.target.value)}
-              placeholder="Paste your meeting URL"
-              className={`w-full h-10 px-4 rounded-lg border bg-background text-sm ${
-                meetingUrlError ? "border-destructive" : "border-input"
-              }`}
-            />
-            {meetingUrlError && (
-              <p className="text-xs text-destructive">{meetingUrlError}</p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              The AI facilitator will join this meeting when you start the session.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Navigation buttons */}
-      <div className="mt-8 pt-6 border-t border-border flex flex-col-reverse sm:flex-row gap-3">
-        {canGoBack && (
-          <button
-            type="button"
-            onClick={prevStep}
-            disabled={isSubmitting}
-            className="w-full sm:w-auto px-6 py-2 rounded-button border border-input bg-background hover:bg-muted text-sm font-medium disabled:opacity-50"
-          >
-            ← Back to Review
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={onCreateSession}
-          disabled={isSubmitting}
-          className="w-full sm:w-auto sm:ml-auto px-6 py-2 rounded-button bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium uppercase tracking-widest disabled:opacity-50"
-        >
-          {isSubmitting ? "Creating Session..." : "Create Session"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // Form data type for session creation
 interface SessionFormData {
   partnerName: string;
@@ -361,7 +174,7 @@ function WizardContentWithSubmit({ onCreateSession }: WizardContentWithSubmitPro
       case 3:
         return <StepReview />;
       case 4:
-        return <StepLaunchInternal onCreateSession={handleSubmit} isSubmitting={isSubmitting} />;
+        return <StepLaunch onCreateSession={handleSubmit} isSubmitting={isSubmitting} />;
       default:
         return <StepIdentity />;
     }
@@ -384,7 +197,10 @@ export default function NewSessionPage() {
     async (formData: SessionFormData) => {
       // Get API key from environment or storage
       // For now, we'll use a placeholder - in production this would come from auth
-      const apiKey = process.env.NEXT_PUBLIC_API_KEY || "";
+      const apiKey =
+        process.env.NEXT_PUBLIC_MEETING_BAAS_API_KEY ||
+        process.env.NEXT_PUBLIC_API_KEY ||
+        "";
 
       // Transform wizard form data to API request format
       const request: CreateSessionRequest = {
@@ -400,7 +216,7 @@ export default function NewSessionPage() {
         duration_minutes: formData.durationMinutes,
         scheduled_at: formData.scheduledAt || undefined,
         platform: formData.platform,
-        meeting_url: formData.platform !== 'diadi' ? formData.meetingUrl : undefined,
+        meeting_url: formData.platform !== "diadi" ? formData.meetingUrl : undefined,
         // Skip consent flow in dev mode for testing without a partner
         skip_consent: process.env.NODE_ENV === 'development',
       };
@@ -409,7 +225,8 @@ export default function NewSessionPage() {
       const response = await createSession(request, apiKey);
 
       // Redirect to the session detail page
-      router.push(`/sessions/${response.session_id}`);
+      const sessionId = response.id || response.session_id;
+      router.push(`/sessions/${sessionId}`);
     },
     [router]
   );

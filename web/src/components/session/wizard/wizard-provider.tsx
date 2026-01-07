@@ -30,12 +30,14 @@ export const stepGoalSchema = z.object({
   goal: z
     .string()
     .min(10, "Goal must be at least 10 characters")
-    .max(500, "Goal must be 500 characters or less"),
+    .max(200, "Goal must be 200 characters or less"),
   scheduledAt: z.string().optional(),
   durationMinutes: z
     .number()
-    .min(15, "Minimum session duration is 15 minutes")
-    .max(90, "Maximum session duration is 90 minutes"),
+    .refine(
+      (value) => [15, 30, 45, 60].includes(value),
+      "Duration must be 15, 30, 45, or 60 minutes"
+    ),
 });
 
 export const stepFacilitatorSchema = z.object({
@@ -51,10 +53,34 @@ export const stepFacilitatorSchema = z.object({
   }),
 });
 
-export const stepLaunchSchema = z.object({
-  platform: z.enum(["zoom", "meet", "teams", "diadi"] as const),
-  meetingUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-});
+const MEET_URL_REGEX = /^https:\/\/meet\.google\.com\/[a-z0-9-]+(?:\?.*)?$/i;
+
+export const stepLaunchSchema = z
+  .object({
+    platform: z.enum(["zoom", "meet", "teams", "diadi"] as const),
+    meetingUrl: z.string().trim().optional().or(z.literal("")),
+  })
+  .superRefine((data, ctx) => {
+    const meetingUrl = data.meetingUrl?.trim();
+
+    if (data.platform !== "diadi") {
+      if (!meetingUrl) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Meeting URL is required for external platforms",
+          path: ["meetingUrl"],
+        });
+        return;
+      }
+      if (data.platform === "meet" && !MEET_URL_REGEX.test(meetingUrl)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Meeting URL must be a valid Google Meet link",
+          path: ["meetingUrl"],
+        });
+      }
+    }
+  });
 
 // Combined schema for full form validation
 export const sessionWizardSchema = stepIdentitySchema
@@ -153,7 +179,7 @@ const DEFAULT_FORM_DATA: SessionWizardFormData = {
   // Step 2: Facilitator Calibration
   facilitator: DEFAULT_FACILITATOR_CONFIG,
   // Step 4: Launch Hub
-  platform: "diadi",
+  platform: "meet",
   meetingUrl: "",
 };
 

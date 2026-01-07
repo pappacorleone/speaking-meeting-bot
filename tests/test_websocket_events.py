@@ -30,7 +30,6 @@ class TestWebSocketSessionEvents:
             SessionStatus,
             Platform,
             Participant,
-            ParticipantRole,
             FacilitatorConfig,
             FacilitatorPersona,
         )
@@ -44,13 +43,13 @@ class TestWebSocketSessionEvents:
                 Participant(
                     id="participant-1",
                     name="Alice",
-                    role=ParticipantRole.CREATOR,
+                    role="creator",
                     consented=True,
                 ),
                 Participant(
                     id="participant-2",
                     name="Bob",
-                    role=ParticipantRole.INVITEE,
+                    role="invitee",
                     consented=True,
                 ),
             ],
@@ -90,7 +89,10 @@ class TestWebSocketSessionEvents:
                 assert message["type"] == "session_state"
                 assert "data" in message
                 assert message["data"]["goal"] == "Test goal for WebSocket testing"
+                assert message["data"]["durationMinutes"] == 30
                 assert len(message["data"]["participants"]) == 2
+                assert message["data"]["facilitatorPaused"] is False
+                assert message["data"]["aiStatus"] == "listening"
 
     @pytest.mark.asyncio
     async def test_websocket_ping_pong(self, test_session):
@@ -114,6 +116,35 @@ class TestWebSocketSessionEvents:
                 # Should receive pong
                 message = await asyncio.wait_for(ws.receive_json(), timeout=5.0)
                 assert message["type"] == "pong"
+
+    @pytest.mark.asyncio
+    async def test_websocket_update_settings(self, test_session):
+        """Test update_settings payload uses data envelope."""
+        with patch("config.validation.run_startup_validation"):
+            from app.main import create_app
+            from httpx_ws import aconnect_ws
+
+            app = create_app()
+
+            async with aconnect_ws(
+                f"http://test/sessions/{test_session}/events",
+                app,
+            ) as ws:
+                # Receive initial state
+                await ws.receive_json()
+
+                # Send settings update with data envelope
+                settings_payload = {"silence_detection": False}
+                await ws.send_json(
+                    {
+                        "type": "update_settings",
+                        "data": settings_payload,
+                    }
+                )
+
+                message = await asyncio.wait_for(ws.receive_json(), timeout=5.0)
+                assert message["type"] == "settings_updated"
+                assert message["data"] == settings_payload
 
     @pytest.mark.asyncio
     async def test_websocket_nonexistent_session(self):
@@ -153,7 +184,6 @@ class TestBalanceUpdateEvents:
             SessionStatus,
             Platform,
             Participant,
-            ParticipantRole,
             FacilitatorConfig,
             FacilitatorPersona,
         )
@@ -167,10 +197,10 @@ class TestBalanceUpdateEvents:
             goal="Test balance updates",
             participants=[
                 Participant(
-                    id="p1", name="Alice", role=ParticipantRole.CREATOR, consented=True
+                    id="p1", name="Alice", role="creator", consented=True
                 ),
                 Participant(
-                    id="p2", name="Bob", role=ParticipantRole.INVITEE, consented=True
+                    id="p2", name="Bob", role="invitee", consented=True
                 ),
             ],
             facilitator=FacilitatorConfig(persona=FacilitatorPersona.NEUTRAL_MEDIATOR),
@@ -193,8 +223,8 @@ class TestBalanceUpdateEvents:
             session.id,
             "balance_update",
             {
-                "participant_1": {"name": "Alice", "percentage": 60},
-                "participant_2": {"name": "Bob", "percentage": 40},
+                "participantA": {"id": "p1", "name": "Alice", "percentage": 60},
+                "participantB": {"id": "p2", "name": "Bob", "percentage": 40},
                 "status": "mild_imbalance",
             },
         )
@@ -222,7 +252,6 @@ class TestInterventionEvents:
             SessionStatus,
             Platform,
             Participant,
-            ParticipantRole,
             FacilitatorConfig,
             FacilitatorPersona,
         )
@@ -236,10 +265,10 @@ class TestInterventionEvents:
             goal="Test intervention events",
             participants=[
                 Participant(
-                    id="p1", name="Alice", role=ParticipantRole.CREATOR, consented=True
+                    id="p1", name="Alice", role="creator", consented=True
                 ),
                 Participant(
-                    id="p2", name="Bob", role=ParticipantRole.INVITEE, consented=True
+                    id="p2", name="Bob", role="invitee", consented=True
                 ),
             ],
             facilitator=FacilitatorConfig(persona=FacilitatorPersona.DEEP_EMPATH),
@@ -294,7 +323,6 @@ class TestSessionStateEvents:
             SessionStatus,
             Platform,
             Participant,
-            ParticipantRole,
             FacilitatorConfig,
             FacilitatorPersona,
         )
@@ -307,7 +335,7 @@ class TestSessionStateEvents:
             goal="Test pause events",
             participants=[
                 Participant(
-                    id="p1", name="Alice", role=ParticipantRole.CREATOR, consented=True
+                    id="p1", name="Alice", role="creator", consented=True
                 ),
             ],
             facilitator=FacilitatorConfig(persona=FacilitatorPersona.NEUTRAL_MEDIATOR),
@@ -326,13 +354,13 @@ class TestSessionStateEvents:
         await broadcast_session_event(
             session.id,
             "session_state",
-            {"facilitator_paused": True},
+            {"facilitatorPaused": True},
         )
 
         mock_ws.send_json.assert_called_once()
         call_args = mock_ws.send_json.call_args[0][0]
         assert call_args["type"] == "session_state"
-        assert call_args["data"]["facilitator_paused"] is True
+        assert call_args["data"]["facilitatorPaused"] is True
 
 
 # Run tests if executed directly

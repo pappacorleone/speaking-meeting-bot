@@ -5,15 +5,23 @@ from datetime import datetime
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from protobufs import frames_pb2
+
 from core.connection import MEETING_DETAILS, PIPECAT_PROCESSES, registry
 from core.process import start_pipecat_process, terminate_process_gracefully
 from core.router import router as message_router
 from core.session_store import (
     SESSION_EVENTS,
+    broadcast_session_event,
     get_session,
+    get_session_by_client_id,
+    record_speaker_activity,
+    record_speaker_durations,
+    record_speech_activity,
     register_event_connection,
     unregister_event_connection,
 )
+from app.models import SessionStatus
 from meetingbaas_pipecat.utils.logger import logger
 from utils.ngrok import LOCAL_DEV_MODE, log_ngrok_status, release_ngrok_url
 
@@ -49,6 +57,53 @@ async def _load_meeting_details(client_id: str):
         streaming_audio_frequency,
         resolved_persona_data,
     )
+
+
+async def _handle_pipecat_event_payload(payload_text: str, client_id: str) -> bool:
+    """Parse and broadcast a Pipecat event payload if it matches event shape."""
+    try:
+        payload = json.loads(payload_text)
+    except json.JSONDecodeError:
+        return False
+
+    event_type = payload.get("type")
+    event_data = payload.get("data")
+    if not event_type or not isinstance(event_data, dict):
+        return False
+
+    session_id = payload.get("session_id")
+    if not session_id:
+        session = get_session_by_client_id(client_id)
+        session_id = session.id if session else None
+
+    if not session_id:
+        return False
+
+    if event_type == "speech_activity":
+        is_speaking = event_data.get("is_speaking")
+        if isinstance(is_speaking, bool):
+            record_speech_activity(session_id, is_speaking)
+        return True
+
+    if event_type == "speaker_durations":
+        durations = (
+            event_data.get("durations_ms")
+            or event_data.get("durationsMs")
+            or {}
+        )
+        if isinstance(durations, dict):
+            record_speaker_durations(session_id, durations)
+        return True
+
+    if event_type == "speaker_activity":
+        speaker_label = event_data.get("speaker_id") or event_data.get("speaker_label")
+        is_speaking = event_data.get("is_speaking")
+        if speaker_label is not None and isinstance(is_speaking, bool):
+            record_speaker_activity(session_id, str(speaker_label), is_speaking)
+        return True
+
+    await broadcast_session_event(session_id, event_type, event_data)
+    return True
 
 
 @websocket_router.websocket("/ws/{client_id}/output")
@@ -257,13 +312,48 @@ async def pipecat_websocket(websocket: WebSocket, client_id: str):
                 logger.debug(
                     f"Received binary data ({len(data)} bytes) from Pipecat client {client_id}"
                 )
-                # Forward Pipecat messages to client with conversion
-                await message_router.send_from_pipecat(data, client_id)
+                try:
+                    frame = frames_pb2.Frame()
+                    frame.ParseFromString(data)
+                except Exception as e:
+                    logger.debug(
+                        f"Failed to parse Pipecat frame for {client_id}: {e}"
+                    )
+                    await message_router.send_from_pipecat(data, client_id)
+                    continue
+
+                if frame.HasField("text"):
+                    handled = await _handle_pipecat_event_payload(
+                        frame.text.text, client_id
+                    )
+                    if handled:
+                        continue
+                    logger.info(
+                        f"Received text frame from Pipecat client {client_id}: {frame.text.text[:100]}..."
+                    )
+                    continue
+
+                if frame.HasField("audio"):
+                    # Forward Pipecat audio to meeting clients with conversion
+                    await message_router.send_from_pipecat(data, client_id)
+                    continue
+
+                if frame.HasField("transcription"):
+                    logger.debug(
+                        f"Received transcription frame from Pipecat client {client_id}"
+                    )
+                    continue
+
+                logger.debug(
+                    f"Received unsupported Pipecat frame from client {client_id}"
+                )
             elif "text" in message:
                 data = message["text"]
-                logger.info(
-                    f"Received text message from Pipecat client {client_id}: {data[:100]}..."
-                )
+                handled = await _handle_pipecat_event_payload(data, client_id)
+                if not handled:
+                    logger.info(
+                        f"Received text message from Pipecat client {client_id}: {data[:100]}..."
+                    )
     except WebSocketDisconnect:
         logger.info(f"Pipecat WebSocket disconnected for client {client_id}")
     except Exception as e:
@@ -331,13 +421,21 @@ async def session_events_websocket(websocket: WebSocket, session_id: str):
 
     try:
         # Send initial session state
+        facilitator_paused = session.status == SessionStatus.PAUSED
+        if facilitator_paused:
+            ai_status = "paused"
+        elif session.status == SessionStatus.IN_PROGRESS:
+            ai_status = "listening"
+        else:
+            ai_status = "idle"
+
         await websocket.send_json(
             {
                 "type": "session_state",
                 "data": {
                     "status": session.status.value,
                     "goal": session.goal,
-                    "duration_minutes": session.duration_minutes,
+                    "durationMinutes": session.duration_minutes,
                     "participants": [
                         {
                             "id": p.id,
@@ -347,14 +445,16 @@ async def session_events_websocket(websocket: WebSocket, session_id: str):
                         }
                         for p in session.participants
                     ],
-                    "facilitator_config": {
+                    "facilitatorConfig": {
                         "persona": session.facilitator.persona.value,
-                        "interrupt_authority": session.facilitator.interrupt_authority,
-                        "direct_inquiry": session.facilitator.direct_inquiry,
-                        "silence_detection": session.facilitator.silence_detection,
+                        "interruptAuthority": session.facilitator.interrupt_authority,
+                        "directInquiry": session.facilitator.direct_inquiry,
+                        "silenceDetection": session.facilitator.silence_detection,
                     },
-                    "bot_id": session.bot_id,
-                    "client_id": session.client_id,
+                    "botId": session.bot_id,
+                    "clientId": session.client_id,
+                    "facilitatorPaused": facilitator_paused,
+                    "aiStatus": ai_status,
                 },
                 "timestamp": datetime.utcnow().isoformat(),
             }
@@ -378,7 +478,7 @@ async def session_events_websocket(websocket: WebSocket, session_id: str):
 
                 elif message_type == "update_settings":
                     # Update facilitator settings mid-session
-                    settings = message.get("data", {})
+                    settings = message.get("data") or message.get("settings", {})
                     logger.info(
                         f"Session {session_id}: Received settings update: {settings}"
                     )
@@ -396,7 +496,10 @@ async def session_events_websocket(websocket: WebSocket, session_id: str):
 
                 elif message_type == "intervention_ack":
                     # Log that intervention was acknowledged
-                    intervention_id = message.get("data", {}).get("intervention_id")
+                    intervention_id = (
+                        message.get("data", {}).get("intervention_id")
+                        or message.get("intervention_id")
+                    )
                     logger.info(
                         f"Session {session_id}: Intervention {intervention_id} acknowledged"
                     )

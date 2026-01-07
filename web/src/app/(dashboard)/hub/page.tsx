@@ -16,7 +16,7 @@ import type { Session, SessionStatus } from "@/types/session";
  */
 function transformSession(apiSession: ApiSession): Session {
   return {
-    id: apiSession.session_id,
+    id: apiSession.id,
     title: apiSession.title,
     goal: apiSession.goal,
     relationshipContext: apiSession.relationship_context,
@@ -56,7 +56,10 @@ export default function HubPage() {
 
   // Fetch sessions from API
   // Note: In production, apiKey would come from auth context
-  const apiKey = process.env.NEXT_PUBLIC_API_KEY || "";
+  const apiKey =
+    process.env.NEXT_PUBLIC_MEETING_BAAS_API_KEY ||
+    process.env.NEXT_PUBLIC_API_KEY ||
+    "";
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["sessions"],

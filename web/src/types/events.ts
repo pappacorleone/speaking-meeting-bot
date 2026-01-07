@@ -3,7 +3,7 @@
  * These define the structure of events sent from the backend to frontend.
  */
 
-import type { SessionStatus } from './session';
+import type { SessionStatus, Participant, FacilitatorConfig } from './session';
 import type { Intervention } from './intervention';
 
 // =============================================================================
@@ -50,6 +50,14 @@ export interface TimeRemainingData {
 
 export interface SessionStateData {
   status: SessionStatus;
+  goal?: string;
+  durationMinutes?: number;
+  participants?: Participant[];
+  facilitatorConfig?: FacilitatorConfig;
+  botId?: string | null;
+  clientId?: string | null;
+  facilitatorPaused?: boolean;
+  aiStatus?: AIStatus;
   reason?: string;
   previousStatus?: SessionStatus;
 }

@@ -1,20 +1,33 @@
 import argparse
 import asyncio
+import json
 import os
 import os
+from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any, Dict, Optional
 
 import aiohttp
 import pytz
 from dotenv import load_dotenv
+from deepgram import LiveOptions
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.audio.vad.silero import SileroVADAnalyzer, VADParams
-from pipecat.frames.frames import LLMMessagesFrame, TextFrame
+from pipecat.frames.frames import (
+    LLMMessagesFrame,
+    TextFrame,
+    TranscriptionFrame,
+    TransportMessageFrame,
+    TransportMessageUrgentFrame,
+    UserStartedSpeakingFrame,
+    UserStoppedSpeakingFrame,
+)
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
+from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 from pipecat.serializers.protobuf import ProtobufFrameSerializer
 from pipecat.services.cartesia.tts import CartesiaTTSService
 from pipecat.services.deepgram.stt import DeepgramSTTService
@@ -52,6 +65,175 @@ def log_and_flush(level, msg):
     logger.log(level, msg)
     for h in logger.handlers:
         h.flush()
+
+# =============================================================================
+# Control + Event Messaging Helpers
+# =============================================================================
+
+
+@dataclass
+class FacilitationState:
+    """Tracks facilitation control state received from the server."""
+
+    paused: bool = False
+    settings: Dict[str, Any] = field(default_factory=dict)
+
+
+class DiadiProtobufSerializer(ProtobufFrameSerializer):
+    """Serialize TransportMessageFrame as TextFrame JSON for server parsing."""
+
+    async def serialize(self, frame):
+        if isinstance(frame, (TransportMessageFrame, TransportMessageUrgentFrame)):
+            payload = frame.message
+            if not isinstance(payload, str):
+                payload = json.dumps(payload)
+            frame = TextFrame(payload)
+        return await super().serialize(frame)
+
+
+class ControlMessageProcessor(FrameProcessor):
+    """Intercepts control messages from the server and updates state."""
+
+    def __init__(self, state: FacilitationState):
+        super().__init__()
+        self._state = state
+
+    async def process_frame(self, frame, direction: FrameDirection):
+        await super().process_frame(frame, direction)
+
+        if direction != FrameDirection.DOWNSTREAM:
+            await self.push_frame(frame, direction)
+            return
+
+        if not isinstance(frame, TextFrame):
+            await self.push_frame(frame, direction)
+            return
+
+        raw = (frame.text or "").strip()
+        if not raw:
+            return
+
+        try:
+            message = json.loads(raw)
+        except json.JSONDecodeError:
+            await self.push_frame(frame, direction)
+            return
+
+        if message.get("type") != "control":
+            await self.push_frame(frame, direction)
+            return
+
+        data = message.get("data") or {}
+        action = data.get("action")
+        if action == "pause":
+            self._state.paused = True
+            log_and_flush(logging.INFO, "[CONTROL] Paused facilitation via server message")
+        elif action == "resume":
+            self._state.paused = False
+            log_and_flush(logging.INFO, "[CONTROL] Resumed facilitation via server message")
+        elif action == "update_settings":
+            settings = data.get("settings") or {}
+            if isinstance(settings, dict):
+                self._state.settings.update(settings)
+                log_and_flush(logging.INFO, f"[CONTROL] Updated settings: {settings}")
+        else:
+            log_and_flush(logging.WARNING, f"[CONTROL] Unknown action: {action}")
+
+        # Control messages are consumed here.
+        return
+
+
+class EventEmitter:
+    """Sends structured events back to the server over the Pipecat transport."""
+
+    def __init__(self, output_transport):
+        self._output = output_transport
+
+    async def emit(
+        self,
+        event_type: str,
+        data: Dict[str, Any],
+        session_id: Optional[str] = None,
+    ) -> None:
+        payload = {"type": event_type, "data": data}
+        if session_id:
+            payload["session_id"] = session_id
+        try:
+            await self._output.send_message(TransportMessageFrame(payload))
+        except Exception as exc:
+            log_and_flush(logging.ERROR, f"[EVENT] Failed to send {event_type}: {exc}")
+
+
+class SpeechActivityProcessor(FrameProcessor):
+    """Emits speech activity events based on VAD frames."""
+
+    def __init__(self, emitter: EventEmitter):
+        super().__init__()
+        self._emitter = emitter
+        self._is_speaking = False
+
+    async def process_frame(self, frame, direction: FrameDirection):
+        await super().process_frame(frame, direction)
+
+        if direction == FrameDirection.DOWNSTREAM:
+            if isinstance(frame, UserStartedSpeakingFrame) and not self._is_speaking:
+                self._is_speaking = True
+                await self._emitter.emit("speech_activity", {"is_speaking": True})
+            elif isinstance(frame, UserStoppedSpeakingFrame) and self._is_speaking:
+                self._is_speaking = False
+                await self._emitter.emit("speech_activity", {"is_speaking": False})
+
+        await self.push_frame(frame, direction)
+
+
+class DiarizationProcessor(FrameProcessor):
+    """Extracts diarized durations from transcription frames."""
+
+    def __init__(self, emitter: EventEmitter):
+        super().__init__()
+        self._emitter = emitter
+
+    def _extract_durations(self, frame: TranscriptionFrame) -> Dict[str, int]:
+        result = getattr(frame, "result", None)
+        if not result:
+            return {}
+
+        try:
+            alternatives = result.channel.alternatives
+        except Exception:
+            return {}
+
+        if not alternatives:
+            return {}
+
+        words = getattr(alternatives[0], "words", None) or []
+        durations: Dict[str, int] = {}
+        for word in words:
+            speaker = getattr(word, "speaker", None)
+            start = getattr(word, "start", None)
+            end = getattr(word, "end", None)
+            if speaker is None or start is None or end is None:
+                continue
+            duration_ms = int(max((end - start) * 1000, 0))
+            if duration_ms <= 0:
+                continue
+            key = str(speaker)
+            durations[key] = durations.get(key, 0) + duration_ms
+
+        return durations
+
+    async def process_frame(self, frame, direction: FrameDirection):
+        await super().process_frame(frame, direction)
+
+        if direction == FrameDirection.DOWNSTREAM and isinstance(frame, TranscriptionFrame):
+            durations = self._extract_durations(frame)
+            if durations:
+                await self._emitter.emit(
+                    "speaker_durations",
+                    {"durations_ms": durations},
+                )
+
+        await self.push_frame(frame, direction)
 
 # Function tool implementations
 async def get_weather(params: FunctionCallParams):
@@ -170,7 +352,7 @@ async def main(
                 ),
             ),
             audio_in_passthrough=True,
-            serializer=ProtobufFrameSerializer(),
+            serializer=DiadiProtobufSerializer(),
             timeout=300,
         ),
     )
@@ -271,11 +453,19 @@ async def main(
     language = persona.get("language_code", "en-US")
     log_and_flush(logging.INFO, f"[PERSONA] Using language: {language}")
 
+    live_options = LiveOptions(
+        diarize=True,
+        interim_results=True,
+        smart_format=True,
+        punctuate=True,
+        language=language,
+    )
     stt = DeepgramSTTService(
         api_key=os.getenv("DEEPGRAM_API_KEY"),
         encoding="linear16" if streaming_audio_frequency == "16khz" else "linear24",
         sample_rate=output_sample_rate,
         language=language,
+        live_options=live_options,
     )
     # stt = GladiaSTTService(
     #     api_key=os.getenv("GLADIA_API_KEY"),
@@ -328,9 +518,18 @@ async def main(
     # Remove the LoggingStep wrapper - it doesn't properly proxy all methods
     # Instead, we'll log in the pipeline components themselves if needed
     
+    facilitation_state = FacilitationState()
+    control_processor = ControlMessageProcessor(facilitation_state)
+    event_emitter = EventEmitter(transport.output())
+    speech_activity_processor = SpeechActivityProcessor(event_emitter)
+    diarization_processor = DiarizationProcessor(event_emitter)
+
     pipeline = Pipeline([
         transport.input(),   # Add transport input to receive audio/data
+        control_processor,  # Intercepts control messages from server
+        speech_activity_processor,  # Emits VAD-based speech activity events
         stt,
+        diarization_processor,  # Emits diarized durations for balance tracking
         user_aggregator,
         llm,
         tts,

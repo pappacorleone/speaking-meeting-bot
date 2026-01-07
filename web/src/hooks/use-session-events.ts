@@ -333,14 +333,14 @@ export function useSessionEvents(
   const acknowledgeIntervention = useCallback((interventionId: string): boolean => {
     return sendMessage({
       type: 'intervention_ack',
-      intervention_id: interventionId,
+      data: { intervention_id: interventionId },
     });
   }, [sendMessage]);
 
   const updateSettings = useCallback((settings: Record<string, unknown>): boolean => {
     return sendMessage({
       type: 'update_settings',
-      settings,
+      data: settings,
     });
   }, [sendMessage]);
 

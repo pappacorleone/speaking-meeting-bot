@@ -240,7 +240,9 @@ type SessionEventType =
   | 'escalation'
   | 'time_remaining'
   | 'goal_drift'
-  | 'participant_status';
+  | 'participant_status'
+  | 'ai_status'
+  | 'error';
 
 interface SessionEvent {
   type: SessionEventType;
@@ -249,7 +251,7 @@ interface SessionEvent {
 }
 
 export function useSessionEvents(sessionId: string) {
-  const { updateBalance, addIntervention, setAIStatus } = useSessionStore();
+  const { updateBalance, addIntervention, setAIStatus, setFacilitatorPaused } = useSessionStore();
 
   useEffect(() => {
     const ws = new WebSocket(`${process.env.NEXT_PUBLIC_WS_URL}/sessions/${sessionId}/events`);
@@ -265,6 +267,10 @@ export function useSessionEvents(sessionId: string) {
           addIntervention(parsed.data);
           break;
         case 'session_state':
+          setAIStatus(parsed.data.aiStatus);
+          setFacilitatorPaused(parsed.data.facilitatorPaused);
+          break;
+        case 'ai_status':
           setAIStatus(parsed.data.status);
           break;
         // ... other event handlers
@@ -284,12 +290,12 @@ export function useSessionEvents(sessionId: string) {
 
 | Endpoint | Method | Purpose | Request | Response |
 |----------|--------|---------|---------|----------|
-| `/sessions` | POST | Create session | SessionCreate | Session |
-| `/sessions` | GET | List sessions | Query params | Session[] |
+| `/sessions` | POST | Create session | CreateSessionRequest | CreateSessionResponse |
+| `/sessions` | GET | List sessions | Query params | SessionListResponse (`{sessions,total,hasMore}`) |
 | `/sessions/{id}` | GET | Get session | - | Session |
-| `/sessions/{id}/consent` | POST | Record consent | ConsentRequest | Consent |
-| `/sessions/{id}/start` | POST | Start session | StartRequest | StartResponse |
-| `/sessions/{id}/end` | POST | End session | - | Session |
+| `/sessions/{id}/consent` | POST | Record consent | ConsentRequest | ConsentResponse |
+| `/sessions/{id}/start` | POST | Start session | StartSessionRequest | StartSessionResponse |
+| `/sessions/{id}/end` | POST | End session | - | EndSessionResponse |
 | `/sessions/{id}/summary` | GET | Get summary | - | SessionSummary |
 | `/sessions/{id}/events` | WS | Event stream | - | SessionEvent[] |
 
@@ -334,22 +340,23 @@ class FacilitatorConfig(BaseModel):
     direct_inquiry: bool = True
     silence_detection: bool = True
 
-class SessionCreate(BaseModel):
-    title: str
+class CreateSessionRequest(BaseModel):
     goal: str
     relationship_context: str
-    platform: Platform
-    meeting_url: Optional[str] = None
+    partner_name: str
+    facilitator: FacilitatorConfig = FacilitatorConfig()
     duration_minutes: int = 30
     scheduled_at: Optional[datetime] = None
-    facilitator: FacilitatorConfig = FacilitatorConfig()
-    partner_name: str
+    platform: Platform = Platform.MEET
+    meeting_url: Optional[str] = None  # Required for external platforms
+    skip_consent: bool = False
 
 class Session(BaseModel):
     id: str
-    title: str
+    title: Optional[str] = None
     goal: str
     relationship_context: str
+    partner_name: str
     platform: Platform
     meeting_url: Optional[str] = None
     duration_minutes: int
@@ -363,18 +370,45 @@ class Session(BaseModel):
     client_id: Optional[str] = None
 
 class ConsentRequest(BaseModel):
-    participant_id: str
-    accepted: bool
+    invite_token: str
+    invitee_name: str
+    consented: bool
 
-class StartRequest(BaseModel):
-    meeting_url: str  # Required for external platforms
+class StartSessionRequest(BaseModel):
+    meeting_url: Optional[str] = None  # Required for external platforms
+
+class CreateSessionResponse(BaseModel):
+    id: str
+    session_id: Optional[str] = None  # Deprecated alias for id (remove after client migration)
+    status: SessionStatus
+    invite_link: str
+    invite_token: str
+
+class SessionListResponse(BaseModel):
+    sessions: List[Session]
+    total: int
+    has_more: bool  # serialized as hasMore
+
+class ConsentResponse(BaseModel):
+    status: SessionStatus
+    participants: List[Participant]
+
+class StartSessionResponse(BaseModel):
+    status: SessionStatus
+    bot_id: str
+    client_id: str
+    event_url: str
+
+class EndSessionResponse(BaseModel):
+    status: SessionStatus
+    summary_available: bool
 
 class SessionSummary(BaseModel):
     session_id: str
     duration_minutes: int
     consensus_summary: str
     action_items: List[str]
-    balance: dict  # {participantA: %, participantB: %, status: str}
+    balance: dict  # {participant_a: {...}, participant_b: {...}, status: str}
     intervention_count: int
 ```
 
@@ -392,20 +426,21 @@ SESSIONS: Dict[str, Session] = {}
 INVITE_TOKENS: Dict[str, str] = {}  # token -> session_id
 
 class SessionService:
-    def create_session(self, data: SessionCreate, creator_id: str) -> Session:
+    def create_session(self, data: CreateSessionRequest, creator_id: str) -> Session:
         session_id = str(uuid.uuid4())
         invite_token = secrets.token_urlsafe(32)
 
         session = Session(
             id=session_id,
-            title=data.title,
+            title=f"Session with {data.partner_name}",
             goal=data.goal,
             relationship_context=data.relationship_context,
+            partner_name=data.partner_name,
             platform=data.platform,
             meeting_url=data.meeting_url,
             duration_minutes=data.duration_minutes,
             scheduled_at=data.scheduled_at,
-            status=SessionStatus.DRAFT,
+            status=SessionStatus.PENDING_CONSENT,
             participants=[
                 Participant(id=creator_id, name="Creator", role="creator", consented=True),
                 Participant(id=str(uuid.uuid4()), name=data.partner_name, role="invitee", consented=False),
@@ -419,29 +454,35 @@ class SessionService:
         INVITE_TOKENS[invite_token] = session_id
         return session
 
-    def record_consent(self, session_id: str, participant_id: str, accepted: bool) -> Session:
+    def record_consent(self, session_id: str, invite_token: str, invitee_name: str, consented: bool) -> Session:
         session = SESSIONS.get(session_id)
         if not session:
             raise ValueError("Session not found")
+        if session.invite_token != invite_token:
+            raise ValueError("Invalid invite token")
 
-        for p in session.participants:
-            if p.id == participant_id:
-                p.consented = accepted
-                break
-
-        # Update status if both consented
-        if all(p.consented for p in session.participants):
-            session.status = SessionStatus.READY
+        if consented:
+            invitee_id = str(uuid.uuid4())
+            session.participants.append(
+                Participant(id=invitee_id, name=invitee_name, role="invitee", consented=True)
+            )
+            if all(p.consented for p in session.participants):
+                session.status = SessionStatus.READY
+        else:
+            session.status = SessionStatus.ARCHIVED
 
         return session
 
-    def start_session(self, session_id: str, meeting_url: str) -> Session:
+    def start_session(self, session_id: str, meeting_url: Optional[str]) -> Session:
         session = SESSIONS.get(session_id)
         if not session:
             raise ValueError("Session not found")
         if session.status != SessionStatus.READY:
             raise ValueError("Session not ready to start")
 
+        meeting_url = meeting_url or session.meeting_url
+        if not meeting_url:
+            raise ValueError("Meeting URL is required for external platforms")
         session.meeting_url = meeting_url
         session.status = SessionStatus.IN_PROGRESS
         return session
@@ -491,14 +532,14 @@ class EventService:
 ### 5.1 Mapping Sessions to Bots
 
 When a session starts:
-1. Frontend calls `POST /sessions/{id}/start` with `meeting_url`
+1. Frontend calls `POST /sessions/{id}/start` with `meeting_url` (required for external platforms)
 2. Backend calls existing `POST /bots` internally
 3. Backend stores `bot_id` and `client_id` in session record
 4. Backend starts emitting events from Pipecat to `/sessions/{id}/events`
 
 ```python
 # In session routes
-async def start_session(session_id: str, request: StartRequest):
+async def start_session(session_id: str, request: StartSessionRequest):
     session = session_service.get(session_id)
 
     # Map facilitator persona to existing persona system
@@ -736,7 +777,30 @@ export type EventType =
   | "escalation"
   | "time_remaining"
   | "goal_drift"
-  | "participant_status";
+  | "participant_status"
+  | "ai_status"
+  | "error";
+
+export type AIStatus = "listening" | "preparing" | "intervening" | "paused" | "idle";
+
+export interface SessionStateData {
+  status: SessionStatus;
+  goal?: string;
+  durationMinutes?: number;
+  participants?: Participant[];
+  facilitatorConfig?: FacilitatorConfig;
+  botId?: string | null;
+  clientId?: string | null;
+  facilitatorPaused?: boolean;
+  aiStatus?: AIStatus;
+}
+
+export interface TimeRemainingData {
+  minutes: number;
+  seconds: number;
+  totalSecondsRemaining: number;
+  percentComplete: number;
+}
 
 export interface BalanceUpdate {
   participantA: { id: string; name: string; percentage: number };
@@ -750,6 +814,17 @@ export interface Intervention {
   modality: "visual" | "voice";
   message: string;
   actions?: { id: string; label: string }[];
+}
+
+export interface AIStatusData {
+  status: AIStatus;
+  message?: string;
+}
+
+export interface ErrorData {
+  code: string;
+  message: string;
+  recoverable: boolean;
 }
 
 export interface SessionEvent<T = unknown> {
@@ -787,34 +862,44 @@ export async function apiRequest<T>(
 }
 
 // lib/api/sessions.ts
-import { Session, SessionCreate, ConsentRequest, SessionSummary } from "@/types/session";
+import {
+  Session,
+  SessionListResponse,
+  CreateSessionRequest,
+  CreateSessionResponse,
+  ConsentRequest,
+  ConsentResponse,
+  StartSessionResponse,
+  EndSessionResponse,
+  SessionSummary,
+} from "@/lib/api/types";
 import { apiRequest } from "./client";
 
 export const sessionsApi = {
-  create: (data: SessionCreate) =>
-    apiRequest<Session>("/sessions", {
+  create: (data: CreateSessionRequest) =>
+    apiRequest<CreateSessionResponse>("/sessions", {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
   get: (id: string) => apiRequest<Session>(`/sessions/${id}`),
 
-  list: () => apiRequest<Session[]>("/sessions"),
+  list: () => apiRequest<SessionListResponse>("/sessions"),
 
   consent: (id: string, data: ConsentRequest) =>
-    apiRequest<Session>(`/sessions/${id}/consent`, {
+    apiRequest<ConsentResponse>(`/sessions/${id}/consent`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
-  start: (id: string, meetingUrl: string) =>
-    apiRequest<Session>(`/sessions/${id}/start`, {
+  start: (id: string, meetingUrl?: string) =>
+    apiRequest<StartSessionResponse>(`/sessions/${id}/start`, {
       method: "POST",
       body: JSON.stringify({ meeting_url: meetingUrl }),
     }),
 
   end: (id: string) =>
-    apiRequest<Session>(`/sessions/${id}/end`, { method: "POST" }),
+    apiRequest<EndSessionResponse>(`/sessions/${id}/end`, { method: "POST" }),
 
   getSummary: (id: string) =>
     apiRequest<SessionSummary>(`/sessions/${id}/summary`),
@@ -838,6 +923,8 @@ FRONTEND_URL=http://localhost:3000
 ```
 NEXT_PUBLIC_API_URL=http://localhost:7014
 NEXT_PUBLIC_WS_URL=ws://localhost:7014
+NEXT_PUBLIC_MEETING_BAAS_API_KEY=your_meetingbaas_api_key_here
+# NEXT_PUBLIC_API_KEY=your_meetingbaas_api_key_here  # Deprecated alias
 ```
 
 ---
