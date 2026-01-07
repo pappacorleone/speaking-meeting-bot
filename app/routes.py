@@ -683,6 +683,8 @@ async def create_session(
             duration_minutes=request.duration_minutes,
             platform=request.platform,
             scheduled_at=request.scheduled_at,
+            meeting_url=request.meeting_url,
+            skip_consent=request.skip_consent,
         )
 
         # Build the invite link

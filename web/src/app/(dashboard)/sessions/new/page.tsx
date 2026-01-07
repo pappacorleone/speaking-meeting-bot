@@ -400,6 +400,9 @@ export default function NewSessionPage() {
         duration_minutes: formData.durationMinutes,
         scheduled_at: formData.scheduledAt || undefined,
         platform: formData.platform,
+        meeting_url: formData.platform !== 'diadi' ? formData.meetingUrl : undefined,
+        // Skip consent flow in dev mode for testing without a partner
+        skip_consent: process.env.NODE_ENV === 'development',
       };
 
       // Create session via API

@@ -175,3 +175,4 @@ web/.pnpm-debug.log*
 web/.vercel
 web/*.tsbuildinfo
 web/next-env.d.ts
+nul

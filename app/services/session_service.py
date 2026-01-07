@@ -38,6 +38,8 @@ class SessionService:
         duration_minutes: int = 30,
         platform: Platform = Platform.MEET,
         scheduled_at: Optional[str] = None,
+        meeting_url: Optional[str] = None,
+        skip_consent: bool = False,
     ) -> Session:
         """Create a new session in draft status.
 
@@ -50,6 +52,8 @@ class SessionService:
             duration_minutes: Session duration in minutes.
             platform: Meeting platform to use.
             scheduled_at: Optional scheduled time (ISO format).
+            meeting_url: Optional meeting URL for external platforms.
+            skip_consent: Skip partner consent for testing (creates session in ready status).
 
         Returns:
             The created Session object.
@@ -61,6 +65,32 @@ class SessionService:
         if facilitator_config is None:
             facilitator_config = FacilitatorConfig()
 
+        # Build participants list
+        participants = [
+            Participant(
+                id=creator_id,
+                name=creator_name,
+                role="creator",
+                consented=True,  # Creator implicitly consents
+            )
+        ]
+
+        # If skip_consent, add a test partner and set status to READY
+        if skip_consent:
+            partner_id = secrets.token_urlsafe(8)
+            participants.append(
+                Participant(
+                    id=partner_id,
+                    name=partner_name,
+                    role="invitee",
+                    consented=True,  # Test partner auto-consents
+                )
+            )
+            initial_status = SessionStatus.READY
+            logger.info(f"Skipping consent for session {session_id} (dev mode)")
+        else:
+            initial_status = SessionStatus.PENDING_CONSENT
+
         session = Session(
             id=session_id,
             title=f"Session with {partner_name}",
@@ -68,17 +98,11 @@ class SessionService:
             relationship_context=relationship_context,
             partner_name=partner_name,
             platform=platform,
+            meeting_url=meeting_url,
             duration_minutes=duration_minutes,
             scheduled_at=scheduled_at,
-            status=SessionStatus.PENDING_CONSENT,
-            participants=[
-                Participant(
-                    id=creator_id,
-                    name=creator_name,
-                    role="creator",
-                    consented=True,  # Creator implicitly consents
-                )
-            ],
+            status=initial_status,
+            participants=participants,
             facilitator=facilitator_config,
             created_at=datetime.utcnow().isoformat(),
             invite_token=invite_token,

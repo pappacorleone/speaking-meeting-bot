@@ -1,15 +1,47 @@
-# Diadi Frontend Technical Specification
+# Diadi Technical Specification
 
 **Version:** 1.0
-**Date:** 2026-01-04
-**Status:** Draft for Review
-**Sources:** PRD_DIADI_FRONTEND_V2.md, DIADI_FRONTEND_PRD_CONSOLIDATED.md
+**Date:** 2026-01-06
+**Status:** Consolidated
+
+## Document Purpose
+
+This technical specification defines **HOW** to implement Diadi. It is the authoritative source for:
+- System architecture and component design
+- Frontend directory structure and components
+- Backend API contracts and data models
+- Integration with existing MeetingBaas/Pipecat infrastructure
+- Implementation phases and task breakdown
+- Environment configuration
+- Persona file specifications
+
+**Audience:** Engineers, technical leads
+**Related:** [DIADI_STRATEGY.md](DIADI_STRATEGY.md) (why), [DIADI_PRD.md](DIADI_PRD.md) (what)
+
+---
+
+## Table of Contents
+
+1. [Executive Summary](#1-executive-summary)
+2. [Architecture Overview](#2-architecture-overview)
+3. [Frontend Implementation Plan](#3-frontend-implementation-plan)
+4. [Backend API Additions](#4-backend-api-additions)
+5. [Integration with Existing Codebase](#5-integration-with-existing-codebase)
+6. [Implementation Phases](#6-implementation-phases)
+7. [TypeScript Types (Frontend)](#7-typescript-types-frontend)
+8. [API Client (Frontend)](#8-api-client-frontend)
+9. [Environment Variables](#9-environment-variables)
+10. [Key Decisions (Confirmed)](#10-key-decisions-confirmed)
+11. [New Diadi Personas](#11-new-diadi-personas)
+12. [Risk Mitigation](#12-risk-mitigation)
+13. [File Modifications Summary](#13-file-modifications-summary)
+14. [Success Criteria](#14-success-criteria)
 
 ---
 
 ## 1. Executive Summary
 
-This technical specification defines the implementation plan for the Diadi frontend—a web application enabling AI-facilitated two-person conversations. The spec reconciles both PRD documents and maps requirements to the existing `speaking-meeting-bot` codebase.
+This technical specification defines the implementation plan for the Diadi frontend—a web application enabling AI-facilitated two-person conversations. The spec maps requirements to the existing `speaking-meeting-bot` codebase.
 
 **Key Deliverables:**
 - Next.js 14 frontend in new `web/` directory
@@ -19,23 +51,7 @@ This technical specification defines the implementation plan for the Diadi front
 
 ---
 
-## 2. PRD Reconciliation Summary
-
-Both PRDs are largely aligned. Key decisions:
-
-| Topic | Decision | Source |
-|-------|----------|--------|
-| Stack | Next.js 14 + React + TypeScript + Tailwind | Consolidated PRD |
-| Session Wizard | 5-step lean flow (Identity, Goal, Facilitator, Review, Launch) | Both (aligned) |
-| Optional Steps | Strategic Intent, Emotional Pulse deferred to P1 | Consolidated PRD |
-| Video Platform | External (Zoom/Meet/Teams) for Alpha; native Diadi Video is Beta | Both (aligned) |
-| Event Stream | `/sessions/{session_id}/events` WebSocket | Both (aligned) |
-| Deep Prep | Beta feature, show disabled placeholder in Alpha | Both (aligned) |
-| Intervention Policy | Visual-first, max 1 per 2 minutes, voice only for severe | Both (aligned) |
-
----
-
-## 3. Architecture Overview
+## 2. Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -83,9 +99,9 @@ Both PRDs are largely aligned. Key decisions:
 
 ---
 
-## 4. Frontend Implementation Plan
+## 3. Frontend Implementation Plan
 
-### 4.1 Directory Structure
+### 3.1 Directory Structure
 
 ```
 web/
@@ -166,7 +182,7 @@ web/
 └── .env.local
 ```
 
-### 4.2 Core Pages and Components
+### 3.2 Core Pages and Components
 
 #### Page: Hub (`/hub`)
 - **Components:** SessionList, SessionCard, EmptyState, NewSessionCTA
@@ -210,7 +226,7 @@ web/
 - **Actions:** Accept/Decline consent
 - **Redirect:** To waiting room on accept
 
-### 4.3 Real-Time Event Handling
+### 3.3 Real-Time Event Handling
 
 ```typescript
 // hooks/useSessionEvents.ts
@@ -262,9 +278,9 @@ export function useSessionEvents(sessionId: string) {
 
 ---
 
-## 5. Backend API Additions
+## 4. Backend API Additions
 
-### 5.1 New Endpoints Required
+### 4.1 New Endpoints Required
 
 | Endpoint | Method | Purpose | Request | Response |
 |----------|--------|---------|---------|----------|
@@ -277,7 +293,7 @@ export function useSessionEvents(sessionId: string) {
 | `/sessions/{id}/summary` | GET | Get summary | - | SessionSummary |
 | `/sessions/{id}/events` | WS | Event stream | - | SessionEvent[] |
 
-### 5.2 Data Models (Backend)
+### 4.2 Data Models (Backend)
 
 ```python
 # app/models/session.py
@@ -362,7 +378,7 @@ class SessionSummary(BaseModel):
     intervention_count: int
 ```
 
-### 5.3 Session Storage (Alpha: In-Memory)
+### 4.3 Session Storage (Alpha: In-Memory)
 
 ```python
 # app/services/session_service.py
@@ -431,7 +447,7 @@ class SessionService:
         return session
 ```
 
-### 5.4 Event Broadcasting
+### 4.4 Event Broadcasting
 
 ```python
 # app/services/event_service.py
@@ -470,9 +486,9 @@ class EventService:
 
 ---
 
-## 6. Integration with Existing Codebase
+## 5. Integration with Existing Codebase
 
-### 6.1 Mapping Sessions to Bots
+### 5.1 Mapping Sessions to Bots
 
 When a session starts:
 1. Frontend calls `POST /sessions/{id}/start` with `meeting_url`
@@ -510,7 +526,7 @@ async def start_session(session_id: str, request: StartRequest):
     return session
 ```
 
-### 6.2 Exposing client_id from /bots
+### 5.2 Exposing client_id from /bots
 
 Current `/bots` only returns `bot_id`. Need to also return `client_id` for session mapping:
 
@@ -521,7 +537,7 @@ class JoinResponse(BaseModel):
     client_id: str  # ADD THIS
 ```
 
-### 6.3 Emitting Events from Pipecat
+### 5.3 Emitting Events from Pipecat
 
 Add event emission hooks in `scripts/meetingbaas.py`:
 
@@ -555,9 +571,9 @@ class TalkBalanceTracker:
 
 ---
 
-## 7. Implementation Phases
+## 6. Implementation Phases
 
-### Phase 1: Foundation (Week 1-2)
+### Phase 1: Foundation
 **Dependencies:** None
 
 **Backend:**
@@ -577,7 +593,7 @@ class TalkBalanceTracker:
 - [ ] Implement basic navigation (mobile bottom nav, desktop side rail)
 - [ ] Create Hub page with empty states
 
-### Phase 2: Session Creation (Week 2-3)
+### Phase 2: Session Creation
 **Dependencies:** Phase 1
 
 **Backend:**
@@ -590,7 +606,7 @@ class TalkBalanceTracker:
 - [ ] Create SessionCard and SessionList components
 - [ ] Add form validation and state management (Zustand)
 
-### Phase 3: Invitation & Consent (Week 3-4)
+### Phase 3: Invitation & Consent
 **Dependencies:** Phase 2
 
 **Backend:**
@@ -603,7 +619,7 @@ class TalkBalanceTracker:
 - [ ] Show consent status to both participants
 - [ ] Implement waiting room with partner status
 
-### Phase 4: Live Session (Week 4-5)
+### Phase 4: Live Session
 **Dependencies:** Phase 3
 
 **Backend:**
@@ -625,7 +641,7 @@ class TalkBalanceTracker:
 - [ ] Add SessionTimer with time remaining
 - [ ] Implement KillSwitch with immediate effect
 
-### Phase 5: Interventions (Week 5-6)
+### Phase 5: Interventions
 **Dependencies:** Phase 4
 
 **Backend:**
@@ -639,7 +655,7 @@ class TalkBalanceTracker:
 - [ ] Add intervention action buttons (Prompt, Skip)
 - [ ] Show intervention history
 
-### Phase 6: Post-Session (Week 6-7)
+### Phase 6: Post-Session
 **Dependencies:** Phase 5
 
 **Backend:**
@@ -653,7 +669,7 @@ class TalkBalanceTracker:
 - [ ] Add rating prompt (1-5 stars)
 - [ ] Create session history view
 
-### Phase 7: Polish & Testing (Week 7-8)
+### Phase 7: Polish & Testing
 **Dependencies:** All previous phases
 
 - [ ] Mobile responsive testing (360x640, 1280x720)
@@ -664,7 +680,7 @@ class TalkBalanceTracker:
 
 ---
 
-## 8. TypeScript Types (Frontend)
+## 7. TypeScript Types (Frontend)
 
 ```typescript
 // types/session.ts
@@ -745,7 +761,7 @@ export interface SessionEvent<T = unknown> {
 
 ---
 
-## 9. API Client (Frontend)
+## 8. API Client (Frontend)
 
 ```typescript
 // lib/api/client.ts
@@ -807,7 +823,7 @@ export const sessionsApi = {
 
 ---
 
-## 10. Environment Variables
+## 9. Environment Variables
 
 ### Backend (.env additions)
 ```
@@ -826,7 +842,7 @@ NEXT_PUBLIC_WS_URL=ws://localhost:7014
 
 ---
 
-## 11. Key Decisions (Confirmed)
+## 10. Key Decisions (Confirmed)
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
@@ -838,11 +854,11 @@ NEXT_PUBLIC_WS_URL=ws://localhost:7014
 
 ---
 
-## 12. New Diadi Personas (To Create)
+## 11. New Diadi Personas
 
 Create three new personas in `config/personas/`:
 
-### 12.1 Neutral Mediator (`config/personas/neutral_mediator/README.md`)
+### 11.1 Neutral Mediator (`config/personas/neutral_mediator/README.md`)
 ```markdown
 # Neutral Mediator
 
@@ -865,7 +881,7 @@ Warm but professional. Measured pace. Gender-neutral tone.
 - gender: NON_BINARY
 ```
 
-### 12.2 Deep Empath (`config/personas/deep_empath/README.md`)
+### 11.2 Deep Empath (`config/personas/deep_empath/README.md`)
 ```markdown
 # Deep Empath
 
@@ -888,7 +904,7 @@ Soft, warm, nurturing. Slightly slower pace. Reassuring tone.
 - gender: FEMALE
 ```
 
-### 12.3 Decision Catalyst (`config/personas/decision_catalyst/README.md`)
+### 11.3 Decision Catalyst (`config/personas/decision_catalyst/README.md`)
 ```markdown
 # Decision Catalyst
 
@@ -913,7 +929,7 @@ Confident, clear, energetic but not pushy. Moderate pace.
 
 ---
 
-## 13. Risk Mitigation
+## 12. Risk Mitigation
 
 | Risk | Mitigation |
 |------|------------|
@@ -926,12 +942,12 @@ Confident, clear, energetic but not pushy. Moderate pace.
 
 ---
 
-## 14. File Modifications Summary
+## 13. File Modifications Summary
 
 ### Existing Files to Modify
-- [app/routes.py](app/routes.py) - Add session routes, modify JoinResponse
-- [app/models.py](app/models.py) - Add session models
-- [scripts/meetingbaas.py](scripts/meetingbaas.py) - Add event emission hooks, talk balance tracking
+- [app/routes.py](../app/routes.py) - Add session routes, modify JoinResponse
+- [app/models.py](../app/models.py) - Add session models
+- [scripts/meetingbaas.py](../scripts/meetingbaas.py) - Add event emission hooks, talk balance tracking
 
 ### New Files to Create
 **Backend:**
@@ -946,11 +962,11 @@ Confident, clear, energetic but not pushy. Moderate pace.
 - `config/personas/decision_catalyst/README.md` - Action-oriented persona
 
 **Frontend (new `web/` directory):**
-- Full Next.js 14 application as outlined in section 4.1
+- Full Next.js 14 application as outlined in section 3.1
 
 ---
 
-## 15. Success Criteria
+## 14. Success Criteria
 
 Per PRD requirements:
 - [ ] >= 80% of pairs rate session 4/5 or higher

@@ -1,10 +1,24 @@
-# Dyadic Communication Assistant: Alpha Master Strategy
+# Diadi Strategy
 
 > **Purpose**: Strategic recommendations for product and marketing leadership to design and launch an AI-powered communication assistant that helps people have difficult conversations with the people they care about most.
 
 **Target Market**: Close relationships (romantic partners, family, trusted professional partners)
 **Alpha Scope**: Voice-first facilitation with visual feedback
 **Core Philosophy**: Serve the relationship, not either individual
+
+## Document Purpose
+
+This strategy document defines **WHO** Diadi serves and **WHY**. It is the authoritative source for:
+- Vision, mission, and positioning
+- Market opportunity and competitive landscape
+- Target personas and user stories
+- Core values and product philosophy
+- Go-to-market strategy and pricing
+- Success metrics and business health
+- Risk analysis and mitigation
+
+**Audience:** Leadership, product strategy, marketing
+**Related:** [DIADI_PRD.md](DIADI_PRD.md) (what), [DIADI_TECHNICAL_SPEC.md](DIADI_TECHNICAL_SPEC.md) (how)
 
 ---
 
@@ -13,19 +27,17 @@
 1. [Executive Summary](#1-executive-summary)
 2. [The Opportunity](#2-the-opportunity)
 3. [Core Values and Product Philosophy](#3-core-values-and-product-philosophy)
-4. [Alpha Scope Definition](#4-alpha-scope-definition)
+4. [Target Relationships](#4-target-relationships)
 5. [Personas](#5-personas)
 6. [High-Pain User Stories](#6-high-pain-user-stories)
-7. [Minimum Viable Feature Set](#7-minimum-viable-feature-set)
-8. [Intervention Philosophy](#8-intervention-philosophy)
-9. [Consent and Trust Architecture](#9-consent-and-trust-architecture)
-10. [Go-to-Market Strategy](#10-go-to-market-strategy)
-11. [Success Metrics](#11-success-metrics)
-12. [Technical Architecture](#12-technical-architecture)
-13. [Risk Analysis](#13-risk-analysis)
-14. [Roadmap](#14-roadmap)
-15. [Open Questions for Leadership](#15-open-questions-for-leadership)
-16. [Appendices](#16-appendices)
+7. [Intervention Philosophy](#7-intervention-philosophy)
+8. [Consent and Trust Architecture](#8-consent-and-trust-architecture)
+9. [Go-to-Market Strategy](#9-go-to-market-strategy)
+10. [Success Metrics](#10-success-metrics)
+11. [Risk Analysis](#11-risk-analysis)
+12. [Roadmap](#12-roadmap)
+13. [Open Questions for Leadership](#13-open-questions-for-leadership)
+14. [Appendices](#14-appendices)
 
 ---
 
@@ -203,9 +215,7 @@ A successful AI facilitator speaks as little as possible while achieving relatio
 
 ---
 
-## 4. Alpha Scope Definition
-
-### 4.1 Target Relationships (Sharp Focus)
+## 4. Target Relationships
 
 **Primary (Must nail for alpha success)**:
 1. **Romantic partners** struggling with recurring conflicts or communication patterns
@@ -221,60 +231,6 @@ A successful AI facilitator speaks as little as possible while achieving relatio
 - Standard business meetings
 - Therapy or crisis intervention
 - Cross-language translation (defer to beta)
-
-### 4.2 Modality Scope
-
-| Modality | Alpha Status | Rationale |
-|----------|--------------|-----------|
-| **Voice calls** | IN SCOPE | Primary—emotional authenticity, existing infrastructure |
-| **Visual feedback** | IN SCOPE | Balance indicators, prompts visible to both |
-| **Meeting platforms** | IN SCOPE | Zoom, Teams, Meet via existing MeetingBaas integration |
-| Text/chat | DEFERRED | Lower emotional bandwidth; different UX patterns |
-| Phone calls | DEFERRED | Requires telecom integration |
-| WhatsApp/SMS | DEFERRED | Integration complexity |
-| In-person with device | DEFERRED | Novel UX challenges |
-
-### 4.3 Skill Scope
-
-| Skill | Alpha Status | Purpose |
-|-------|--------------|---------|
-| **Facilitator** | PRIMARY | Keep conversation balanced; ensure both heard |
-| **Mediator** | ESCALATION ONLY | De-escalate when tension rises |
-| Coach | DEFERRED | Creates asymmetry; inappropriate for relationship parity |
-| Translator | DEFERRED | Complexity; separate market focus |
-| Clarifier | FOLDED INTO FACILITATOR | Simplify modal complexity |
-| Reflector | DEFERRED | Post-conversation only; lower priority |
-
-### 4.4 Memory Scope
-
-| Memory Type | Alpha Status | Rationale |
-|-------------|--------------|-----------|
-| **Session-only** | DEFAULT | Privacy-first; trust-building |
-| Cross-session (opt-in) | STRETCH | Valuable but privacy complexity |
-| Relationship CRM | DEFERRED | Beta feature |
-
-### 4.5 Feature In/Out Summary
-
-| Feature | In Alpha | Beta | GA | Never |
-|---------|----------|------|-----|-------|
-| Dual consent flow | ✓ | | | |
-| Speaker diarization | ✓ | | | |
-| Talk-time balance indicator | ✓ | | | |
-| Session goal setting | ✓ | | | |
-| Kill switch | ✓ | | | |
-| Minimal voice interventions | ✓ | | | |
-| Visual prompts | ✓ | | | |
-| Post-session summary | ✓ | | | |
-| Escalation detection | | ✓ | | |
-| Topic tracking | | ✓ | | |
-| Cross-session memory | | ✓ | | |
-| Text/chat channel | | ✓ | | |
-| Translation | | ✓ | | |
-| Mobile companion | | | ✓ | |
-| Enterprise admin | | | ✓ | |
-| Private coaching | | | | ✗ |
-| Manipulation tools | | | | ✗ |
-| Therapy replacement | | | | ✗ |
 
 ---
 
@@ -831,70 +787,15 @@ Key Moment: "[The aha moment that delivers value]"
 
 ---
 
-## 7. Minimum Viable Feature Set
+## 7. Intervention Philosophy
 
-### 7.1 P0: Must Have for Alpha
-
-These features are non-negotiable for any alpha release:
-
-| Feature | Purpose | Value Alignment |
-|---------|---------|-----------------|
-| **Dual consent flow** | Both parties explicitly opt-in before AI observes | Safe, Respectful |
-| **Speaker diarization** | Know who is speaking at all times | Healthy (enables balance) |
-| **Real-time talk-time balance** | Visual indicator visible to both | Healthy, Respectful |
-| **Session goal setting** | Define conversation purpose upfront | Constructive |
-| **Kill switch** | Either party can disable instantly | Safe, Respectful |
-| **Visible AI presence indicator** | Constant awareness AI is observing | Safe, Respectful |
-| **Minimal voice interventions** | Rare, high-value spoken prompts only | Healthy |
-| **Visual prompts** | Non-intrusive suggestions visible to both | Respectful |
-| **Post-session summary** | Balance metrics, topics covered, action items | Constructive |
-
-### 7.2 P1: Should Have for Alpha (Stretch)
-
-These significantly enhance value but alpha can launch without them:
-
-| Feature | Purpose | Why Stretch |
-|---------|---------|-------------|
-| **Escalation detection** | Identify rising tension | Requires sentiment analysis tuning |
-| **Topic tracking** | Ensure stated goals addressed | Requires semantic analysis |
-| **Configurable intervention sensitivity** | Users control how often AI intervenes | Adds UX complexity |
-| **Pre-conversation preparation** | Capture what each person wants to discuss | Additional flow |
-
-### 7.3 P2: Deferred to Beta
-
-| Feature | Purpose | Why Defer |
-|---------|---------|-----------|
-| **Cross-session memory** | Context across conversations | Privacy complexity |
-| **Pattern insights over time** | Show improvement trends | Requires data accumulation |
-| **Text/chat channel** | Text-based conversations | Different UX; lower priority |
-| **Translation** | Cross-language conversations | Separate market focus |
-| **Mobile companion app** | On-the-go access | Platform complexity |
-
-### 7.4 Feature-Value Matrix
-
-| Feature | Safe | Respectful | Healthy | Culturally Aware | Constructive |
-|---------|------|------------|---------|------------------|--------------|
-| Dual consent | **PRIMARY** | **PRIMARY** | - | - | - |
-| Speaker diarization | - | PRIMARY | **PRIMARY** | - | - |
-| Talk-time balance | - | **PRIMARY** | **PRIMARY** | - | - |
-| Session goal setting | - | - | - | - | **PRIMARY** |
-| Kill switch | **PRIMARY** | **PRIMARY** | - | - | - |
-| AI presence indicator | **PRIMARY** | **PRIMARY** | - | - | - |
-| Voice interventions | - | - | **PRIMARY** | - | - |
-| Visual prompts | - | **PRIMARY** | **PRIMARY** | - | - |
-| Post-session summary | - | - | - | - | **PRIMARY** |
-
----
-
-## 8. Intervention Philosophy
-
-### 8.1 Core Principle
+### 7.1 Core Principle
 
 **"A successful AI facilitator speaks as little as possible while achieving relationship outcomes."**
 
 Every intervention must earn its moment. Silence is not passive—it's active trust-building.
 
-### 8.2 Intervention Hierarchy
+### 7.2 Intervention Hierarchy
 
 Interventions follow a modality stack—always prefer less intrusive options:
 
@@ -921,7 +822,7 @@ Tier 4: SAFETY (crisis only)
 └── Never continue without consent
 ```
 
-### 8.3 Intervention Triggers (When AI MAY Intervene)
+### 7.3 Intervention Triggers (When AI MAY Intervene)
 
 | Trigger | Threshold | Modality |
 |---------|-----------|----------|
@@ -933,7 +834,7 @@ Tier 4: SAFETY (crisis only)
 | **Explicit request** | Either party says "help" or trigger phrase | Respond to request |
 | **Shutdown detected** | One party silent >60 seconds during active topic | Visual space; then gentle voice prompt |
 
-### 8.4 Intervention Blockers (When AI MUST NOT Intervene)
+### 7.4 Intervention Blockers (When AI MUST NOT Intervene)
 
 | Blocker | Why |
 |---------|-----|
@@ -946,7 +847,7 @@ Tier 4: SAFETY (crisis only)
 | **First 3 minutes of session** | Allow natural warm-up |
 | **Grief or crisis expression** | Deep emotional moments need space, not management |
 
-### 8.5 Intervention Templates
+### 7.5 Intervention Templates
 
 **Balance Prompts**:
 - Visual: "[Name] hasn't shared their perspective yet"
@@ -973,7 +874,7 @@ Tier 4: SAFETY (crisis only)
 - Visual: "[Name] seems unsure—might help to rephrase"
 - Voice: "[Name], it seems like there might be some confusion. Could you say more about what you mean?"
 
-### 8.6 Safety Escalation Protocol
+### 7.6 Safety Escalation Protocol
 
 | Level | Signals | Response |
 |-------|---------|----------|
@@ -987,9 +888,9 @@ Tier 4: SAFETY (crisis only)
 
 ---
 
-## 9. Consent and Trust Architecture
+## 8. Consent and Trust Architecture
 
-### 9.1 Non-Negotiable Trust Requirements
+### 8.1 Non-Negotiable Trust Requirements
 
 | Requirement | Implementation | Rationale |
 |-------------|----------------|-----------|
@@ -1000,7 +901,7 @@ Tier 4: SAFETY (crisis only)
 | **Data minimization** | Default: session-only, no storage | Privacy-first; earn trust before asking for data |
 | **Transparency report** | Users can see exactly what data exists | No hidden collection |
 
-### 9.2 Consent Flow Design
+### 8.2 Consent Flow Design
 
 ```
 INVITATION FLOW
@@ -1042,7 +943,7 @@ SESSION END
 └── No follow-up contact unless opted in
 ```
 
-### 9.3 Data Policy
+### 8.3 Data Policy
 
 | Data Type | Default | With Consent |
 |-----------|---------|--------------|
@@ -1052,7 +953,7 @@ SESSION END
 | **Balance metrics** | Shown once, then discarded | Stored for trends if BOTH opt in |
 | **Intervention history** | Not stored | Stored for improvement if BOTH opt in |
 
-### 9.4 What We Will NOT Do
+### 8.4 What We Will NOT Do
 
 | Anti-Pattern | Commitment |
 |--------------|------------|
@@ -1065,9 +966,9 @@ SESSION END
 
 ---
 
-## 10. Go-to-Market Strategy
+## 9. Go-to-Market Strategy
 
-### 10.1 Positioning Statement
+### 9.1 Positioning Statement
 
 **"The AI that helps you have the conversations you've been avoiding—by staying out of the way until you need it."**
 
@@ -1076,7 +977,7 @@ SESSION END
 **Unlike** coaching tools that help one person or therapy that happens between sessions,
 **Our product** observes both participants, maintains balance, and intervenes only when genuinely helpful.
 
-### 10.2 Messaging by Persona
+### 9.2 Messaging by Persona
 
 | Persona | Core Message | Supporting Message |
 |---------|--------------|-------------------|
@@ -1086,7 +987,7 @@ SESSION END
 | **Co-founders at a crossroads** | "The conversation your company depends on" | "Don't let misalignment kill the business—or the friendship" |
 | **Managers with difficult dynamics** | "1:1s that actually develop your people" | "Give feedback that lands without damaging relationships" |
 
-### 10.3 Channel Strategy
+### 9.3 Channel Strategy
 
 **Primary Channels (High Intent)**:
 
@@ -1114,7 +1015,7 @@ SESSION END
 | Enterprise sales (for alpha) | Distracts from core relationship focus |
 | Tech press | Wrong audience for relationship product |
 
-### 10.4 Pricing Strategy
+### 9.4 Pricing Strategy
 
 **Model**: Freemium with relationship-based pricing
 
@@ -1131,15 +1032,15 @@ SESSION END
 - **vs. Relationship apps** ($10-30/month): Similar; but real-time vs. exercises
 - **vs. Coaching** ($100-500/session): Continuous vs. episodic; relationship vs. individual
 
-### 10.5 Launch Strategy
+### 9.5 Launch Strategy
 
-**Phase 1: Private Beta (8 weeks)**
+**Phase 1: Private Beta**
 - 200-300 relationships (couples and families)
 - Recruited via therapist partners, relationship content creators
 - Intense feedback: NPS, interviews, session observations (with consent)
 - Iterate on intervention triggers, templates, UX
 
-**Phase 2: Waitlist Launch (4 weeks)**
+**Phase 2: Waitlist Launch**
 - Open waitlist; generate anticipation
 - Content marketing: "The conversations we're helping people have"
 - Influencer testimonials
@@ -1151,7 +1052,7 @@ SESSION END
 - Paid acquisition (limited, targeted)
 - Therapist referral program live
 
-### 10.6 Partnership Opportunities
+### 9.6 Partnership Opportunities
 
 | Partner Type | Value to Us | Value to Them |
 |--------------|-------------|---------------|
@@ -1162,15 +1063,15 @@ SESSION END
 
 ---
 
-## 11. Success Metrics
+## 10. Success Metrics
 
-### 11.1 North Star Metric
+### 10.1 North Star Metric
 
 **"Conversations that felt better"**: Percentage of facilitated conversations where BOTH participants rate the experience as better than they would have had without facilitation.
 
 **Target**: >80% of sessions rated "felt better than usual" by both parties.
 
-### 11.2 Primary Metrics (Relationship Quality)
+### 10.2 Primary Metrics (Relationship Quality)
 
 | Metric | Description | Target |
 |--------|-------------|--------|
@@ -1181,7 +1082,7 @@ SESSION END
 | **Session completion** | Finish naturally (no early exit) | >90% |
 | **Return usage** | Use again within 30 days | >60% |
 
-### 11.3 Facilitation Quality Metrics
+### 10.3 Facilitation Quality Metrics
 
 | Metric | Description | Target |
 |--------|-------------|--------|
@@ -1190,7 +1091,7 @@ SESSION END
 | **Escalation prevention** | Sessions where escalation was de-escalated | >80% of escalation events |
 | **False positive rate** | Interventions marked "not helpful" | <10% |
 
-### 11.4 Business Health Metrics
+### 10.4 Business Health Metrics
 
 | Metric | Description | Target |
 |--------|-------------|--------|
@@ -1200,7 +1101,7 @@ SESSION END
 | **90-day retention** | Still active after 90 days | >40% |
 | **NPS** | Net Promoter Score | >50 |
 
-### 11.5 Anti-Metrics (What We Don't Optimize)
+### 10.5 Anti-Metrics (What We Don't Optimize)
 
 | Anti-Metric | Why We Avoid |
 |-------------|--------------|
@@ -1210,7 +1111,7 @@ SESSION END
 | Data collected | Less is better for trust |
 | Daily active users | Relationships don't need daily facilitation |
 
-### 11.6 Leading Indicators of Product-Market Fit
+### 10.6 Leading Indicators of Product-Market Fit
 
 1. **Organic invitations**: User A invites User B without prompting
 2. **Testimonial requests**: Users volunteer stories about breakthrough conversations
@@ -1220,132 +1121,9 @@ SESSION END
 
 ---
 
-## 12. Technical Architecture
+## 11. Risk Analysis
 
-### 12.1 Leveraging Existing Infrastructure
-
-The current codebase provides a strong foundation:
-
-| Existing Capability | Dyadic Application |
-|---------------------|-------------------|
-| Real-time audio pipeline (Pipecat) | Voice conversation facilitation |
-| Multi-platform support (Meet, Zoom, Teams) | Professional meeting integration |
-| Persona system (markdown-based) | Skill file configuration |
-| WebSocket architecture | Real-time bidirectional communication |
-| STT (Deepgram) + TTS (Cartesia) | Voice AI interaction |
-| LLM integration (OpenAI GPT-4) | Contextual understanding, interventions |
-| Process isolation | Independent conversation sessions |
-
-### 12.2 New Components Required
-
-| Component | Purpose | Priority |
-|-----------|---------|----------|
-| **Speaker diarization** | Identify who is speaking | P0 |
-| **Talk-time balance tracker** | Real-time per-speaker accumulation | P0 |
-| **Intervention decision engine** | Rule-based trigger/blocker system | P0 |
-| **Visual feedback channel** | WebSocket to client for balance indicators | P0 |
-| **Consent flow manager** | Dual consent before session start | P0 |
-| **Session goal tracker** | Capture and track stated objectives | P0 |
-| **Summary generator** | Post-session synthesis | P0 |
-| **Escalation detector** | Sentiment/tension analysis | P1 |
-| **Topic tracker** | Semantic goal alignment | P1 |
-| **Relationship store** | Cross-session memory (opt-in) | P2 |
-
-### 12.3 Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           CLIENT APPLICATION                                 │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
-│  │ Consent Flow │  │ Video/Audio  │  │   Visual     │  │   Summary    │    │
-│  │              │  │   Stream     │  │  Feedback    │  │    View      │    │
-│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘    │
-└─────────────────────────────────────────────────────────────────────────────┘
-                          │                    ▲
-                          │ WebSocket          │ WebSocket
-                          ▼                    │
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                            FACILITATION SERVER                               │
-│                                                                             │
-│  ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐          │
-│  │  Audio Router   │──▶│    Diarizer     │──▶│ Balance Tracker │          │
-│  │  (Existing)     │   │  (Deepgram)     │   │     (New)       │          │
-│  └─────────────────┘   └─────────────────┘   └─────────────────┘          │
-│           │                                           │                     │
-│           ▼                                           ▼                     │
-│  ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐          │
-│  │   STT Engine    │──▶│  Intervention   │──▶│ Visual Feedback │          │
-│  │   (Deepgram)    │   │    Engine       │   │    Emitter      │          │
-│  └─────────────────┘   └─────────────────┘   └─────────────────┘          │
-│           │                    │                                           │
-│           ▼                    ▼                                           │
-│  ┌─────────────────┐   ┌─────────────────┐                                │
-│  │  TTS Engine     │◀──│    LLM (GPT-4)  │                                │
-│  │  (Cartesia)     │   │  Intervention   │                                │
-│  └─────────────────┘   │    Generator    │                                │
-│                        └─────────────────┘                                │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-### 12.4 Skill File Structure
-
-Facilitation skills are configured in markdown files:
-
-```markdown
-# Skill: Facilitator
-
-## Purpose
-Keep conversations balanced and ensure both participants feel heard.
-
-## Activation Triggers
-- Default skill for relationship conversations
-- When balance exceeds 65/35 for >3 minutes
-- When participant explicitly requests help
-
-## Behavior Guidelines
-- Intervention frequency: RARE (prefer visual; voice only for severe issues)
-- Tone: Neutral, warm, inviting
-- Visibility: Always visible to BOTH participants
-- Speaking style: Questions and invitations, never commands
-
-## Intervention Policy
-### When to Intervene
-- Balance exceeds 70/30 for >5 minutes (voice)
-- Balance exceeds 65/35 for >3 minutes (visual)
-- Awkward silence >15 seconds (visual)
-- Explicit request from either party (voice)
-
-### When NOT to Intervene
-- Either party mid-sentence
-- Emotional disclosure in progress
-- Less than 30 seconds since last intervention
-- Repair attempt in progress
-- First 3 minutes of session
-
-## Templates
-### Balance (Visual)
-"[Name] hasn't shared their perspective yet"
-
-### Balance (Voice)
-"I notice the conversation has been a bit one-sided. [Name], would you like to share your thoughts?"
-
-### Silence (Visual)
-"Taking a moment..."
-
-### Silence (Voice)
-"[Name], take your time. Would you like to share what you're thinking?"
-
-## Success Metrics
-- Talk-time balance: 40-60% split achieved
-- Intervention rate: <3 per 30-minute session
-- Both-party satisfaction: >4/5
-```
-
----
-
-## 13. Risk Analysis
-
-### 13.1 High-Impact Risks
+### 11.1 High-Impact Risks
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
@@ -1357,7 +1135,7 @@ Keep conversations balanced and ensure both participants feel heard.
 | **Escalation detection false positives** | Medium | Medium | Conservative thresholds; always offer choice not force intervention |
 | **One party dominates despite prompts** | Medium | Medium | Escalating prompts; session summary shows reality; user agency preserved |
 
-### 13.2 Safety Risks
+### 11.2 Safety Risks
 
 | Risk | Scenario | Prevention |
 |------|----------|------------|
@@ -1366,7 +1144,7 @@ Keep conversations balanced and ensure both participants feel heard.
 | **Weaponization** | One party uses against another | Symmetric visibility; cannot hide AI presence; no private reports |
 | **AI takes sides** | Intervention perceived as favoring one party | Strict neutrality in templates; never comment on who is "right" |
 
-### 13.3 Competitive Risks
+### 11.3 Competitive Risks
 
 | Risk | Response |
 |------|----------|
@@ -1374,7 +1152,7 @@ Keep conversations balanced and ensure both participants feel heard.
 | Therapy platforms add real-time | We're not therapy; complementary positioning; different use case |
 | Relationship apps add facilitation | Deep focus beats feature addition; relationship-native architecture |
 
-### 13.4 Launch Risk Checklist
+### 11.4 Launch Risk Checklist
 
 Pre-launch verification:
 
@@ -1390,9 +1168,9 @@ Pre-launch verification:
 
 ---
 
-## 14. Roadmap
+## 12. Roadmap
 
-### 14.1 Phase Overview
+### 12.1 Phase Overview
 
 | Phase | Focus | Key Deliverables |
 |-------|-------|------------------|
@@ -1400,7 +1178,7 @@ Pre-launch verification:
 | **Beta** | Enhanced intelligence and memory | Escalation detection, cross-session, trends |
 | **GA** | Scale and channels | Mobile, chat, enterprise, integrations |
 
-### 14.2 Alpha Milestones
+### 12.2 Alpha Milestones
 
 **Milestone A1: Core Facilitation Engine**
 - [ ] Speaker diarization integration (Deepgram)
@@ -1432,7 +1210,7 @@ Pre-launch verification:
 - [ ] Performance optimization
 - [ ] Beta waitlist and launch prep
 
-### 14.3 Beta Roadmap Preview
+### 12.3 Beta Roadmap Preview
 
 | Feature | Rationale |
 |---------|-----------|
@@ -1443,7 +1221,7 @@ Pre-launch verification:
 | **Chat channel** | Text-based facilitation option |
 | **Translation** | Cross-language facilitation for diaspora families |
 
-### 14.4 GA Roadmap Preview
+### 12.4 GA Roadmap Preview
 
 | Feature | Rationale |
 |---------|-----------|
@@ -1455,9 +1233,9 @@ Pre-launch verification:
 
 ---
 
-## 15. Open Questions for Leadership
+## 13. Open Questions for Leadership
 
-### 15.1 Scope Decisions
+### 13.1 Scope Decisions
 
 1. **Primary relationship type for alpha**: Should we focus narrowly on couples OR include parent-adult child from the start?
    - *Recommendation*: Include both; similar facilitation needs; broader market validation
@@ -1468,7 +1246,7 @@ Pre-launch verification:
 3. **Geographic focus**: US-only or include international from alpha?
    - *Recommendation*: US-only for alpha; simplifies compliance and support
 
-### 15.2 Policy Decisions
+### 13.2 Policy Decisions
 
 4. **Data retention default**: Session-only (discard after) or opt-out (store unless declined)?
    - *Recommendation*: Session-only default; builds trust; users can opt-in for memory
@@ -1479,7 +1257,7 @@ Pre-launch verification:
 6. **Crisis protocol**: What happens when safety signals are detected?
    - *Recommendation*: Offer exit + resources; never continue without consent; don't pretend to be crisis intervention
 
-### 15.3 Go-to-Market Decisions
+### 13.3 Go-to-Market Decisions
 
 7. **Pricing validation**: Should we test pricing with customer interviews before launch?
    - *Recommendation*: Yes; 20-30 interviews with target personas before finalizing
@@ -1490,7 +1268,7 @@ Pre-launch verification:
 9. **Launch timing**: Beta in Q1 or wait for more refinement?
    - *Depends*: On alpha learnings and product-market fit signals
 
-### 15.4 Technical Decisions
+### 13.4 Technical Decisions
 
 10. **Diarization provider**: Deepgram native or third-party diarization service?
     - *Recommendation*: Deepgram native for alpha; evaluate alternatives if accuracy insufficient
@@ -1500,7 +1278,7 @@ Pre-launch verification:
 
 ---
 
-## 16. Appendices
+## 14. Appendices
 
 ### Appendix A: Competitive Analysis Detail
 
@@ -1683,7 +1461,4 @@ escalation_voice:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | December 2025 | Product Strategy | Initial unified alpha strategy |
-
----
-
-*This document synthesizes strategic direction from DYADIC_MASTER_STRATEGY.md, DYADIC_TRANSLATION_MASTER_STRATEGY.md, DYADIC_MVP_STRATEGY.md, and DYADIC_STRATEGIC_VISION.md to provide unified guidance for product and marketing leadership.*
+| 1.1 | January 2026 | Product Strategy | Consolidated from DYADIC_ALPHA_MASTER_STRATEGY.md |

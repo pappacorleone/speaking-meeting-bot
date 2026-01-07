@@ -211,6 +211,14 @@ class CreateSessionRequest(BaseModel):
         description="ISO8601 timestamp for scheduled sessions, or null for immediate",
     )
     platform: Platform = Field(default=Platform.MEET, description="Meeting platform")
+    meeting_url: Optional[str] = Field(
+        None,
+        description="URL for external meeting platforms (Zoom/Meet/Teams). Not required for diadi platform.",
+    )
+    skip_consent: bool = Field(
+        default=False,
+        description="Skip partner consent for testing (creates session in ready status)",
+    )
 
     class Config:
         json_schema_extra = {
@@ -227,6 +235,7 @@ class CreateSessionRequest(BaseModel):
                 "duration_minutes": 45,
                 "scheduled_at": None,
                 "platform": "meet",
+                "meeting_url": "https://meet.google.com/abc-defg-hij",
             }
         }
 

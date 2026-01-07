@@ -32,6 +32,15 @@ ruff format .
 
 # Lint code
 ruff check .
+
+# Poetry scripts (alternative entry points)
+poetry run bot          # Start bot directly
+poetry run proxy        # Start proxy service
+poetry run meetingbaas  # Run MeetingBaas script
+poetry run api          # Start API server
+
+# Quick local dev setup (Windows PowerShell)
+.\scripts\dev_up.ps1    # Starts ngrok, updates BASE_URL, launches server
 ```
 
 ## Architecture
@@ -169,8 +178,9 @@ Pipecat subprocess logs appear with `[Pipecat STDOUT]` and `[Pipecat STDERR]` pr
 
 ### Version Compatibility
 
+**Required:** Python 3.11+ (specified in pyproject.toml)
+
 Tested with:
-- Python 3.11+
 - pipecat-ai 0.0.98 (note: some newer features require manual compatibility fixes)
 - deepgram-sdk 4.7.0
 - protobuf 5.x (runtime)

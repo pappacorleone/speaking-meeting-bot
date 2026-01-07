@@ -342,16 +342,16 @@ async def session_events_websocket(websocket: WebSocket, session_id: str):
                         {
                             "id": p.id,
                             "name": p.name,
-                            "role": p.role.value,
+                            "role": p.role,
                             "consented": p.consented,
                         }
                         for p in session.participants
                     ],
                     "facilitator_config": {
-                        "persona": session.facilitator_config.persona.value,
-                        "interrupt_authority": session.facilitator_config.interrupt_authority,
-                        "direct_inquiry": session.facilitator_config.direct_inquiry,
-                        "silence_detection": session.facilitator_config.silence_detection,
+                        "persona": session.facilitator.persona.value,
+                        "interrupt_authority": session.facilitator.interrupt_authority,
+                        "direct_inquiry": session.facilitator.direct_inquiry,
+                        "silence_detection": session.facilitator.silence_detection,
                     },
                     "bot_id": session.bot_id,
                     "client_id": session.client_id,
