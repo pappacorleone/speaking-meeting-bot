@@ -205,7 +205,8 @@ async def main(
     else:
         log_and_flush(logging.INFO, "[PERSONA] No additional content found for persona")
 
-    voice_id = os.getenv("CARTESIA_VOICE_ID")
+    # Use the voice ID from the persona data, falling back to env var if not set
+    voice_id = persona.get("cartesia_voice_id") or os.getenv("CARTESIA_VOICE_ID")
     log_and_flush(logging.INFO, f"[PERSONA] Using voice ID: {voice_id}")
 
     tts = CartesiaTTSService(
