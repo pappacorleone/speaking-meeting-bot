@@ -2,7 +2,6 @@ import argparse
 import asyncio
 import json
 import os
-import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, Optional
@@ -285,6 +284,7 @@ async def main(
     streaming_audio_frequency: str = "24khz",
     websocket_url: str = "",
     enable_tools: bool = True,
+    persona_data: Optional[Dict[str, Any]] = None,
 ):
     """
     Run the MeetingBaas bot with specified configurations
@@ -297,6 +297,7 @@ async def main(
         streaming_audio_frequency: Audio frequency for streaming (16khz or 24khz)
         websocket_url: Full WebSocket URL to connect to, including any path
         enable_tools: Whether to enable function tools like weather and time
+        persona_data: Optional persona data dict with cartesia_voice_id and other settings
     """
     # Set TaskManager event loop FIRST, before any other pipecat operations
     # Note: TaskManager only exists in newer pipecat versions (>0.0.98)
@@ -391,8 +392,14 @@ async def main(
     else:
         log_and_flush(logging.INFO, "[PERSONA] No additional content found for persona")
 
-    voice_id = os.getenv("CARTESIA_VOICE_ID")
-    log_and_flush(logging.INFO, f"[PERSONA] Using voice ID: {voice_id}")
+    # Use voice_id from persona_data if available, otherwise fall back to env var
+    voice_id = None
+    if persona_data and persona_data.get("cartesia_voice_id"):
+        voice_id = persona_data.get("cartesia_voice_id")
+        log_and_flush(logging.INFO, f"[PERSONA] Using voice ID from persona_data: {voice_id}")
+    else:
+        voice_id = os.getenv("CARTESIA_VOICE_ID")
+        log_and_flush(logging.INFO, f"[PERSONA] Using voice ID from environment: {voice_id}")
 
     tts = CartesiaTTSService(
         api_key=os.getenv("CARTESIA_API_KEY"),
@@ -616,11 +623,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Determine persona name from persona data JSON if provided
+    # Parse persona data JSON if provided
     persona_name = args.persona_name
+    persona_data = None
     if args.persona_data_json:
         try:
-            import json
             persona_data = json.loads(args.persona_data_json)
             # Use the folder name key if available, otherwise fall back to looking up by display name
             # The persona_data should contain a key that matches the folder name
@@ -636,6 +643,7 @@ if __name__ == "__main__":
                     break
         except Exception as e:
             print(f"Error parsing persona data JSON: {e}")
+            persona_data = None
 
     # Run the bot
     asyncio.run(
@@ -647,5 +655,6 @@ if __name__ == "__main__":
             streaming_audio_frequency=args.streaming_audio_frequency,
             websocket_url=args.websocket_url,
             enable_tools=args.enable_tools,
+            persona_data=persona_data,
         )
     )
