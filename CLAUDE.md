@@ -14,6 +14,25 @@ Speaking Meeting Bot is an AI-powered meeting agent system that enables voice-in
 
 The project also includes a **Diadi** session system for facilitated conversations with consent workflows, session lifecycle management, and AI-generated summaries.
 
+The **web** folder contains a Next.js frontend for the Diadi session management UI.
+
+## Quick Start for AI Agents
+
+When asked to "start the codebase", "run the codebase", or similar, start BOTH servers:
+
+```bash
+# Backend (FastAPI) - from project root
+./.venv/Scripts/python.exe -m uvicorn app:app --reload --host 0.0.0.0 --port 7014
+
+# Frontend (Next.js) - from web/ folder
+cd web && npm run dev
+```
+
+**URLs after startup:**
+- Backend API: http://localhost:7014
+- Backend Docs: http://localhost:7014/docs
+- Frontend UI: http://localhost:3000
+
 ## Common Commands
 
 ```bash
@@ -49,6 +68,13 @@ poetry run api          # Start API server
 
 # Quick local dev setup (Windows PowerShell)
 .\scripts\dev_up.ps1    # Starts ngrok, updates BASE_URL, launches server
+
+# Frontend (Next.js) - run from web/ folder
+cd web
+npm install            # Install frontend dependencies
+npm run dev            # Start dev server (http://localhost:3000)
+npm run build          # Build for production
+npm run lint           # Run ESLint
 ```
 
 ## Architecture
@@ -148,6 +174,7 @@ Specialized personas for facilitated conversations:
 | [config/persona_utils.py](config/persona_utils.py) | Persona loading and management |
 | [config/voice_utils.py](config/voice_utils.py) | Cartesia voice matching via OpenAI |
 | [protobufs/frames.proto](protobufs/frames.proto) | Protocol buffer definitions for Pipecat |
+| [web/](web/) | Next.js frontend for Diadi session management |
 
 ## Environment Variables
 
