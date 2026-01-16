@@ -213,7 +213,7 @@ LLVM_CONFIG=$(brew --prefix llvm)/bin/llvm-config poetry install
 # poetry install
 
 # Activate virtual environment
-poetry shell
+poetry env activate
 ```
 
 **Windows Alternative (if poetry not in PATH):**
@@ -286,7 +286,7 @@ There are two ways to run the server:
 poetry run uvicorn app:app --reload --host 0.0.0.0 --port ${PORT}
 
 # Local development mode with ngrok auto-configuration
-poetry run python run.py --local-dev
+poetry run python app/main.py --local-dev
 ```
 
 The local development mode simplifies WebSocket setup by:
