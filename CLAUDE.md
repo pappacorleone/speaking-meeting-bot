@@ -12,6 +12,8 @@ Speaking Meeting Bot is an AI-powered meeting agent system that enables voice-in
 - **Deepgram/Gladia** - Speech-to-text transcription
 - **FastAPI** - REST API and WebSocket server
 
+The project also includes a **Diadi** session system for facilitated conversations with consent workflows, session lifecycle management, and AI-generated summaries.
+
 ## Common Commands
 
 ```bash
@@ -33,6 +35,12 @@ ruff format .
 # Lint code
 ruff check .
 
+# Run tests
+pytest tests/ -v
+
+# Run a single test file
+pytest tests/test_session_integration.py -v
+
 # Poetry scripts (alternative entry points)
 poetry run bot          # Start bot directly
 poetry run proxy        # Start proxy service
@@ -50,14 +58,29 @@ FastAPI Server (app/main.py:7014)
 ├── HTTP Routes (app/routes.py)
 │   ├── POST /bots - Create bot and join meeting
 │   ├── DELETE /bots/{bot_id} - Remove bot from meeting
-│   └── POST /personas/generate-image - Generate AI avatar
+│   ├── POST /personas/generate-image - Generate AI avatar
+│   └── Session Routes (Diadi)
+│       ├── POST /sessions - Create facilitated session
+│       ├── GET /sessions - List sessions
+│       ├── POST /sessions/{id}/consent - Record partner consent
+│       ├── POST /sessions/{id}/start - Start session
+│       ├── POST /sessions/{id}/pause - Pause (kill switch)
+│       ├── POST /sessions/{id}/resume - Resume session
+│       ├── POST /sessions/{id}/end - End session
+│       └── GET /sessions/{id}/summary - Get AI summary
 ├── WebSocket Routes (app/websockets.py)
 │   ├── /ws/{client_id} - MeetingBaas audio streaming
 │   └── /pipecat/{client_id} - Pipecat service connection
+├── Services (app/services/)
+│   ├── session_service.py - Session lifecycle management
+│   └── summary_service.py - AI summary generation
 └── Core Components (core/)
     ├── connection.py - ConnectionRegistry, MEETING_DETAILS, PIPECAT_PROCESSES
     ├── process.py - Pipecat subprocess management
-    └── router.py - Audio message routing
+    ├── router.py - Audio message routing
+    ├── session_store.py - In-memory session storage
+    ├── intervention_engine.py - AI intervention logic
+    └── balance_tracker.py - Conversation balance tracking
 ```
 
 ### Request Flow
@@ -71,6 +94,16 @@ FastAPI Server (app/main.py:7014)
 ### Key Data Stores (In-Memory)
 - `MEETING_DETAILS` - Bot metadata indexed by client_id
 - `PIPECAT_PROCESSES` - Subprocess tracking for cleanup
+- `SessionStore` - Diadi session state (core/session_store.py)
+
+### Diadi Session Lifecycle
+1. Create session with partner info, goal, and facilitator persona
+2. System generates invite link with token
+3. Partner accepts/declines via consent endpoint
+4. Both parties consent → status changes to "ready"
+5. Session starts → bot joins meeting
+6. Pause/Resume available during session (kill switch)
+7. End session → AI generates summary
 
 ## Persona System
 
@@ -82,6 +115,12 @@ persona_name/
 ```
 
 Persona loading is handled by `config/persona_utils.py` via `PersonaManager` class. The README.md contains YAML-like metadata section with `image`, `entry_message`, `cartesia_voice_id`, `gender`, `relevant_links`.
+
+### Diadi Facilitator Personas
+Specialized personas for facilitated conversations:
+- `neutral_mediator` - Balanced facilitator, never takes sides
+- `deep_empath` - Emotionally-focused facilitator
+- `decision_catalyst` - Goal-oriented, decision-focused facilitator
 
 ## Code Style
 
@@ -97,10 +136,13 @@ Persona loading is handled by `config/persona_utils.py` via `PersonaManager` cla
 | File | Purpose |
 |------|---------|
 | [app/main.py](app/main.py) | FastAPI app setup, server entry point |
-| [app/routes.py](app/routes.py) | HTTP endpoints including bot creation/removal |
+| [app/routes.py](app/routes.py) | HTTP endpoints including bot and session management |
 | [app/websockets.py](app/websockets.py) | WebSocket handlers for audio streaming |
+| [app/services/session_service.py](app/services/session_service.py) | Session lifecycle (start, pause, resume, end) |
+| [app/services/summary_service.py](app/services/summary_service.py) | AI-generated session summaries |
 | [core/connection.py](core/connection.py) | WebSocket connection registry and state |
 | [core/process.py](core/process.py) | Pipecat subprocess spawning and termination |
+| [core/session_store.py](core/session_store.py) | In-memory session storage (Diadi) |
 | [scripts/meetingbaas.py](scripts/meetingbaas.py) | Pipecat audio pipeline (STT->LLM->TTS) |
 | [scripts/meetingbaas_api.py](scripts/meetingbaas_api.py) | MeetingBaas REST API wrapper |
 | [config/persona_utils.py](config/persona_utils.py) | Persona loading and management |
@@ -131,6 +173,12 @@ Optional:
 ## API Authentication
 
 All protected endpoints require header: `x-meeting-baas-api-key`
+
+## API Documentation
+
+Once the server is running, interactive docs are available at:
+- Swagger UI: `http://localhost:7014/docs`
+- OpenAPI spec: `http://localhost:7014/openapi.json`
 
 ## Troubleshooting
 
