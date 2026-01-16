@@ -22,6 +22,7 @@ from core.session_store import (
     create_session as store_create_session,
     get_session as store_get_session,
     get_session_by_invite_token as store_get_session_by_token,
+    get_summary,
     list_sessions as store_list_sessions,
     get_balance_snapshot,
     get_intervention_history,
@@ -82,7 +83,9 @@ class SessionService:
 
         status_value = session.status.value
         if ai_status is None:
-            if paused:
+            if status_value == SessionStatus.ENDING.value:
+                ai_status = "ending"
+            elif paused:
                 ai_status = "paused"
             elif status_value == SessionStatus.IN_PROGRESS.value:
                 ai_status = "listening"
@@ -462,13 +465,21 @@ class SessionService:
     async def end_session(self, session_id: str, api_key: str) -> Dict[str, Any]:
         """End the session, cleanup resources, generate summary.
 
-        This method handles the full session end lifecycle:
-        1. Validates session exists and can be ended
-        2. Terminates the Pipecat process
-        3. Calls MeetingBaas API to make the bot leave
-        4. Cleans up in-memory state
-        5. Broadcasts session_state event
-        6. Triggers summary generation (async)
+        This method handles the full session end lifecycle following the proven
+        cleanup order from leave_bot():
+        1. Idempotency check (return early if already ended/ending)
+        2. Set transitional ENDING status and broadcast
+        3. Capture metrics while trackers are still active
+        4. Call MeetingBaas API to make bot leave
+        5. Mark router as closing to prevent further messages
+        6. Close WebSocket connections gracefully
+        7. Wait grace period for messages to flush (0.5s)
+        8. Terminate Pipecat process
+        9. Clean up in-memory state
+        10. Stop timers and trackers
+        11. Update session status to ENDED
+        12. Broadcast final session_state event
+        13. Generate summary
 
         Args:
             session_id: The session identifier.
@@ -480,9 +491,27 @@ class SessionService:
         Raises:
             ValueError: If session not found or not in a state that can be ended.
         """
+        import asyncio
+
         session = store_get_session(session_id)
         if not session:
             raise ValueError("Session not found")
+
+        # Idempotency: If already ended, return cached result
+        if session.status == SessionStatus.ENDED:
+            logger.info(f"Session {session_id} already ended, returning cached result")
+            return {
+                "status": session.status,
+                "summary_available": get_summary(session_id) is not None,
+            }
+
+        # Idempotency: If already ending, return current status
+        if session.status == SessionStatus.ENDING:
+            logger.warning(f"Session {session_id} is already ending")
+            return {
+                "status": session.status,
+                "summary_available": False,
+            }
 
         # Session can be ended from in_progress or paused states
         if session.status not in [SessionStatus.IN_PROGRESS, SessionStatus.PAUSED]:
@@ -500,66 +529,29 @@ class SessionService:
         client_id = session.client_id
         bot_id = session.bot_id
 
-        # 1. Terminate the Pipecat process
-        if client_id and client_id in PIPECAT_PROCESSES:
-            process = PIPECAT_PROCESSES[client_id]
-            if process and process.poll() is None:  # Process is still running
-                try:
-                    # Mark client as closing to prevent further messages
-                    message_router.mark_closing(client_id)
-
-                    if terminate_process_gracefully(process, timeout=3.0):
-                        logger.info(
-                            f"Gracefully terminated Pipecat process for session {session_id}"
-                        )
-                    else:
-                        logger.warning(
-                            f"Had to forcefully kill Pipecat process for session {session_id}"
-                        )
-                except Exception as e:
-                    logger.error(f"Error terminating Pipecat process: {e}")
-
-            # Remove from process tracking
-            PIPECAT_PROCESSES.pop(client_id, None)
-
-        # 2. Call MeetingBaas API to make the bot leave
-        if bot_id:
-            try:
-                result = leave_meeting_bot(bot_id=bot_id, api_key=api_key)
-                if result:
-                    logger.info(f"Bot {bot_id} successfully left the meeting")
-                else:
-                    logger.warning(f"Failed to remove bot {bot_id} from meeting")
-            except Exception as e:
-                logger.error(f"Error calling leave_meeting_bot: {e}")
-
-        # 3. Close WebSocket connections
-        if client_id:
-            try:
-                # Close Pipecat WebSocket
-                if client_id in registry.pipecat_connections:
-                    await registry.disconnect(client_id, is_pipecat=True)
-                    logger.info(f"Closed Pipecat WebSocket for session {session_id}")
-
-                # Close client WebSockets
-                if registry.get_client_output(client_id):
-                    await registry.disconnect(client_id, client_direction="output")
-                if registry.get_client_input(client_id):
-                    await registry.disconnect(client_id, client_direction="input")
-            except Exception as e:
-                logger.error(f"Error closing WebSocket connections: {e}")
-
-        # 4. Clean up in-memory state
-        if client_id and client_id in MEETING_DETAILS:
-            MEETING_DETAILS.pop(client_id, None)
-            logger.info(f"Cleaned up meeting details for session {session_id}")
-
-        # 5. Update session status
-        session.status = SessionStatus.ENDED
+        # =====================================================================
+        # STEP 1: Set transitional ENDING status and broadcast
+        # =====================================================================
+        session.status = SessionStatus.ENDING
         store_update_session(session_id, session)
-        logger.info(f"Session {session_id} ended successfully")
+        logger.info(f"Session {session_id} transitioning to ending status")
 
-        # Capture intervention history before cleanup
+        try:
+            await broadcast_session_event(
+                session_id,
+                "session_state",
+                {
+                    **self._build_session_state_payload(
+                        session, ai_status="ending", facilitator_paused=True
+                    ),
+                },
+            )
+        except Exception as e:
+            logger.warning(f"Failed to broadcast ending state: {e}")
+
+        # =====================================================================
+        # STEP 2: Capture metrics BEFORE cleanup (while trackers still active)
+        # =====================================================================
         intervention_history = get_intervention_history(session_id)
 
         balance_metrics = None
@@ -580,12 +572,104 @@ class SessionService:
             }
             store_balance_metrics(session_id, balance_metrics)
 
-        # Stop time tracking and runtime engines
+        # =====================================================================
+        # STEP 3: Call MeetingBaas API to make the bot leave FIRST
+        # =====================================================================
+        if bot_id:
+            try:
+                result = leave_meeting_bot(bot_id=bot_id, api_key=api_key)
+                if result:
+                    logger.info(f"Bot {bot_id} successfully left the meeting")
+                else:
+                    logger.warning(f"Failed to remove bot {bot_id} from meeting")
+            except Exception as e:
+                logger.error(f"Error calling leave_meeting_bot: {e}")
+
+        # =====================================================================
+        # STEP 4: Mark router as closing BEFORE disconnecting WebSockets
+        # =====================================================================
+        if client_id:
+            message_router.mark_closing(client_id)
+            logger.debug(f"Marked client {client_id} as closing")
+
+        # =====================================================================
+        # STEP 5: Close WebSocket connections gracefully
+        # =====================================================================
+        if client_id:
+            # Close Pipecat WebSocket first
+            if client_id in registry.pipecat_connections:
+                try:
+                    await registry.disconnect(client_id, is_pipecat=True)
+                    logger.info(f"Closed Pipecat WebSocket for session {session_id}")
+                except Exception as e:
+                    logger.error(f"Error closing Pipecat WebSocket: {e}")
+
+            # Then close client WebSockets (output/input)
+            if registry.get_client_output(client_id):
+                try:
+                    await registry.disconnect(client_id, client_direction="output")
+                    logger.info(f"Closed client OUTPUT WebSocket for session {session_id}")
+                except Exception as e:
+                    logger.error(f"Error closing client OUTPUT WebSocket: {e}")
+
+            if registry.get_client_input(client_id):
+                try:
+                    await registry.disconnect(client_id, client_direction="input")
+                    logger.info(f"Closed client INPUT WebSocket for session {session_id}")
+                except Exception as e:
+                    logger.error(f"Error closing client INPUT WebSocket: {e}")
+
+        # =====================================================================
+        # STEP 6: CRITICAL - Wait grace period for messages to flush
+        # =====================================================================
+        await asyncio.sleep(0.5)
+        logger.debug(f"Grace period complete for session {session_id}")
+
+        # =====================================================================
+        # STEP 7: Terminate Pipecat process AFTER WebSockets are closed
+        # =====================================================================
+        if client_id and client_id in PIPECAT_PROCESSES:
+            process = PIPECAT_PROCESSES[client_id]
+            if process and process.poll() is None:  # Process is still running
+                try:
+                    if terminate_process_gracefully(process, timeout=3.0):
+                        logger.info(
+                            f"Gracefully terminated Pipecat process for session {session_id}"
+                        )
+                    else:
+                        logger.warning(
+                            f"Had to forcefully kill Pipecat process for session {session_id}"
+                        )
+                except Exception as e:
+                    logger.error(f"Error terminating Pipecat process: {e}")
+
+            # Remove from process tracking
+            PIPECAT_PROCESSES.pop(client_id, None)
+
+        # =====================================================================
+        # STEP 8: Clean up in-memory state
+        # =====================================================================
+        if client_id and client_id in MEETING_DETAILS:
+            MEETING_DETAILS.pop(client_id, None)
+            logger.info(f"Cleaned up meeting details for session {session_id}")
+
+        # =====================================================================
+        # STEP 9: Stop time tracking and runtime engines
+        # =====================================================================
         stop_session_timer(session_id)
         stop_intervention_engine(session_id)
         stop_balance_tracker(session_id)
 
-        # 6. Broadcast session_state event to any connected clients
+        # =====================================================================
+        # STEP 10: Update session status to ENDED
+        # =====================================================================
+        session.status = SessionStatus.ENDED
+        store_update_session(session_id, session)
+        logger.info(f"Session {session_id} ended successfully")
+
+        # =====================================================================
+        # STEP 11: Broadcast final session_state event
+        # =====================================================================
         try:
             await broadcast_session_event(
                 session_id,
@@ -599,7 +683,9 @@ class SessionService:
         except Exception as e:
             logger.warning(f"Error broadcasting session end event: {e}")
 
-        # 7. Trigger summary generation (async - does not block return)
+        # =====================================================================
+        # STEP 12: Generate summary
+        # =====================================================================
         summary_available = await self._generate_summary(
             session_id,
             balance_metrics=balance_metrics,

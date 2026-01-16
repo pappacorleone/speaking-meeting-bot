@@ -20,6 +20,7 @@ class SessionStatus(str, Enum):
     READY = "ready"
     IN_PROGRESS = "in_progress"
     PAUSED = "paused"
+    ENDING = "ending"
     ENDED = "ended"
     ARCHIVED = "archived"
 
