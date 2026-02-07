@@ -12,4 +12,5 @@ ENV/
 README.md
 .DS_Store
 .local_dev_mode
-fly.toml 
+fly.toml
+web/

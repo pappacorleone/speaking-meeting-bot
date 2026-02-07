@@ -6,6 +6,9 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Standalone output for Docker deployment
+  output: "standalone",
+
   // Enable React strict mode for development
   reactStrictMode: true,
 
