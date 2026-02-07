@@ -14,7 +14,7 @@ Speaking Meeting Bot is an AI-powered meeting agent system that enables voice-in
 
 The project also includes a **Diadi** session system for facilitated conversations with consent workflows, session lifecycle management, and AI-generated summaries.
 
-The **web** folder contains a Next.js frontend for the Diadi session management UI.
+The **web/** folder contains a Next.js frontend for the Diadi session management UI.
 
 ## Quick Start for AI Agents
 
@@ -60,12 +60,6 @@ pytest tests/ -v
 # Run a single test file
 pytest tests/test_session_integration.py -v
 
-# Poetry scripts (alternative entry points)
-poetry run bot          # Start bot directly
-poetry run proxy        # Start proxy service
-poetry run meetingbaas  # Run MeetingBaas script
-poetry run api          # Start API server
-
 # Quick local dev setup (Windows PowerShell)
 .\scripts\dev_up.ps1    # Starts ngrok, updates BASE_URL, launches server
 
@@ -75,9 +69,12 @@ npm install            # Install frontend dependencies
 npm run dev            # Start dev server (http://localhost:3000)
 npm run build          # Build for production
 npm run lint           # Run ESLint
+npm run type-check     # TypeScript type checking (tsc --noEmit)
 ```
 
 ## Architecture
+
+### Backend
 
 ```
 FastAPI Server (app/main.py:7014)
@@ -96,7 +93,8 @@ FastAPI Server (app/main.py:7014)
 │       └── GET /sessions/{id}/summary - Get AI summary
 ├── WebSocket Routes (app/websockets.py)
 │   ├── /ws/{client_id} - MeetingBaas audio streaming
-│   └── /pipecat/{client_id} - Pipecat service connection
+│   ├── /pipecat/{client_id} - Pipecat service connection
+│   └── /sessions/{id}/events - Real-time session events (SSE-style)
 ├── Services (app/services/)
 │   ├── session_service.py - Session lifecycle management
 │   └── summary_service.py - AI summary generation
@@ -104,32 +102,86 @@ FastAPI Server (app/main.py:7014)
     ├── connection.py - ConnectionRegistry, MEETING_DETAILS, PIPECAT_PROCESSES
     ├── process.py - Pipecat subprocess management
     ├── router.py - Audio message routing
-    ├── session_store.py - In-memory session storage
+    ├── session_store.py - In-memory session storage + timer/tracker management
     ├── intervention_engine.py - AI intervention logic
     └── balance_tracker.py - Conversation balance tracking
 ```
 
-### Request Flow
+### Frontend (web/)
+
+Next.js 14 app with App Router, TypeScript (strict), Tailwind CSS, and shadcn/ui components.
+
+```
+web/src/
+├── app/
+│   ├── (dashboard)/           # Dashboard layout group
+│   │   ├── hub/page.tsx       # Main hub with active/recent sessions
+│   │   ├── sessions/new/      # Session creation wizard
+│   │   └── sessions/[id]/     # Session detail & live room
+│   │       ├── page.tsx       # Session detail/recap page
+│   │       └── live/page.tsx  # Live facilitation room
+│   └── invite/[token]/        # Partner consent/invite page
+├── components/
+│   ├── live/                  # Talk balance, timer, AI status, goal snippet
+│   ├── intervention/          # Balance prompt, escalation alert, goal resync
+│   ├── session/               # Session cards, forms, wizard steps
+│   ├── hub/                   # Dashboard hub components
+│   ├── recap/                 # Post-session summary components
+│   ├── error/                 # Error boundaries, WS disconnect fallbacks
+│   └── ui/                    # shadcn/ui primitives (Button, Card, Dialog, etc.)
+├── stores/                    # Zustand state management
+│   ├── session-store.ts       # Session state (status, timer, balance, AI status)
+│   └── intervention-store.ts  # Intervention queue and history
+├── hooks/
+│   └── use-session-events.ts  # WebSocket hook for real-time session events
+├── lib/
+│   └── api/                   # Backend API client functions
+└── types/
+    ├── session.ts             # Frontend session types (camelCase)
+    ├── events.ts              # WebSocket event types with type guards
+    └── intervention.ts        # Intervention types
+```
+
+**Key frontend patterns:**
+- **snake_case ↔ camelCase**: Backend uses snake_case, frontend uses camelCase. Transformation happens in `live/page.tsx:transformSession()` and API response types live in `lib/api/types.ts` (snake_case) vs `types/session.ts` (camelCase).
+- **State management**: Zustand stores for session state and interventions, React Query for API data fetching.
+- **Real-time events**: `use-session-events` hook connects to `/sessions/{id}/events` WebSocket, dispatches typed events to Zustand stores.
+- **Strict TypeScript**: `noUncheckedIndexedAccess`, `noUnusedLocals`, `noUnusedParameters` are all enabled.
+- **Path alias**: `@/*` maps to `./src/*` for all imports.
+
+### Audio Pipeline Flow
 1. Client calls `POST /bots` with meeting URL and persona
 2. Server resolves persona, generates WebSocket URL, calls MeetingBaas API
 3. Pipecat subprocess spawned (`scripts/meetingbaas.py`)
 4. MeetingBaas bot joins meeting, connects to `/ws/{client_id}`
 5. Pipecat connects to `/pipecat/{client_id}`
-6. Audio streams: Client -> STT (Deepgram) -> LLM (OpenAI) -> TTS (Cartesia) -> Client
+6. Audio streams: Meeting → STT (Deepgram) → LLM (OpenAI) → TTS (Cartesia) → Meeting
 
 ### Key Data Stores (In-Memory)
 - `MEETING_DETAILS` - Bot metadata indexed by client_id
 - `PIPECAT_PROCESSES` - Subprocess tracking for cleanup
-- `SessionStore` - Diadi session state (core/session_store.py)
+- `SESSION_STORE` - Diadi session state (core/session_store.py)
+- `SESSION_EVENTS` - WebSocket connections for real-time event broadcast per session
+- `SESSION_TIMER_STATE` / `SESSION_TIMER_TASKS` - Per-session timer state and async tasks
+- `SESSION_INTERVENTION_ENGINES` / `SESSION_BALANCE_TRACKERS` - Runtime engines per session
 
 ### Diadi Session Lifecycle
+States: `draft` → `pending_consent` → `ready` → `in_progress` ↔ `paused` → `ending` → `ended` (or `archived` if declined)
+
 1. Create session with partner info, goal, and facilitator persona
 2. System generates invite link with token
 3. Partner accepts/declines via consent endpoint
 4. Both parties consent → status changes to "ready"
-5. Session starts → bot joins meeting
+5. Session starts → bot joins meeting, timer/balance tracker/intervention engine start
 6. Pause/Resume available during session (kill switch)
-7. End session → AI generates summary
+7. End session → captures metrics → cleanup (bot leave, WS close, process kill) → generates summary
+
+### Intervention Engine Policy
+The intervention engine (`core/intervention_engine.py`) follows a minimal intervention philosophy:
+- No interventions in first 3 minutes
+- No more than 1 intervention every 2 minutes
+- Visual-first delivery, voice only for severe cases
+- Priority order: Escalation > Severe Balance > Time Warning > Silence > Mild Balance > Goal Drift
 
 ## Persona System
 
@@ -143,13 +195,13 @@ persona_name/
 Persona loading is handled by `config/persona_utils.py` via `PersonaManager` class. The README.md contains YAML-like metadata section with `image`, `entry_message`, `cartesia_voice_id`, `gender`, `relevant_links`.
 
 ### Diadi Facilitator Personas
-Specialized personas for facilitated conversations:
 - `neutral_mediator` - Balanced facilitator, never takes sides
 - `deep_empath` - Emotionally-focused facilitator
 - `decision_catalyst` - Goal-oriented, decision-focused facilitator
 
 ## Code Style
 
+**Python (Backend):**
 - **Formatter**: Ruff (line length 88 per pyproject.toml)
 - **Style Guide**: Google Python Style Guide
 - **Type hints**: Required for public APIs
@@ -157,24 +209,12 @@ Specialized personas for facilitated conversations:
 - **Indentation**: 4 spaces (no tabs)
 - **Imports**: Grouped (future, stdlib, third-party, local), sorted lexicographically
 
-## Key Files
-
-| File | Purpose |
-|------|---------|
-| [app/main.py](app/main.py) | FastAPI app setup, server entry point |
-| [app/routes.py](app/routes.py) | HTTP endpoints including bot and session management |
-| [app/websockets.py](app/websockets.py) | WebSocket handlers for audio streaming |
-| [app/services/session_service.py](app/services/session_service.py) | Session lifecycle (start, pause, resume, end) |
-| [app/services/summary_service.py](app/services/summary_service.py) | AI-generated session summaries |
-| [core/connection.py](core/connection.py) | WebSocket connection registry and state |
-| [core/process.py](core/process.py) | Pipecat subprocess spawning and termination |
-| [core/session_store.py](core/session_store.py) | In-memory session storage (Diadi) |
-| [scripts/meetingbaas.py](scripts/meetingbaas.py) | Pipecat audio pipeline (STT->LLM->TTS) |
-| [scripts/meetingbaas_api.py](scripts/meetingbaas_api.py) | MeetingBaas REST API wrapper |
-| [config/persona_utils.py](config/persona_utils.py) | Persona loading and management |
-| [config/voice_utils.py](config/voice_utils.py) | Cartesia voice matching via OpenAI |
-| [protobufs/frames.proto](protobufs/frames.proto) | Protocol buffer definitions for Pipecat |
-| [web/](web/) | Next.js frontend for Diadi session management |
+**TypeScript (Frontend):**
+- **Framework**: Next.js 14 with App Router
+- **Strict mode**: TypeScript strict with `noUncheckedIndexedAccess`
+- **Styling**: Tailwind CSS with `cn()` utility (clsx + tailwind-merge)
+- **Components**: shadcn/ui (Radix UI primitives)
+- **Forms**: react-hook-form + zod validation
 
 ## Environment Variables
 
@@ -190,6 +230,10 @@ Optional:
 - `UTFS_KEY` / `APP_ID` - UploadThing image hosting
 - `NGROK_AUTHTOKEN` - Local development tunneling
 
+Frontend (in `web/.env.local`):
+- `NEXT_PUBLIC_API_URL` - Backend API URL (defaults to http://localhost:7014)
+- `NEXT_PUBLIC_MEETING_BAAS_API_KEY` - API key for frontend requests
+
 ## WebSocket URL Resolution Priority
 
 1. User-provided URL in request
@@ -201,29 +245,21 @@ Optional:
 
 All protected endpoints require header: `x-meeting-baas-api-key`
 
-## API Documentation
-
-Once the server is running, interactive docs are available at:
-- Swagger UI: `http://localhost:7014/docs`
-- OpenAPI spec: `http://localhost:7014/openapi.json`
-
 ## Troubleshooting
 
 ### Common Issues
 
 **Poetry not found on Windows:**
-If `poetry` command is not recognized, use the virtual environment directly:
+Use the virtual environment directly:
 ```powershell
 .\.venv\Scripts\python.exe -m uvicorn app:app --host 0.0.0.0 --port 7014
 ```
 
 **ModuleNotFoundError: No module named 'config':**
-This was fixed in `core/process.py` by setting PYTHONPATH for the subprocess. If it recurs, verify that:
-- `process.py` sets `env["PYTHONPATH"] = project_root`
-- The subprocess runs with `cwd=project_root`
+Fixed in `core/process.py` by setting PYTHONPATH for the subprocess. Verify that `process.py` sets `env["PYTHONPATH"] = project_root` and the subprocess runs with `cwd=project_root`.
 
 **ImportError: cannot import name 'TaskManager' from 'pipecat.utils.asyncio':**
-This occurs with pipecat version 0.0.98 which doesn't have TaskManager. Fixed in `scripts/meetingbaas.py` by wrapping the import in try/except.
+Occurs with pipecat version 0.0.98 which doesn't have TaskManager. Fixed in `scripts/meetingbaas.py` by wrapping the import in try/except.
 
 **Protobuf version mismatch (gencode vs runtime):**
 Regenerate protobuf files:
@@ -233,12 +269,6 @@ Regenerate protobuf files:
 
 **Old bots keep reconnecting after server restart:**
 MEETING_DETAILS is in-memory and cleared on restart. Old MeetingBaas bots will fail with "No meeting details found". Remove them via the MeetingBaas dashboard or wait for them to timeout.
-
-**Deepgram SDK version mismatch:**
-If you see `ImportError: cannot import name 'AsyncListenWebSocketClient' from 'deepgram'`, upgrade pipecat-ai:
-```bash
-.\.venv\Scripts\pip.exe install --upgrade "pipecat-ai[cartesia,deepgram,openai,silero,websocket]"
-```
 
 ### Debugging Pipecat Subprocess
 

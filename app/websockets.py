@@ -412,6 +412,13 @@ async def session_events_websocket(websocket: WebSocket, session_id: str):
         await websocket.close(code=4004, reason="Session not found")
         return
 
+    # Reject connections for ended sessions with normal closure code
+    # so the frontend doesn't attempt to reconnect
+    if session.status == SessionStatus.ENDED:
+        logger.info(f"Session events WebSocket: Session {session_id} has ended, closing connection")
+        await websocket.close(code=1000, reason="Session ended")
+        return
+
     # Register this connection for session events
     register_event_connection(session_id, websocket)
     logger.info(

@@ -533,6 +533,23 @@ async def broadcast_session_event(
             pass
 
 
+async def close_event_connections(session_id: str) -> None:
+    """Close all event WebSocket connections for a session.
+
+    This should be called after a session ends to properly close all
+    WebSocket connections with code 1000, preventing reconnection attempts.
+
+    Args:
+        session_id: The session identifier.
+    """
+    connections = SESSION_EVENTS.pop(session_id, [])
+    for ws in connections:
+        try:
+            await ws.close(code=1000, reason="Session ended")
+        except Exception:
+            pass  # Connection already closed
+
+
 # =============================================================================
 # Session Summary Storage
 # =============================================================================

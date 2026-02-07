@@ -196,10 +196,12 @@ function PreSessionView({
   session,
   onStartSession,
   isStarting,
+  startError,
 }: {
   session: Session;
   onStartSession: () => void;
   isStarting: boolean;
+  startError: string | null;
 }) {
   const partner = getPartnerInfo(session.participants);
   const inviteLink = getInviteLink(session.inviteToken);
@@ -222,6 +224,12 @@ function PreSessionView({
           ? 'Ready to begin facilitation'
           : 'Waiting for your partner to join'}
       </p>
+
+      {startError && (
+        <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
+          <strong>Error:</strong> {startError}
+        </div>
+      )}
 
       <WaitingRoom
         partnerName={partner.name}
@@ -506,6 +514,7 @@ export default function SessionDetailPage() {
   const router = useRouter();
   const sessionId = params.id as string;
   const [isStarting, setIsStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
 
   // Fetch session data
   const {
@@ -517,7 +526,15 @@ export default function SessionDetailPage() {
     queryKey: ['session', sessionId],
     queryFn: () => getSession(sessionId, API_KEY),
     enabled: !!sessionId,
-    refetchInterval: 5000, // Poll for updates while waiting
+    // Only poll while session is in a non-terminal state
+    // Stop polling once ended/archived to prevent flickering
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === 'ended' || status === 'archived') {
+        return false; // Stop polling
+      }
+      return 5000; // Continue polling every 5 seconds
+    },
   });
 
   const session = apiSession ? transformSession(apiSession) : null;
@@ -540,28 +557,35 @@ export default function SessionDetailPage() {
 
   // Redirect to live view if session is active
   useEffect(() => {
+    console.log('[SessionDetail] Session status:', session?.status);
     if (session?.status === 'in_progress' || session?.status === 'paused') {
+      console.log('[SessionDetail] Redirecting to live view...');
       router.push(`/sessions/${sessionId}/live`);
     }
   }, [session?.status, sessionId, router]);
 
   // Start session handler
   const handleStartSession = async () => {
+    console.log('[SessionDetail] handleStartSession called, session:', session?.status);
     if (!session) return;
 
     setIsStarting(true);
+    setStartError(null);
     try {
-      await startSession(
+      console.log('[SessionDetail] Calling startSession API...');
+      const result = await startSession(
         sessionId,
         { meeting_url: session.meetingUrl || undefined },
         API_KEY
       );
+      console.log('[SessionDetail] startSession result:', result);
       // Redirect to live view
       router.push(`/sessions/${sessionId}/live`);
     } catch (err) {
-      console.error('Failed to start session:', err);
+      console.error('[SessionDetail] Failed to start session:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to start session';
+      setStartError(errorMessage);
       setIsStarting(false);
-      // Error will be shown via query error state on refetch
     }
   };
 
@@ -597,9 +621,9 @@ export default function SessionDetailPage() {
 
   // Render based on session status
   const statusViews: Record<SessionStatus, JSX.Element> = {
-    draft: <PreSessionView session={session} onStartSession={handleStartSession} isStarting={isStarting} />,
-    pending_consent: <PreSessionView session={session} onStartSession={handleStartSession} isStarting={isStarting} />,
-    ready: <PreSessionView session={session} onStartSession={handleStartSession} isStarting={isStarting} />,
+    draft: <PreSessionView session={session} onStartSession={handleStartSession} isStarting={isStarting} startError={startError} />,
+    pending_consent: <PreSessionView session={session} onStartSession={handleStartSession} isStarting={isStarting} startError={startError} />,
+    ready: <PreSessionView session={session} onStartSession={handleStartSession} isStarting={isStarting} startError={startError} />,
     in_progress: <SessionDetailSkeleton />, // Will redirect via useEffect
     paused: <SessionDetailSkeleton />, // Will redirect via useEffect
     ended: (

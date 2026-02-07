@@ -3,6 +3,11 @@
 import os
 from typing import List, Optional
 
+from dotenv import load_dotenv
+
+# Load .env early to ensure BASE_URL is available at import time
+load_dotenv()
+
 import requests
 from fastapi import HTTPException, Request
 

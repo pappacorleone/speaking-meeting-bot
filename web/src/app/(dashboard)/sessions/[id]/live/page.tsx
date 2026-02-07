@@ -432,12 +432,15 @@ export default function LiveSessionPage() {
 
   // Transform and initialize session in store
   useEffect(() => {
+    console.log('[LiveSession] apiSession status:', apiSession?.status);
     if (apiSession) {
       const transformed = transformSession(apiSession);
+      console.log('[LiveSession] Initializing session in store, status:', transformed.status);
       initSession(sessionId, transformed);
     }
 
     return () => {
+      console.log('[LiveSession] Cleanup: clearing session');
       clearSession();
     };
   }, [apiSession, sessionId, initSession, clearSession]);
@@ -612,11 +615,13 @@ export default function LiveSessionPage() {
 
   // Session not found
   if (!session) {
+    console.log('[LiveSession] Session from store is null, showing skeleton');
     return <LiveSessionSkeleton />;
   }
 
   // Session not active
   if (session.status !== 'in_progress' && session.status !== 'paused') {
+    console.log('[LiveSession] Session not active, status:', session.status);
     return <SessionNotActive status={session.status} />;
   }
 

@@ -19,6 +19,7 @@ from app.models import (
     SessionStatus,
 )
 from core.session_store import (
+    close_event_connections,
     create_session as store_create_session,
     get_session as store_get_session,
     get_session_by_invite_token as store_get_session_by_token,
@@ -309,6 +310,8 @@ class SessionService:
             ValueError: If session not found or not ready.
             RuntimeError: If bot creation fails.
         """
+        print(f"[DEBUG start_session] websocket_base_url: {websocket_base_url}")
+        print(f"[DEBUG start_session] api_key: {api_key[:15]}..." if api_key else "api_key: None")
         session = store_get_session(session_id)
         if not session:
             raise ValueError("Session not found")
@@ -383,7 +386,12 @@ class SessionService:
         )
 
         # Create MeetingBaas bot
-        webhook_url = f"{websocket_base_url}/webhook"
+        # Convert wss:// back to https:// for webhook URL
+        http_base_url = websocket_base_url.replace("wss://", "https://").replace("ws://", "http://")
+        webhook_url = f"{http_base_url}/webhook"
+        logger.info(f"[DEBUG] websocket_base_url: {websocket_base_url}")
+        logger.info(f"[DEBUG] http_base_url: {http_base_url}")
+        logger.info(f"[DEBUG] webhook_url: {webhook_url}")
         meetingbaas_bot_id = create_meeting_bot(
             meeting_url=meeting_url,
             websocket_url=websocket_base_url,
@@ -682,6 +690,12 @@ class SessionService:
             )
         except Exception as e:
             logger.warning(f"Error broadcasting session end event: {e}")
+
+        # Close all event WebSocket connections with code 1000 to prevent reconnection
+        try:
+            await close_event_connections(session_id)
+        except Exception as e:
+            logger.warning(f"Error closing event connections: {e}")
 
         # =====================================================================
         # STEP 12: Generate summary
