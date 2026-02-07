@@ -1,0 +1,115 @@
+name: Deploy to GCP Cloud Run
+
+on:
+  push:
+    branches:
+      - gcp-deployment
+
+env:
+  PROJECT_ID: diadi-486721
+  REGION: us-central1
+  REPO: meeting-bot
+  BACKEND_SERVICE: meeting-bot-backend
+  FRONTEND_SERVICE: meeting-bot-frontend
+
+jobs:
+  deploy-backend:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+    outputs:
+      backend_url: ${{ steps.get-url.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build backend image
+        run: |
+          gcloud builds submit \
+            --tag "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.BACKEND_SERVICE }}" \
+            --project=${{ env.PROJECT_ID }} \
+            --timeout=1200 \
+            .
+
+      - name: Deploy backend to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.BACKEND_SERVICE }} \
+            --image "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.BACKEND_SERVICE }}" \
+            --region ${{ env.REGION }} \
+            --project=${{ env.PROJECT_ID }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --min-instances=1 \
+            --max-instances=1 \
+            --memory=2Gi \
+            --cpu=2 \
+            --timeout=3600 \
+            --concurrency=100 \
+            --session-affinity \
+            --set-secrets="MEETING_BAAS_API_KEY=MEETING_BAAS_API_KEY:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,CARTESIA_API_KEY=CARTESIA_API_KEY:latest,DEEPGRAM_API_KEY=DEEPGRAM_API_KEY:latest"
+
+      - name: Get backend URL and set BASE_URL
+        id: get-url
+        run: |
+          URL=$(gcloud run services describe ${{ env.BACKEND_SERVICE }} \
+            --region ${{ env.REGION }} \
+            --project=${{ env.PROJECT_ID }} \
+            --format="value(status.url)")
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          gcloud run services update ${{ env.BACKEND_SERVICE }} \
+            --region ${{ env.REGION }} \
+            --project=${{ env.PROJECT_ID }} \
+            --update-env-vars="BASE_URL=$URL"
+
+  deploy-frontend:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build frontend image
+        working-directory: web
+        run: |
+          BACKEND_URL="${{ needs.deploy-backend.outputs.backend_url }}"
+          WS_URL="${BACKEND_URL/https:/wss:}"
+          gcloud builds submit \
+            --config=cloudbuild.yaml \
+            --substitutions="_IMAGE=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.FRONTEND_SERVICE }},_NEXT_PUBLIC_API_URL=${BACKEND_URL},_NEXT_PUBLIC_WS_URL=${WS_URL},_NEXT_PUBLIC_MEETING_BAAS_API_KEY=${{ secrets.MEETING_BAAS_API_KEY }}" \
+            --project=${{ env.PROJECT_ID }} \
+            --timeout=1200
+
+      - name: Deploy frontend to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.FRONTEND_SERVICE }} \
+            --image "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.FRONTEND_SERVICE }}" \
+            --region ${{ env.REGION }} \
+            --project=${{ env.PROJECT_ID }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --min-instances=0 \
+            --max-instances=3 \
+            --memory=512Mi \
+            --cpu=1 \
+            --timeout=300
+
+      - name: Print URLs
+        run: |
+          echo "Backend:  ${{ needs.deploy-backend.outputs.backend_url }}"
+          FRONTEND_URL=$(gcloud run services describe ${{ env.FRONTEND_SERVICE }} \
+            --region ${{ env.REGION }} \
+            --project=${{ env.PROJECT_ID }} \
+            --format="value(status.url)")
+          echo "Frontend: $FRONTEND_URL"
