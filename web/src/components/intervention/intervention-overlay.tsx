@@ -30,7 +30,7 @@ import { getInterventionLabel } from '@/types/intervention';
 
 export interface InterventionOverlayProps {
   /** Optional session ID for analytics */
-  sessionId?: string;
+  talkId?: string;
   /** Callback when intervention is acknowledged */
   onAcknowledge?: (interventionId: string) => void;
   /** Callback when intervention is dismissed (auto or manual) */
@@ -469,13 +469,13 @@ function InterventionCard({
  * handling auto-dismiss, and emitting callbacks.
  */
 export function InterventionOverlay({
-  sessionId: _sessionId,
+  talkId: _talkId,
   onAcknowledge,
   onDismiss,
   className,
 }: InterventionOverlayProps) {
-  // sessionId available for future analytics integration
-  void _sessionId;
+  // talkId available for future analytics integration
+  void _talkId;
   const { current, isOverlayVisible, dismiss, acknowledge } =
     useInterventionStore();
   const autoDismissTimerRef = useRef<NodeJS.Timeout | null>(null);

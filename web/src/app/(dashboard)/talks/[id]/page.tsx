@@ -1,11 +1,11 @@
 /**
- * Session Detail Page
+ * Talk Detail Page
  *
- * Unified session detail view that shows different content based on status:
+ * Unified talk detail view that shows different content based on status:
  * - draft/pending_consent/ready: Waiting room view
- * - in_progress/paused: Redirect to live session
- * - ended: Post-session summary with full recap UI
- * - archived: Archived session view
+ * - in_progress/paused: Redirect to live talk
+ * - ended: Post-talk summary with full recap UI
+ * - archived: Archived talk view
  */
 
 'use client';
@@ -13,13 +13,13 @@
 import { useEffect, useState, useCallback, Suspense, lazy } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { getSession, startSession, getSessionSummary } from '@/lib/api/sessions';
-import { WaitingRoom, type ReadinessItem } from '@/components/session/waiting-room';
+import { getTalk, startTalk, getTalkSummary } from '@/lib/api/talks';
+import { WaitingRoom, type ReadinessItem } from '@/components/talk/waiting-room';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { Session as ApiSession, SessionSummary as ApiSessionSummary } from '@/lib/api/types';
-import type { Session, SessionStatus, SessionSummary } from '@/types/session';
-import type { SessionRating } from '@/components/recap';
+import type { Talk as ApiTalk, TalkSummary as ApiTalkSummary } from '@/lib/api/types';
+import type { Talk, TalkStatus, TalkSummary } from '@/types/talk';
+import type { TalkRating } from '@/components/recap';
 
 // Lazy load recap components - only needed for ended sessions
 const SynthesisBoard = lazy(() => import('@/components/recap/synthesis-board').then(m => ({ default: m.SynthesisBoard })));
@@ -45,44 +45,44 @@ const API_KEY =
 // =============================================================================
 
 /**
- * Transform API session (snake_case) to frontend session (camelCase)
+ * Transform API talk (snake_case) to frontend talk (camelCase)
  */
-function transformSession(apiSession: ApiSession): Session {
+function transformTalk(apiTalk: ApiTalk): Talk {
   return {
-    id: apiSession.id,
-    title: apiSession.title,
-    goal: apiSession.goal,
-    relationshipContext: apiSession.relationship_context,
-    platform: apiSession.platform,
-    meetingUrl: apiSession.meeting_url,
-    durationMinutes: apiSession.duration_minutes,
-    scheduledAt: apiSession.scheduled_at,
-    status: apiSession.status,
-    participants: apiSession.participants.map((p) => ({
+    id: apiTalk.id,
+    title: apiTalk.title,
+    goal: apiTalk.goal,
+    relationshipContext: apiTalk.relationship_context,
+    platform: apiTalk.platform,
+    meetingUrl: apiTalk.meeting_url,
+    durationMinutes: apiTalk.duration_minutes,
+    scheduledAt: apiTalk.scheduled_at,
+    status: apiTalk.status,
+    participants: apiTalk.participants.map((p) => ({
       id: p.id,
       name: p.name,
       role: p.role,
       consented: p.consented,
     })),
     facilitator: {
-      persona: apiSession.facilitator.persona,
-      interruptAuthority: apiSession.facilitator.interrupt_authority,
-      directInquiry: apiSession.facilitator.direct_inquiry,
-      silenceDetection: apiSession.facilitator.silence_detection,
+      persona: apiTalk.facilitator.persona,
+      interruptAuthority: apiTalk.facilitator.interrupt_authority,
+      directInquiry: apiTalk.facilitator.direct_inquiry,
+      silenceDetection: apiTalk.facilitator.silence_detection,
     },
-    createdAt: apiSession.created_at,
-    inviteToken: apiSession.invite_token,
-    botId: apiSession.bot_id,
-    clientId: apiSession.client_id,
+    createdAt: apiTalk.created_at,
+    inviteToken: apiTalk.invite_token,
+    botId: apiTalk.bot_id,
+    clientId: apiTalk.client_id,
   };
 }
 
 /**
- * Transform API session summary (snake_case) to frontend summary (camelCase)
+ * Transform API talk summary (snake_case) to frontend summary (camelCase)
  */
-function transformSummary(apiSummary: ApiSessionSummary): SessionSummary {
+function transformSummary(apiSummary: ApiTalkSummary): TalkSummary {
   return {
-    sessionId: apiSummary.session_id,
+    talkId: apiSummary.talk_id,
     durationMinutes: apiSummary.duration_minutes,
     consensusSummary: apiSummary.consensus_summary,
     actionItems: apiSummary.action_items,
@@ -107,7 +107,7 @@ function transformSummary(apiSummary: ApiSessionSummary): SessionSummary {
 /**
  * Get partner info from participants
  */
-function getPartnerInfo(participants: Session['participants']) {
+function getPartnerInfo(participants: Talk['participants']) {
   const invitee = participants.find((p) => p.role === 'invitee');
   return {
     name: invitee?.name || 'Partner',
@@ -116,7 +116,7 @@ function getPartnerInfo(participants: Session['participants']) {
 }
 
 /**
- * Get invite link from session
+ * Get invite link from talk
  */
 function getInviteLink(inviteToken: string): string {
   if (typeof window !== 'undefined') {
@@ -126,13 +126,13 @@ function getInviteLink(inviteToken: string): string {
 }
 
 /**
- * Create default readiness items based on session state
+ * Create default readiness items based on talk state
  */
 function createReadinessItems(
   partnerHasConsented: boolean,
-  sessionStatus: SessionStatus
+  talkStatus: TalkStatus
 ): ReadinessItem[] {
-  const isReady = sessionStatus === 'ready';
+  const isReady = talkStatus === 'ready';
 
   return [
     {
@@ -160,7 +160,7 @@ function createReadinessItems(
 /**
  * Loading skeleton
  */
-function SessionDetailSkeleton() {
+function TalkDetailSkeleton() {
   return (
     <div className="p-4 space-y-4 animate-pulse">
       <div className="h-8 w-48 bg-muted rounded" />
@@ -174,13 +174,13 @@ function SessionDetailSkeleton() {
 /**
  * Error state
  */
-function SessionDetailError({ message, onRetry }: { message: string; onRetry: () => void }) {
+function TalkDetailError({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center">
       <div className="w-16 h-16 rounded-full bg-status-error/10 flex items-center justify-center mb-4">
         <ErrorIcon className="w-8 h-8 text-status-error" />
       </div>
-      <h2 className="text-xl font-semibold mb-2">Error Loading Session</h2>
+      <h2 className="text-xl font-semibold mb-2">Error Loading Talk</h2>
       <p className="text-muted-foreground mb-4 max-w-sm">{message}</p>
       <Button onClick={onRetry} variant="outline">
         Try Again
@@ -190,37 +190,37 @@ function SessionDetailError({ message, onRetry }: { message: string; onRetry: ()
 }
 
 /**
- * Pre-session view (waiting for partner or session to start)
+ * Pre-talk view (waiting for partner or talk to start)
  */
-function PreSessionView({
-  session,
-  onStartSession,
+function PreTalkView({
+  talk,
+  onStartTalk,
   isStarting,
   startError,
 }: {
-  session: Session;
-  onStartSession: () => void;
+  talk: Talk;
+  onStartTalk: () => void;
   isStarting: boolean;
   startError: string | null;
 }) {
-  const partner = getPartnerInfo(session.participants);
-  const inviteLink = getInviteLink(session.inviteToken);
+  const partner = getPartnerInfo(talk.participants);
+  const inviteLink = getInviteLink(talk.inviteToken);
 
   // Determine partner status for waiting room
   const partnerStatus: 'waiting' | 'joining' | 'ready' | 'joined' =
-    !partner.hasConsented ? 'waiting' : session.status === 'ready' ? 'joined' : 'joining';
+    !partner.hasConsented ? 'waiting' : talk.status === 'ready' ? 'joined' : 'joining';
 
   // Check if all conditions are met to start
-  const canStart = session.status === 'ready';
+  const canStart = talk.status === 'ready';
 
   // Create readiness items
-  const readinessItems = createReadinessItems(partner.hasConsented, session.status);
+  const readinessItems = createReadinessItems(partner.hasConsented, talk.status);
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-serif mb-1">Session Setup</h1>
+      <h1 className="text-2xl font-serif mb-1">Talk Setup</h1>
       <p className="text-muted-foreground mb-6">
-        {session.status === 'ready'
+        {talk.status === 'ready'
           ? 'Ready to begin facilitation'
           : 'Waiting for your partner to join'}
       </p>
@@ -236,9 +236,9 @@ function PreSessionView({
         partnerStatus={partnerStatus}
         readinessItems={readinessItems}
         inviteLink={inviteLink}
-        meetingUrl={session.meetingUrl}
-        goal={session.goal}
-        onStartSession={canStart ? onStartSession : undefined}
+        meetingUrl={talk.meetingUrl}
+        goal={talk.goal}
+        onStartSession={canStart ? onStartTalk : undefined}
         isStarting={isStarting}
       />
     </div>
@@ -246,31 +246,31 @@ function PreSessionView({
 }
 
 /**
- * Post-session summary view with full recap UI
+ * Post-talk summary view with full recap UI
  */
-function PostSessionView({
-  session,
+function PostTalkView({
+  talk,
   summary,
   summaryLoading,
   summaryError,
   onRetryLoadSummary,
 }: {
-  session: Session;
-  summary: SessionSummary | null;
+  talk: Talk;
+  summary: TalkSummary | null;
   summaryLoading: boolean;
   summaryError: Error | null;
   onRetryLoadSummary: () => void;
 }) {
   const router = useRouter();
-  const partner = getPartnerInfo(session.participants);
+  const partner = getPartnerInfo(talk.participants);
   const [isRatingSubmitting, setIsRatingSubmitting] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
 
   // Format the ended date - use createdAt as proxy since we don't track ended_at
-  const endedAt = session.createdAt;
+  const endedAt = talk.createdAt;
 
   // Handle rating submission
-  const handleRatingSubmit = useCallback(async (rating: SessionRating) => {
+  const handleRatingSubmit = useCallback(async (rating: TalkRating) => {
     setIsRatingSubmitting(true);
     try {
       // TODO: Implement rating submission API endpoint
@@ -292,8 +292,8 @@ function PostSessionView({
     // TODO: Implement share functionality
     if (typeof navigator !== 'undefined' && navigator.share) {
       navigator.share({
-        title: `Session Recap - ${session.title || partner.name}`,
-        text: summary?.consensusSummary || 'Session completed',
+        title: `Talk Recap - ${talk.title || partner.name}`,
+        text: summary?.consensusSummary || 'Talk completed',
         url: window.location.href,
       }).catch(() => {
         // Fallback to clipboard
@@ -302,7 +302,7 @@ function PostSessionView({
     } else {
       navigator.clipboard.writeText(window.location.href);
     }
-  }, [session.title, partner.name, summary?.consensusSummary]);
+  }, [talk.title, partner.name, summary?.consensusSummary]);
 
   const handleDownload = useCallback(() => {
     // TODO: Implement PDF download functionality
@@ -337,9 +337,9 @@ function PostSessionView({
   if (summaryError && !summary) {
     return (
       <div className="p-4 space-y-4">
-        <h1 className="text-2xl font-serif mb-1">Session Complete</h1>
+        <h1 className="text-2xl font-serif mb-1">Talk Complete</h1>
         <p className="text-muted-foreground mb-6">
-          Your session with {partner.name} has ended.
+          Your talk with {partner.name} has ended.
         </p>
 
         <Card>
@@ -347,9 +347,9 @@ function PostSessionView({
             <div className="w-16 h-16 rounded-full bg-status-error/10 flex items-center justify-center mx-auto mb-4">
               <ErrorIcon className="w-8 h-8 text-status-error" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Couldn&apos;t Load Summary</h3>
+            <h3 className="text-lg font-semibold mb-2">Couldn&apos;t load summary</h3>
             <p className="text-muted-foreground mb-4 max-w-sm mx-auto">
-              {summaryError.message || 'Failed to load session summary'}
+              {summaryError.message || 'Failed to load talk summary'}
             </p>
             <Button onClick={onRetryLoadSummary} variant="outline">
               Try Again
@@ -372,22 +372,22 @@ function PostSessionView({
   if (!summary) {
     return (
       <div className="p-4 space-y-4">
-        <h1 className="text-2xl font-serif mb-1">Session Complete</h1>
+        <h1 className="text-2xl font-serif mb-1">Talk Complete</h1>
         <p className="text-muted-foreground mb-6">
-          Your session with {partner.name} has ended.
+          Your talk with {partner.name} has ended.
         </p>
 
         <Card>
           <CardHeader>
-            <CardTitle>Session Summary</CardTitle>
+            <CardTitle>Talk Summary</CardTitle>
             <CardDescription>
-              Duration: {session.durationMinutes} minutes
+              Duration: {talk.durationMinutes} minutes
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
               <h3 className="text-sm font-medium mb-1">Goal</h3>
-              <p className="text-sm text-muted-foreground italic">&ldquo;{session.goal}&rdquo;</p>
+              <p className="text-sm text-muted-foreground italic">&ldquo;{talk.goal}&rdquo;</p>
             </div>
 
             <div className="p-4 bg-muted/50 rounded-lg text-center text-sm text-muted-foreground">
@@ -414,7 +414,7 @@ function PostSessionView({
         {/* Synthesis Board - Main summary section */}
         <SynthesisBoard
           summary={summary}
-          sessionTitle={session.title || `Session with ${partner.name}`}
+          sessionTitle={talk.title || `Talk with ${partner.name}`}
           endedAt={endedAt}
           onBack={() => router.push('/hub')}
           onShare={handleShare}
@@ -434,7 +434,7 @@ function PostSessionView({
         {/* Rating Prompt - only show if not submitted */}
         {!ratingSubmitted && (
           <RatingPrompt
-            sessionId={session.id}
+            talkId={talk.id}
             onSubmit={handleRatingSubmit}
             onSkip={handleSkipRating}
             isSubmitting={isRatingSubmitting}
@@ -457,9 +457,9 @@ function PostSessionView({
 }
 
 /**
- * Archived session view
+ * Archived talk view
  */
-function ArchivedSessionView() {
+function ArchivedTalkView() {
   const router = useRouter();
 
   return (
@@ -467,9 +467,9 @@ function ArchivedSessionView() {
       <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
         <ArchiveIcon className="w-8 h-8 text-muted-foreground" />
       </div>
-      <h2 className="text-xl font-semibold mb-2">Session Archived</h2>
+      <h2 className="text-xl font-semibold mb-2">Talk Archived</h2>
       <p className="text-muted-foreground mb-4 max-w-sm">
-        This session has been archived and is no longer accessible.
+        This talk has been archived and is no longer accessible.
       </p>
       <Button onClick={() => router.push('/hub')} variant="outline">
         Return to Hub
@@ -509,24 +509,24 @@ function ArchiveIcon({ className }: { className?: string }) {
 // Main Component
 // =============================================================================
 
-export default function SessionDetailPage() {
+export default function TalkDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const sessionId = params.id as string;
+  const talkId = params.id as string;
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
 
-  // Fetch session data
+  // Fetch talk data
   const {
-    data: apiSession,
+    data: apiTalk,
     isLoading,
     error,
     refetch,
   } = useQuery({
-    queryKey: ['session', sessionId],
-    queryFn: () => getSession(sessionId, API_KEY),
-    enabled: !!sessionId,
-    // Only poll while session is in a non-terminal state
+    queryKey: ['talk', talkId],
+    queryFn: () => getTalk(talkId, API_KEY),
+    enabled: !!talkId,
+    // Only poll while talk is in a non-terminal state
     // Stop polling once ended/archived to prevent flickering
     refetchInterval: (query) => {
       const status = query.state.data?.status;
@@ -537,53 +537,53 @@ export default function SessionDetailPage() {
     },
   });
 
-  const session = apiSession ? transformSession(apiSession) : null;
+  const talk = apiTalk ? transformTalk(apiTalk) : null;
 
-  // Fetch session summary (only when session is ended)
+  // Fetch talk summary (only when talk is ended)
   const {
     data: apiSummary,
     isLoading: summaryLoading,
     error: summaryError,
     refetch: refetchSummary,
   } = useQuery({
-    queryKey: ['session-summary', sessionId],
-    queryFn: () => getSessionSummary(sessionId, API_KEY),
-    enabled: !!sessionId && session?.status === 'ended',
+    queryKey: ['talk-summary', talkId],
+    queryFn: () => getTalkSummary(talkId, API_KEY),
+    enabled: !!talkId && talk?.status === 'ended',
     retry: 3,
     retryDelay: 1000,
   });
 
   const summary = apiSummary ? transformSummary(apiSummary) : null;
 
-  // Redirect to live view if session is active
+  // Redirect to live view if talk is active
   useEffect(() => {
-    console.log('[SessionDetail] Session status:', session?.status);
-    if (session?.status === 'in_progress' || session?.status === 'paused') {
-      console.log('[SessionDetail] Redirecting to live view...');
-      router.push(`/sessions/${sessionId}/live`);
+    console.log('[TalkDetail] Talk status:', talk?.status);
+    if (talk?.status === 'in_progress' || talk?.status === 'paused') {
+      console.log('[TalkDetail] Redirecting to live view...');
+      router.push(`/talks/${talkId}/live`);
     }
-  }, [session?.status, sessionId, router]);
+  }, [talk?.status, talkId, router]);
 
-  // Start session handler
-  const handleStartSession = async () => {
-    console.log('[SessionDetail] handleStartSession called, session:', session?.status);
-    if (!session) return;
+  // Start talk handler
+  const handleStartTalk = async () => {
+    console.log('[TalkDetail] handleStartTalk called, talk:', talk?.status);
+    if (!talk) return;
 
     setIsStarting(true);
     setStartError(null);
     try {
-      console.log('[SessionDetail] Calling startSession API...');
-      const result = await startSession(
-        sessionId,
-        { meeting_url: session.meetingUrl || undefined },
+      console.log('[TalkDetail] Calling startTalk API...');
+      const result = await startTalk(
+        talkId,
+        { meeting_url: talk.meetingUrl || undefined },
         API_KEY
       );
-      console.log('[SessionDetail] startSession result:', result);
+      console.log('[TalkDetail] startTalk result:', result);
       // Redirect to live view
-      router.push(`/sessions/${sessionId}/live`);
+      router.push(`/talks/${talkId}/live`);
     } catch (err) {
-      console.error('[SessionDetail] Failed to start session:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to start session';
+      console.error('[TalkDetail] Failed to start talk:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to start talk';
       setStartError(errorMessage);
       setIsStarting(false);
     }
@@ -596,47 +596,47 @@ export default function SessionDetailPage() {
 
   // Loading state
   if (isLoading) {
-    return <SessionDetailSkeleton />;
+    return <TalkDetailSkeleton />;
   }
 
   // Error state
   if (error) {
     return (
-      <SessionDetailError
-        message={error instanceof Error ? error.message : 'Failed to load session'}
+      <TalkDetailError
+        message={error instanceof Error ? error.message : 'Failed to load talk'}
         onRetry={() => refetch()}
       />
     );
   }
 
-  // Session not found
-  if (!session) {
+  // Talk not found
+  if (!talk) {
     return (
-      <SessionDetailError
-        message="Session not found"
+      <TalkDetailError
+        message="Talk not found"
         onRetry={() => refetch()}
       />
     );
   }
 
-  // Render based on session status
-  const statusViews: Record<SessionStatus, JSX.Element> = {
-    draft: <PreSessionView session={session} onStartSession={handleStartSession} isStarting={isStarting} startError={startError} />,
-    pending_consent: <PreSessionView session={session} onStartSession={handleStartSession} isStarting={isStarting} startError={startError} />,
-    ready: <PreSessionView session={session} onStartSession={handleStartSession} isStarting={isStarting} startError={startError} />,
-    in_progress: <SessionDetailSkeleton />, // Will redirect via useEffect
-    paused: <SessionDetailSkeleton />, // Will redirect via useEffect
+  // Render based on talk status
+  const statusViews: Record<TalkStatus, JSX.Element> = {
+    draft: <PreTalkView talk={talk} onStartTalk={handleStartTalk} isStarting={isStarting} startError={startError} />,
+    pending_consent: <PreTalkView talk={talk} onStartTalk={handleStartTalk} isStarting={isStarting} startError={startError} />,
+    ready: <PreTalkView talk={talk} onStartTalk={handleStartTalk} isStarting={isStarting} startError={startError} />,
+    in_progress: <TalkDetailSkeleton />, // Will redirect via useEffect
+    paused: <TalkDetailSkeleton />, // Will redirect via useEffect
     ended: (
-      <PostSessionView
-        session={session}
+      <PostTalkView
+        talk={talk}
         summary={summary}
         summaryLoading={summaryLoading}
         summaryError={summaryError instanceof Error ? summaryError : summaryError ? new Error('Failed to load summary') : null}
         onRetryLoadSummary={handleRetryLoadSummary}
       />
     ),
-    archived: <ArchivedSessionView />,
+    archived: <ArchivedTalkView />,
   };
 
-  return statusViews[session.status];
+  return statusViews[talk.status];
 }

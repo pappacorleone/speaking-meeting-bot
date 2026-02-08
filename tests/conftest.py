@@ -9,24 +9,24 @@ def pytest_configure(config):
 
 
 @pytest.fixture(autouse=True)
-def reset_session_store():
-    """Reset session store before each test."""
-    # Import and clear the session store
+def reset_talk_store():
+    """Reset talk store before each test."""
+    # Import and clear the talk store
     try:
-        from core.session_store import SESSION_STORE, SESSION_EVENTS, SESSION_SUMMARIES
+        from core.talk_store import TALK_STORE, TALK_EVENTS, TALK_SUMMARIES
 
-        SESSION_STORE.clear()
-        SESSION_EVENTS.clear()
-        SESSION_SUMMARIES.clear()
+        TALK_STORE.clear()
+        TALK_EVENTS.clear()
+        TALK_SUMMARIES.clear()
     except ImportError:
         pass
     yield
     # Cleanup after test
     try:
-        from core.session_store import SESSION_STORE, SESSION_EVENTS, SESSION_SUMMARIES
+        from core.talk_store import TALK_STORE, TALK_EVENTS, TALK_SUMMARIES
 
-        SESSION_STORE.clear()
-        SESSION_EVENTS.clear()
-        SESSION_SUMMARIES.clear()
+        TALK_STORE.clear()
+        TALK_EVENTS.clear()
+        TALK_SUMMARIES.clear()
     except ImportError:
         pass

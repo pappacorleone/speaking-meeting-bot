@@ -10,18 +10,18 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import type { Session } from "@/types/session";
-import { getStatusLabel } from "@/types/session";
+import type { Talk } from "@/types/talk";
+import { getStatusLabel } from "@/types/talk";
 
-interface ActiveSessionCardProps {
-  session: Session;
+interface ActiveTalkCardProps {
+  talk: Talk;
   className?: string;
 }
 
 /**
- * StatusBadge displays the current session status with appropriate styling.
+ * StatusBadge displays the current talk status with appropriate styling.
  */
-function StatusBadge({ status }: { status: Session["status"] }) {
+function StatusBadge({ status }: { status: Talk["status"] }) {
   const isReady = status === "ready";
   const isInProgress = status === "in_progress";
   const isPaused = status === "paused";
@@ -40,7 +40,7 @@ function StatusBadge({ status }: { status: Session["status"] }) {
         {status === "ready"
           ? "Ready for Facilitation"
           : status === "in_progress"
-            ? "Session in Progress"
+            ? "Talk in Progress"
             : getStatusLabel(status)}
       </span>
     </div>
@@ -48,9 +48,9 @@ function StatusBadge({ status }: { status: Session["status"] }) {
 }
 
 /**
- * ParticipantInfo shows the partner name for the session.
+ * ParticipantInfo shows the partner name for the talk.
  */
-function ParticipantInfo({ participants }: { participants: Session["participants"] }) {
+function ParticipantInfo({ participants }: { participants: Talk["participants"] }) {
   // Find the invitee (partner)
   const partner = participants.find((p) => p.role === "invitee");
   const partnerName = partner?.name || "Your Partner";
@@ -72,58 +72,58 @@ function ParticipantInfo({ participants }: { participants: Session["participants
 }
 
 /**
- * ActiveSessionCard displays a prominent card for active or ready sessions.
+ * ActiveTalkCard displays a prominent card for active or ready talks.
  * Features:
  * - Status badge (green dot + label)
- * - Session goal (truncated)
+ * - Talk goal (truncated)
  * - Partner info with avatar
  * - Join/Resume CTA button
  */
-export function ActiveSessionCard({
-  session,
+export function ActiveTalkCard({
+  talk,
   className,
-}: ActiveSessionCardProps) {
-  const isReady = session.status === "ready";
-  const isInProgress = session.status === "in_progress";
-  const isPaused = session.status === "paused";
+}: ActiveTalkCardProps) {
+  const isReady = talk.status === "ready";
+  const isInProgress = talk.status === "in_progress";
+  const isPaused = talk.status === "paused";
 
   // Determine CTA text
   const ctaText = isReady
-    ? "Join Session"
+    ? "Join Talk"
     : isInProgress
-      ? "Rejoin Session"
+      ? "Rejoin Talk"
       : isPaused
-        ? "Resume Session"
-        : "View Session";
+        ? "Resume Talk"
+        : "View Talk";
 
   // Determine destination
-  const sessionLink =
+  const talkLink =
     isReady || isInProgress || isPaused
-      ? `/sessions/${session.id}/live`
-      : `/sessions/${session.id}`;
+      ? `/talks/${talk.id}/live`
+      : `/talks/${talk.id}`;
 
   return (
     <Card className={cn("overflow-hidden", className)}>
       <CardHeader className="pb-3">
-        <StatusBadge status={session.status} />
+        <StatusBadge status={talk.status} />
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Session title or goal as headline */}
+        {/* Talk title or goal as headline */}
         <h3 className="font-serif text-2xl font-semibold leading-tight">
-          {session.title || session.goal}
+          {talk.title || talk.goal}
         </h3>
 
         {/* Goal preview if we have a separate title */}
-        {session.title && session.goal && (
+        {talk.title && talk.goal && (
           <p className="text-muted-foreground text-sm line-clamp-2">
-            {session.goal}
+            {talk.goal}
           </p>
         )}
 
         {/* Partner info */}
-        <ParticipantInfo participants={session.participants} />
+        <ParticipantInfo participants={talk.participants} />
 
-        {/* Consent status for ready sessions */}
+        {/* Consent status for ready talks */}
         {isReady && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="h-1.5 w-1.5 rounded-full bg-status-active" />
@@ -133,11 +133,11 @@ export function ActiveSessionCard({
       </CardContent>
       <CardFooter className="flex gap-3">
         <Button asChild className="flex-1">
-          <Link href={sessionLink}>{ctaText}</Link>
+          <Link href={talkLink}>{ctaText}</Link>
         </Button>
         {!isInProgress && !isPaused && (
           <Button variant="outline" asChild>
-            <Link href={`/sessions/${session.id}`}>Details</Link>
+            <Link href={`/talks/${talk.id}`}>Details</Link>
           </Button>
         )}
       </CardFooter>

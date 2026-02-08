@@ -1,8 +1,8 @@
 /**
- * Session Timer Component
+ * Talk Timer Component
  *
  * Displays elapsed time and time remaining for the session.
- * Updates every second via the session store's incrementElapsed action.
+ * Updates every second via the talk store's incrementElapsed action.
  *
  * Visual design:
  * - Shows elapsed time (mm:ss or hh:mm:ss)
@@ -21,16 +21,16 @@ import type { TimeRemainingData } from '@/types/events';
 // Types
 // =============================================================================
 
-interface SessionTimerProps {
+interface TalkTimerProps {
   /** Time remaining data from WebSocket events */
   timeRemaining: TimeRemainingData | null;
   /** Elapsed time in seconds (tracked locally) */
   elapsedSeconds: number;
-  /** Total session duration in minutes */
+  /** Total talk duration in minutes */
   durationMinutes: number;
   /** Callback to increment elapsed seconds (called every second) */
   onTick?: () => void;
-  /** Whether the session is active (controls timer ticking) */
+  /** Whether the talk is active (controls timer ticking) */
   isActive?: boolean;
   /** Show elapsed time instead of remaining */
   showElapsed?: boolean;
@@ -140,7 +140,7 @@ function getStatusLabel(status: TimeStatus): string {
 /**
  * Timer skeleton shown while loading
  */
-export function SessionTimerSkeleton({ compact }: { compact?: boolean }) {
+export function TalkTimerSkeleton({ compact }: { compact?: boolean }) {
   return (
     <div className={cn('flex items-center gap-2', compact && 'gap-1.5')}>
       <div
@@ -160,10 +160,10 @@ export function SessionTimerSkeleton({ compact }: { compact?: boolean }) {
 }
 
 /**
- * Main Session Timer component
+ * Main Talk Timer component
  * Displays elapsed or remaining time with status indicator
  */
-export function SessionTimer({
+export function TalkTimer({
   timeRemaining,
   elapsedSeconds,
   durationMinutes,
@@ -172,7 +172,7 @@ export function SessionTimer({
   showElapsed = false,
   compact = false,
   className,
-}: SessionTimerProps) {
+}: TalkTimerProps) {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Set up timer interval
@@ -263,7 +263,7 @@ export function SessionTimer({
 // Timer with Label variant
 // =============================================================================
 
-interface SessionTimerWithLabelProps extends SessionTimerProps {
+interface TalkTimerWithLabelProps extends TalkTimerProps {
   /** Label to display above/beside timer */
   label?: string;
   /** Position of label */
@@ -271,14 +271,14 @@ interface SessionTimerWithLabelProps extends SessionTimerProps {
 }
 
 /**
- * Session Timer with label
+ * Talk Timer with label
  * Displays timer with a descriptive label
  */
-export function SessionTimerWithLabel({
+export function TalkTimerWithLabel({
   label = 'Time Remaining',
   labelPosition = 'top',
   ...props
-}: SessionTimerWithLabelProps) {
+}: TalkTimerWithLabelProps) {
   const remainingSeconds =
     props.timeRemaining?.totalSecondsRemaining ??
     calculateTimeRemaining(props.durationMinutes, props.elapsedSeconds);
@@ -291,7 +291,7 @@ export function SessionTimerWithLabel({
         <span className="text-xs text-muted-foreground uppercase tracking-wider">
           {label}
         </span>
-        <SessionTimer {...props} className="" />
+        <TalkTimer {...props} className="" />
       </div>
     );
   }
@@ -301,7 +301,7 @@ export function SessionTimerWithLabel({
       <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
         {label}
       </span>
-      <SessionTimer {...props} className="" />
+      <TalkTimer {...props} className="" />
       {status !== 'normal' && (
         <span
           className={cn(
@@ -320,12 +320,12 @@ export function SessionTimerWithLabel({
 // Compact HUD variant for video overlays
 // =============================================================================
 
-interface SessionTimerHUDProps {
+interface TalkTimerHUDProps {
   /** Time remaining data from WebSocket events */
   timeRemaining: TimeRemainingData | null;
   /** Elapsed time in seconds */
   elapsedSeconds: number;
-  /** Total session duration in minutes */
+  /** Total talk duration in minutes */
   durationMinutes: number;
   /** Show elapsed instead of remaining */
   showElapsed?: boolean;
@@ -334,16 +334,16 @@ interface SessionTimerHUDProps {
 }
 
 /**
- * Compact Session Timer for HUD overlays
+ * Compact Talk Timer for HUD overlays
  * Designed for visibility on video backgrounds
  */
-export function SessionTimerHUD({
+export function TalkTimerHUD({
   timeRemaining,
   elapsedSeconds,
   durationMinutes,
   showElapsed = false,
   className,
-}: SessionTimerHUDProps) {
+}: TalkTimerHUDProps) {
   const remainingSeconds =
     timeRemaining?.totalSecondsRemaining ??
     calculateTimeRemaining(durationMinutes, elapsedSeconds);
@@ -387,22 +387,22 @@ export function SessionTimerHUD({
 // Large display variant
 // =============================================================================
 
-interface SessionTimerLargeProps extends SessionTimerProps {
+interface TalkTimerLargeProps extends TalkTimerProps {
   /** Show both elapsed and remaining */
   showBoth?: boolean;
 }
 
 /**
- * Large Session Timer display
- * For prominent timer display in session screens
+ * Large Talk Timer display
+ * For prominent timer display in talk screens
  */
-export function SessionTimerLarge({
+export function TalkTimerLarge({
   timeRemaining,
   elapsedSeconds,
   durationMinutes,
   showBoth = false,
   className,
-}: SessionTimerLargeProps) {
+}: TalkTimerLargeProps) {
   const remainingSeconds =
     timeRemaining?.totalSecondsRemaining ??
     calculateTimeRemaining(durationMinutes, elapsedSeconds);
@@ -476,27 +476,27 @@ export function SessionTimerLarge({
 // Dual Timer variant (elapsed + remaining)
 // =============================================================================
 
-interface SessionTimerDualProps {
+interface TalkTimerDualProps {
   /** Time remaining data from WebSocket events */
   timeRemaining: TimeRemainingData | null;
   /** Elapsed time in seconds */
   elapsedSeconds: number;
-  /** Total session duration in minutes */
+  /** Total talk duration in minutes */
   durationMinutes: number;
   /** Optional className for container styling */
   className?: string;
 }
 
 /**
- * Dual Session Timer
+ * Dual Talk Timer
  * Shows both elapsed and remaining time side by side
  */
-export function SessionTimerDual({
+export function TalkTimerDual({
   timeRemaining,
   elapsedSeconds,
   durationMinutes,
   className,
-}: SessionTimerDualProps) {
+}: TalkTimerDualProps) {
   const remainingSeconds =
     timeRemaining?.totalSecondsRemaining ??
     calculateTimeRemaining(durationMinutes, elapsedSeconds);
@@ -545,10 +545,10 @@ export function SessionTimerDual({
 
       {/* Duration label */}
       <p className="text-center text-[10px] text-muted-foreground uppercase tracking-widest">
-        {durationMinutes} minute session
+        {durationMinutes} minute talk
       </p>
     </div>
   );
 }
 
-export default SessionTimer;
+export default TalkTimer;

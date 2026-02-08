@@ -8,7 +8,7 @@ export {
   PageErrorFallback,
   InlineErrorFallback,
   CompactErrorFallback,
-  SessionErrorFallback,
+  TalkErrorFallback,
   type ErrorBoundaryProps,
 } from './error-boundary';
 

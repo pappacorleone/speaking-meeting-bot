@@ -1,7 +1,7 @@
 /**
- * Live session components barrel export
+ * Live talk components barrel export
  *
- * Components used during active facilitation sessions
+ * Components used during active facilitation talks
  * including real-time indicators and overlays.
  */
 
@@ -19,13 +19,13 @@ export {
 } from './ai-status-indicator';
 
 export {
-  SessionTimer,
-  SessionTimerSkeleton,
-  SessionTimerWithLabel,
-  SessionTimerHUD,
-  SessionTimerLarge,
-  SessionTimerDual,
-} from './session-timer';
+  TalkTimer,
+  TalkTimerSkeleton,
+  TalkTimerWithLabel,
+  TalkTimerHUD,
+  TalkTimerLarge,
+  TalkTimerDual,
+} from './talk-timer';
 
 export {
   GoalSnippet,

@@ -10,14 +10,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import type { SessionSummary, TalkBalanceMetrics } from '@/types/session';
+import type { TalkSummary, TalkBalanceMetrics } from '@/types/talk';
 
 // =============================================================================
 // Types
 // =============================================================================
 
 interface SynthesisBoardProps {
-  summary: SessionSummary;
+  summary: TalkSummary;
   sessionTitle?: string;
   endedAt?: string;
   onBack?: () => void;
@@ -39,7 +39,7 @@ interface ConsensusSummaryCardProps {
   className?: string;
 }
 
-interface SessionMetricsProps {
+interface TalkMetricsProps {
   durationMinutes: number;
   interventionCount: number;
   balance: TalkBalanceMetrics;
@@ -180,12 +180,12 @@ function ConsensusSummaryCard({ summary, className }: ConsensusSummaryCardProps)
 /**
  * Session metrics display showing duration, interventions, and balance.
  */
-function SessionMetrics({
+function TalkMetrics({
   durationMinutes,
   interventionCount,
   balance,
   className,
-}: SessionMetricsProps) {
+}: TalkMetricsProps) {
   return (
     <div className={cn('grid grid-cols-1 sm:grid-cols-3 gap-4', className)}>
       {/* Duration */}
@@ -259,7 +259,7 @@ export function SynthesisBoard({
       {/* Session metrics */}
       <Card>
         <CardContent className="pt-6">
-          <SessionMetrics
+          <TalkMetrics
             durationMinutes={summary.durationMinutes}
             interventionCount={summary.interventionCount}
             balance={summary.balance}
@@ -319,4 +319,4 @@ export function SynthesisBoardSkeleton() {
   );
 }
 
-export { SynthesisBoardHeader, ConsensusSummaryCard, SessionMetrics };
+export { SynthesisBoardHeader, ConsensusSummaryCard, TalkMetrics };

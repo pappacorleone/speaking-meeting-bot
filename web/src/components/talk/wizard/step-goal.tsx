@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, ArrowLeft, Clock, Calendar } from "lucide-react";
 
 /**
- * Duration options for session length
+ * Duration options for talk length
  * Allowed: 15/30/45/60 minutes (per spec)
  */
 const DURATION_OPTIONS = [
@@ -19,10 +19,10 @@ const DURATION_OPTIONS = [
 ] as const;
 
 /**
- * Step 1: Session Goal
+ * Step 1: Talk Goal
  *
- * Second step of the session creation wizard where users define:
- * - Session goal (what they want to accomplish)
+ * Second step of the talk creation wizard where users define:
+ * - Talk goal (what they want to accomplish)
  * - Schedule (optional - now or later)
  * - Duration (15/30/45/60 minutes)
  *
@@ -72,7 +72,7 @@ export function StepGoal() {
             htmlFor="goal"
             className="text-xs font-medium tracking-widest text-muted-foreground uppercase"
           >
-            Session Goal
+            Talk Goal
           </Label>
           <Textarea
             id="goal"
@@ -140,7 +140,7 @@ export function StepGoal() {
             className="text-xs font-medium tracking-widest text-muted-foreground uppercase flex items-center gap-2"
           >
             <Clock className="h-4 w-4" />
-            Session Duration
+            Talk Duration
           </Label>
           <div className="flex flex-wrap gap-2">
             {DURATION_OPTIONS.map((option) => (

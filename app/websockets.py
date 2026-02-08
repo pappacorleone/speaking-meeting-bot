@@ -10,18 +10,18 @@ from protobufs import frames_pb2
 from core.connection import MEETING_DETAILS, PIPECAT_PROCESSES, registry
 from core.process import start_pipecat_process, terminate_process_gracefully
 from core.router import router as message_router
-from core.session_store import (
-    SESSION_EVENTS,
-    broadcast_session_event,
-    get_session,
-    get_session_by_client_id,
+from core.talk_store import (
+    TALK_EVENTS,
+    broadcast_talk_event,
+    get_talk,
+    get_talk_by_client_id,
     record_speaker_activity,
     record_speaker_durations,
     record_speech_activity,
     register_event_connection,
     unregister_event_connection,
 )
-from app.models import SessionStatus
+from app.models import TalkStatus
 from meetingbaas_pipecat.utils.logger import logger
 from utils.ngrok import LOCAL_DEV_MODE, log_ngrok_status, release_ngrok_url
 
@@ -71,18 +71,18 @@ async def _handle_pipecat_event_payload(payload_text: str, client_id: str) -> bo
     if not event_type or not isinstance(event_data, dict):
         return False
 
-    session_id = payload.get("session_id")
-    if not session_id:
-        session = get_session_by_client_id(client_id)
-        session_id = session.id if session else None
+    talk_id = payload.get("session_id")
+    if not talk_id:
+        talk = get_talk_by_client_id(client_id)
+        talk_id = talk.id if talk else None
 
-    if not session_id:
+    if not talk_id:
         return False
 
     if event_type == "speech_activity":
         is_speaking = event_data.get("is_speaking")
         if isinstance(is_speaking, bool):
-            record_speech_activity(session_id, is_speaking)
+            record_speech_activity(talk_id, is_speaking)
         return True
 
     if event_type == "speaker_durations":
@@ -92,17 +92,17 @@ async def _handle_pipecat_event_payload(payload_text: str, client_id: str) -> bo
             or {}
         )
         if isinstance(durations, dict):
-            record_speaker_durations(session_id, durations)
+            record_speaker_durations(talk_id, durations)
         return True
 
     if event_type == "speaker_activity":
         speaker_label = event_data.get("speaker_id") or event_data.get("speaker_label")
         is_speaking = event_data.get("is_speaking")
         if speaker_label is not None and isinstance(is_speaking, bool):
-            record_speaker_activity(session_id, str(speaker_label), is_speaking)
+            record_speaker_activity(talk_id, str(speaker_label), is_speaking)
         return True
 
-    await broadcast_session_event(session_id, event_type, event_data)
+    await broadcast_talk_event(talk_id, event_type, event_data)
     return True
 
 
@@ -378,19 +378,19 @@ async def pipecat_websocket(websocket: WebSocket, client_id: str):
 
 
 # =============================================================================
-# Session Events WebSocket (Diadi)
+# Talk Events WebSocket (Diadi)
 # =============================================================================
 
 
-@websocket_router.websocket("/sessions/{session_id}/events")
-async def session_events_websocket(websocket: WebSocket, session_id: str):
-    """WebSocket endpoint for real-time session events.
+@websocket_router.websocket("/talks/{talk_id}/events")
+async def talk_events_websocket(websocket: WebSocket, talk_id: str):
+    """WebSocket endpoint for real-time talk events.
 
     This endpoint is used by the Diadi frontend to receive real-time updates
-    about session state, talk balance, interventions, and timing.
+    about talk state, talk balance, interventions, and timing.
 
     Events sent from server:
-        - session_state: Current session status
+        - session_state: Current talk status
         - balance_update: Talk time balance between participants
         - intervention: AI intervention notification
         - time_remaining: Time warning updates
@@ -400,38 +400,38 @@ async def session_events_websocket(websocket: WebSocket, session_id: str):
 
     Messages accepted from client:
         - ping: Heartbeat (responds with pong)
-        - update_settings: Update facilitator settings mid-session
+        - update_settings: Update facilitator settings mid-talk
         - intervention_ack: Acknowledge intervention was seen/dismissed
     """
     await websocket.accept()
 
-    # Validate session exists
-    session = get_session(session_id)
-    if not session:
-        logger.warning(f"Session events WebSocket: Session {session_id} not found")
-        await websocket.close(code=4004, reason="Session not found")
+    # Validate talk exists
+    talk = get_talk(talk_id)
+    if not talk:
+        logger.warning(f"Talk events WebSocket: Talk {talk_id} not found")
+        await websocket.close(code=4004, reason="Talk not found")
         return
 
-    # Reject connections for ended sessions with normal closure code
+    # Reject connections for ended talks with normal closure code
     # so the frontend doesn't attempt to reconnect
-    if session.status == SessionStatus.ENDED:
-        logger.info(f"Session events WebSocket: Session {session_id} has ended, closing connection")
-        await websocket.close(code=1000, reason="Session ended")
+    if talk.status == TalkStatus.ENDED:
+        logger.info(f"Talk events WebSocket: Talk {talk_id} has ended, closing connection")
+        await websocket.close(code=1000, reason="Talk ended")
         return
 
-    # Register this connection for session events
-    register_event_connection(session_id, websocket)
+    # Register this connection for talk events
+    register_event_connection(talk_id, websocket)
     logger.info(
-        f"Session events WebSocket connected for session {session_id}. "
-        f"Total connections: {len(SESSION_EVENTS.get(session_id, []))}"
+        f"Talk events WebSocket connected for talk {talk_id}. "
+        f"Total connections: {len(TALK_EVENTS.get(talk_id, []))}"
     )
 
     try:
-        # Send initial session state
-        facilitator_paused = session.status == SessionStatus.PAUSED
+        # Send initial talk state
+        facilitator_paused = talk.status == TalkStatus.PAUSED
         if facilitator_paused:
             ai_status = "paused"
-        elif session.status == SessionStatus.IN_PROGRESS:
+        elif talk.status == TalkStatus.IN_PROGRESS:
             ai_status = "listening"
         else:
             ai_status = "idle"
@@ -440,9 +440,9 @@ async def session_events_websocket(websocket: WebSocket, session_id: str):
             {
                 "type": "session_state",
                 "data": {
-                    "status": session.status.value,
-                    "goal": session.goal,
-                    "durationMinutes": session.duration_minutes,
+                    "status": talk.status.value,
+                    "goal": talk.goal,
+                    "durationMinutes": talk.duration_minutes,
                     "participants": [
                         {
                             "id": p.id,
@@ -450,16 +450,16 @@ async def session_events_websocket(websocket: WebSocket, session_id: str):
                             "role": p.role,
                             "consented": p.consented,
                         }
-                        for p in session.participants
+                        for p in talk.participants
                     ],
                     "facilitatorConfig": {
-                        "persona": session.facilitator.persona.value,
-                        "interruptAuthority": session.facilitator.interrupt_authority,
-                        "directInquiry": session.facilitator.direct_inquiry,
-                        "silenceDetection": session.facilitator.silence_detection,
+                        "persona": talk.facilitator.persona.value,
+                        "interruptAuthority": talk.facilitator.interrupt_authority,
+                        "directInquiry": talk.facilitator.direct_inquiry,
+                        "silenceDetection": talk.facilitator.silence_detection,
                     },
-                    "botId": session.bot_id,
-                    "clientId": session.client_id,
+                    "botId": talk.bot_id,
+                    "clientId": talk.client_id,
                     "facilitatorPaused": facilitator_paused,
                     "aiStatus": ai_status,
                 },
@@ -484,13 +484,13 @@ async def session_events_websocket(websocket: WebSocket, session_id: str):
                     )
 
                 elif message_type == "update_settings":
-                    # Update facilitator settings mid-session
+                    # Update facilitator settings mid-talk
                     settings = message.get("data") or message.get("settings", {})
                     logger.info(
-                        f"Session {session_id}: Received settings update: {settings}"
+                        f"Talk {talk_id}: Received settings update: {settings}"
                     )
                     # TODO: Forward settings to Pipecat process
-                    # await update_pipecat_settings(session.client_id, settings)
+                    # await update_pipecat_settings(talk.client_id, settings)
 
                     # Acknowledge the update
                     await websocket.send_json(
@@ -508,17 +508,17 @@ async def session_events_websocket(websocket: WebSocket, session_id: str):
                         or message.get("intervention_id")
                     )
                     logger.info(
-                        f"Session {session_id}: Intervention {intervention_id} acknowledged"
+                        f"Talk {talk_id}: Intervention {intervention_id} acknowledged"
                     )
                     # Could track this for analytics
 
                 else:
                     logger.debug(
-                        f"Session {session_id}: Unknown message type: {message_type}"
+                        f"Talk {talk_id}: Unknown message type: {message_type}"
                     )
 
             except json.JSONDecodeError as e:
-                logger.warning(f"Session {session_id}: Invalid JSON received: {e}")
+                logger.warning(f"Talk {talk_id}: Invalid JSON received: {e}")
                 await websocket.send_json(
                     {
                         "type": "error",
@@ -528,14 +528,14 @@ async def session_events_websocket(websocket: WebSocket, session_id: str):
                 )
 
     except WebSocketDisconnect:
-        logger.info(f"Session events WebSocket disconnected for session {session_id}")
+        logger.info(f"Talk events WebSocket disconnected for talk {talk_id}")
     except Exception as e:
-        logger.error(f"Session events WebSocket error for session {session_id}: {e}")
+        logger.error(f"Talk events WebSocket error for talk {talk_id}: {e}")
     finally:
         # Unregister connection
-        unregister_event_connection(session_id, websocket)
-        remaining = len(SESSION_EVENTS.get(session_id, []))
+        unregister_event_connection(talk_id, websocket)
+        remaining = len(TALK_EVENTS.get(talk_id, []))
         logger.info(
-            f"Session events WebSocket cleaned up for session {session_id}. "
+            f"Talk events WebSocket cleaned up for talk {talk_id}. "
             f"Remaining connections: {remaining}"
         )

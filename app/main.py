@@ -10,6 +10,7 @@ from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.routes import router as app_router
 from app.websockets import websocket_router
@@ -32,30 +33,46 @@ pipecat_ws_logger = logging.getLogger("pipecat.transports.network.websocket_clie
 pipecat_ws_logger.setLevel(logging.WARNING)
 
 
-async def api_key_middleware(request: Request, call_next):
-    """Middleware to check for MeetingBaas API key in headers."""
-    # Skip API key check for docs, openapi, and health endpoints
-    if request.url.path in [
-        "/docs",
-        "/openapi.json",
-        "/redoc",
-        "/health",
-        "/health/detailed",
-    ]:
+class ApiKeyMiddleware(BaseHTTPMiddleware):
+    """Middleware to check for MeetingBaas API key in headers.
+
+    Talk routes (/talks/*) are authenticated by the anonymous session cookie
+    instead of the API key, so they are skipped here. Bot and persona routes
+    still require the MeetingBaas API key.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+
+        # Skip CORS preflight requests (OPTIONS) — handled by CORSMiddleware
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
+        # Skip API key check for docs, openapi, health, and talk endpoints
+        if path in ("/docs", "/openapi.json", "/redoc", "/health", "/health/detailed"):
+            return await call_next(request)
+
+        # Talk routes are authenticated by user session cookie, not API key
+        if path.startswith("/talks"):
+            # Still pass through the API key if provided (needed for start_talk
+            # which calls MeetingBaas), but don't require it
+            api_key = request.headers.get("x-meeting-baas-api-key")
+            if api_key:
+                request.state.api_key = api_key
+            return await call_next(request)
+
+        api_key = request.headers.get("x-meeting-baas-api-key")
+        if not api_key:
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={
+                    "message": "Missing MeetingBaas API key in x-meeting-baas-api-key header"
+                },
+            )
+
+        # Add the API key to the request state for use in routes
+        request.state.api_key = api_key
         return await call_next(request)
-
-    api_key = request.headers.get("x-meeting-baas-api-key")
-    if not api_key:
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={
-                "message": "Missing MeetingBaas API key in x-meeting-baas-api-key header"
-            },
-        )
-
-    # Add the API key to the request state for use in routes
-    request.state.api_key = api_key
-    return await call_next(request)
 
 
 def create_app() -> FastAPI:
@@ -78,8 +95,28 @@ def create_app() -> FastAPI:
         # redoc_url="/redoc",  # Explicitly set the ReDoc URL
     )
 
-    # Add API key middleware
-    app.middleware("http")(api_key_middleware)
+    # Database lifecycle
+    from core.database import init_db, close_db
+
+    @app.on_event("startup")
+    async def startup():
+        await init_db()
+
+    @app.on_event("shutdown")
+    async def shutdown():
+        await close_db()
+
+    # Middleware ordering: last add_middleware = outermost = runs first.
+    # Order of execution: CORS → AnonymousSession → ApiKey → route
+    # So we add in reverse: ApiKey first, then session, then CORS last.
+
+    # API key middleware (innermost — runs closest to the route)
+    app.add_middleware(ApiKeyMiddleware)
+
+    # Anonymous session middleware
+    from app.middleware import AnonymousSessionMiddleware
+
+    app.add_middleware(AnonymousSessionMiddleware)
 
     # Set the server URL for the OpenAPI schema
     app.openapi_schema = None  # Clear any existing schema
@@ -186,9 +223,21 @@ def create_app() -> FastAPI:
     app.openapi = custom_openapi
 
     # Add CORS middleware
+    # When using credentials (cookies), allow_origins cannot be "*".
+    # Use ALLOWED_ORIGINS env var or sensible defaults.
+    allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+    allowed_origins = [o.strip() for o in allowed_origins if o.strip()]
+    if not allowed_origins:
+        allowed_origins = [
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://localhost:3002",
+            "http://localhost:7014",
+            "https://meeting-bot-frontend-800153001723.us-central1.run.app",
+        ]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=allowed_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

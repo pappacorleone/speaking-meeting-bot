@@ -3,31 +3,31 @@
  * Re-exports all types from individual modules.
  */
 
-// Session types
+// Talk types
 export type {
-  SessionStatus,
+  TalkStatus,
   Platform,
   FacilitatorPersona,
   ParticipantRole,
   Participant,
   FacilitatorConfig,
-  Session,
+  Talk,
   BalanceStatus,
   ParticipantBalance,
   TalkBalanceMetrics,
   KeyAgreement,
-  SessionSummary,
-  SessionWizardFormData,
+  TalkSummary,
+  TalkWizardFormData,
   WizardStep,
-  SessionStatusGroup,
-} from './session';
+  TalkStatusGroup,
+} from './talk';
 
 export {
-  getSessionStatusGroup,
-  isSessionActive,
-  canStartSession,
+  getTalkStatusGroup,
+  isTalkActive,
+  canStartTalk,
   getStatusLabel,
-} from './session';
+} from './talk';
 
 // Intervention types
 export type {
@@ -55,11 +55,11 @@ export {
 
 // Event types
 export type {
-  SessionEventType,
-  SessionEvent,
+  TalkEventType,
+  TalkEvent,
   BalanceUpdateData,
   TimeRemainingData,
-  SessionStateData,
+  TalkStateData,
   ParticipantStatusData,
   AIStatus,
   AIStatusData,
@@ -67,24 +67,24 @@ export type {
   ErrorData,
   BalanceUpdateEvent,
   TimeRemainingEvent,
-  SessionStateEvent,
+  TalkStateEvent,
   InterventionEvent,
   EscalationEvent,
   ParticipantStatusEvent,
   AIStatusEvent,
   GoalDriftEvent,
   ErrorEvent,
-  AnySessionEvent,
+  AnyTalkEvent,
   WebSocketConnectionState,
   WebSocketConfig,
   WebSocketState,
-  SessionEventHandlers,
+  TalkEventHandlers,
 } from './events';
 
 export {
   isBalanceUpdateEvent,
   isTimeRemainingEvent,
-  isSessionStateEvent,
+  isTalkStateEvent,
   isInterventionEvent,
   isEscalationEvent,
   isParticipantStatusEvent,

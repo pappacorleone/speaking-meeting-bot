@@ -16,12 +16,12 @@ import {
   Users,
   Sparkles,
 } from "lucide-react";
-import type { Platform } from "@/types/session";
+import type { Platform } from "@/types/talk";
 
 /**
  * Step 4: Launch Hub
  *
- * Final step of the session creation wizard where users:
+ * Final step of the talk creation wizard where users:
  * - See the generated invite link to share with their partner
  * - Select the meeting platform (Zoom, Meet, Teams, or Diadi)
  * - Optionally provide an external meeting URL
@@ -76,7 +76,7 @@ const PLATFORM_OPTIONS: PlatformOption[] = [
 // Helper to generate invite link (placeholder - real link comes from backend)
 function generateInviteLink(token?: string): string {
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-  // In production, token comes from backend after session creation
+  // In production, token comes from backend after talk creation
   const placeholderToken = token || "preview-token";
   return `${baseUrl}/invite/${placeholderToken}`;
 }
@@ -151,11 +151,11 @@ function PlatformCard({ option, isSelected, onSelect }: PlatformCardProps) {
 }
 
 interface StepLaunchProps {
-  onCreateSession?: () => void;
+  onCreateTalk?: () => void;
   isSubmitting?: boolean;
 }
 
-export function StepLaunch({ onCreateSession, isSubmitting }: StepLaunchProps) {
+export function StepLaunch({ onCreateTalk, isSubmitting }: StepLaunchProps) {
   const { formData, setFieldValue, getFieldError } = useWizardFormData();
   const { prevStep, canGoBack, isLastStep } = useWizardNavigation();
   const { isSubmitting: submittingFromContext, validateCurrentStep } = useWizard();
@@ -201,16 +201,16 @@ export function StepLaunch({ onCreateSession, isSubmitting }: StepLaunchProps) {
     prevStep();
   };
 
-  const handleCreateSession = () => {
+  const handleCreateTalk = () => {
     // Validate the current step
     if (!validateCurrentStep()) {
       return;
     }
-    if (onCreateSession) {
-      onCreateSession();
+    if (onCreateTalk) {
+      onCreateTalk();
       return;
     }
-    console.log("Session ready to create:", formData);
+    console.log("Talk ready to create:", formData);
   };
 
   const meetingUrlError = getFieldError("meetingUrl");
@@ -245,7 +245,7 @@ export function StepLaunch({ onCreateSession, isSubmitting }: StepLaunchProps) {
               </Label>
               <p className="text-xs text-muted-foreground mt-1">
                 Share this link with {formData.partnerName || "your partner"} to
-                invite them to the session.
+                invite them to the talk.
               </p>
             </div>
 
@@ -278,7 +278,7 @@ export function StepLaunch({ onCreateSession, isSubmitting }: StepLaunchProps) {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Your partner will need to consent before the session can begin.
+              Your partner will need to consent before the talk can begin.
             </p>
           </div>
         </Card>
@@ -290,7 +290,7 @@ export function StepLaunch({ onCreateSession, isSubmitting }: StepLaunchProps) {
               Meeting Platform
             </Label>
             <p className="text-xs text-muted-foreground mt-1">
-              Choose how you&apos;ll connect for your session.
+              Choose how you&apos;ll connect for your talk.
             </p>
           </div>
 
@@ -336,7 +336,7 @@ export function StepLaunch({ onCreateSession, isSubmitting }: StepLaunchProps) {
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <ExternalLink className="h-3 w-3" />
               The AI facilitator will join this meeting when you start the
-              session.
+              talk.
             </p>
           </div>
         )}
@@ -356,14 +356,14 @@ export function StepLaunch({ onCreateSession, isSubmitting }: StepLaunchProps) {
           </Button>
         )}
         <Button
-          onClick={handleCreateSession}
+          onClick={handleCreateTalk}
           className="w-full sm:w-auto sm:ml-auto"
           disabled={submitting}
         >
           {submitting ? (
-            "Creating Session..."
+            "Creating Talk..."
           ) : isLastStep ? (
-            "Create Session"
+            "Create Talk"
           ) : (
             "Continue"
           )}

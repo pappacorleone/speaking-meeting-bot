@@ -21,6 +21,7 @@ pipecat-ai = {extras = ["cartesia", "daily", "deepgram", "openai", "silero", "we
 ruff = "^0.7.3"
 pytz = "^2024.2"
 aiohttp = "^3.10.10"
+aiosqlite = "^0.20.0"
 ngrok = "^1.4.0"
 loguru = "^0.7.2"
 replicate = "^0.22.0"

@@ -80,9 +80,9 @@ class BalanceTracker:
         - Severe imbalance for 5+ minutes: Voice balance prompt
 
     Attributes:
-        session_id: The session being tracked.
+        talk_id: The talk being tracked.
         speakers: Dictionary of speaker_id to SpeakerMetrics.
-        session_start: When the session started.
+        talk_start: When the talk started.
         imbalance_start: When mild imbalance began (for intervention timing).
         severe_imbalance_start: When severe imbalance began.
     """
@@ -95,15 +95,15 @@ class BalanceTracker:
     MILD_IMBALANCE_DURATION = timedelta(minutes=3)
     SEVERE_IMBALANCE_DURATION = timedelta(minutes=5)
 
-    def __init__(self, session_id: str):
+    def __init__(self, talk_id: str):
         """Initialize the balance tracker.
 
         Args:
-            session_id: The unique session identifier.
+            talk_id: The unique talk identifier.
         """
-        self.session_id = session_id
+        self.talk_id = talk_id
         self.speakers: Dict[str, SpeakerMetrics] = {}
-        self.session_start: datetime = datetime.utcnow()
+        self.talk_start: datetime = datetime.utcnow()
 
         # Imbalance tracking for intervention triggers
         self.imbalance_start: Optional[datetime] = None
@@ -296,13 +296,13 @@ class BalanceTracker:
         self.imbalance_start = None
         self.severe_imbalance_start = None
 
-    def get_session_duration_seconds(self) -> float:
-        """Get total session duration in seconds.
+    def get_talk_duration_seconds(self) -> float:
+        """Get total talk duration in seconds.
 
         Returns:
-            Duration since session start in seconds.
+            Duration since talk start in seconds.
         """
-        return (datetime.utcnow() - self.session_start).total_seconds()
+        return (datetime.utcnow() - self.talk_start).total_seconds()
 
     def to_metrics_dict(self) -> Dict:
         """Export metrics for API response.
@@ -313,8 +313,8 @@ class BalanceTracker:
         balance = self.get_balance()
 
         return {
-            "session_id": self.session_id,
-            "session_duration_seconds": self.get_session_duration_seconds(),
+            "talk_id": self.talk_id,
+            "talk_duration_seconds": self.get_talk_duration_seconds(),
             "balance": balance.to_dict(),
             "dominant_speaker": self.get_dominant_speaker(),
             "quiet_speaker": self.get_quiet_speaker(),

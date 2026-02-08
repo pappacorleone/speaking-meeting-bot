@@ -8,12 +8,12 @@ from pydantic import BaseModel, Field
 
 
 # =============================================================================
-# Diadi Session Enums
+# Diadi Talk Enums
 # =============================================================================
 
 
-class SessionStatus(str, Enum):
-    """Status of a Diadi facilitation session."""
+class TalkStatus(str, Enum):
+    """Status of a Diadi facilitation talk."""
 
     DRAFT = "draft"
     PENDING_CONSENT = "pending_consent"
@@ -61,12 +61,12 @@ class InterventionModality(str, Enum):
 
 
 # =============================================================================
-# Diadi Session Models
+# Diadi Talk Models
 # =============================================================================
 
 
 class Participant(BaseModel):
-    """A participant in a Diadi session."""
+    """A participant in a Diadi talk."""
 
     id: str = Field(..., description="Unique identifier for the participant")
     name: str = Field(..., description="Display name of the participant")
@@ -100,12 +100,12 @@ class FacilitatorConfig(BaseModel):
     )
 
 
-class Session(BaseModel):
-    """A Diadi facilitation session."""
+class Talk(BaseModel):
+    """A Diadi facilitation talk."""
 
-    id: str = Field(..., description="Unique session identifier")
-    title: Optional[str] = Field(None, description="Optional session title")
-    goal: str = Field(..., max_length=200, description="Session goal (max 200 chars)")
+    id: str = Field(..., description="Unique talk identifier")
+    title: Optional[str] = Field(None, description="Optional talk title")
+    goal: str = Field(..., max_length=200, description="Talk goal (max 200 chars)")
     relationship_context: str = Field(
         ..., description="Description of the relationship dynamic"
     )
@@ -117,16 +117,16 @@ class Session(BaseModel):
         None, description="URL of the external meeting"
     )
     duration_minutes: int = Field(
-        default=30, description="Planned session duration in minutes"
+        default=30, description="Planned talk duration in minutes"
     )
     scheduled_at: Optional[str] = Field(
-        None, description="ISO8601 timestamp for scheduled sessions"
+        None, description="ISO8601 timestamp for scheduled talks"
     )
-    status: SessionStatus = Field(
-        default=SessionStatus.DRAFT, description="Current session status"
+    status: TalkStatus = Field(
+        default=TalkStatus.DRAFT, description="Current talk status"
     )
     participants: List[Participant] = Field(
-        default_factory=list, description="Session participants"
+        default_factory=list, description="Talk participants"
     )
     facilitator: FacilitatorConfig = Field(
         default_factory=FacilitatorConfig, description="Facilitator configuration"
@@ -134,15 +134,18 @@ class Session(BaseModel):
     created_at: str = Field(..., description="ISO8601 timestamp of creation")
     invite_token: str = Field(..., description="Token for partner invitation link")
     bot_id: Optional[str] = Field(
-        None, description="MeetingBaas bot ID when session is active"
+        None, description="MeetingBaas bot ID when talk is active"
     )
     client_id: Optional[str] = Field(
         None, description="Internal client ID for WebSocket routing"
     )
+    owner_session_id: Optional[str] = Field(
+        None, description="Anonymous user session that owns this talk"
+    )
 
 
 class TalkBalanceMetrics(BaseModel):
-    """Talk balance metrics for a session."""
+    """Talk balance metrics for a talk."""
 
     participant_a: Dict[str, Any] = Field(
         ..., description="Metrics for participant A: {id, name, percentage}"
@@ -157,7 +160,7 @@ class TalkBalanceMetrics(BaseModel):
 
 
 class InterventionRecord(BaseModel):
-    """Record of an intervention during a session."""
+    """Record of an intervention during a talk."""
 
     id: str = Field(..., description="Unique intervention identifier")
     type: InterventionType = Field(..., description="Type of intervention")
@@ -171,18 +174,18 @@ class InterventionRecord(BaseModel):
     created_at: str = Field(..., description="ISO8601 timestamp")
 
 
-class SessionSummary(BaseModel):
-    """Post-session summary."""
+class TalkSummary(BaseModel):
+    """Post-talk summary."""
 
-    session_id: str = Field(..., description="ID of the session")
-    duration_minutes: int = Field(..., description="Actual session duration")
+    talk_id: str = Field(..., description="ID of the talk")
+    duration_minutes: int = Field(..., description="Actual talk duration")
     consensus_summary: str = Field(..., description="AI-generated summary of consensus")
     action_items: List[str] = Field(
         default_factory=list, description="List of action items"
     )
     balance: TalkBalanceMetrics = Field(..., description="Final talk balance metrics")
     intervention_count: int = Field(
-        ..., description="Number of interventions during session"
+        ..., description="Number of interventions during talk"
     )
     key_agreements: List[Dict[str, str]] = Field(
         default_factory=list,
@@ -191,14 +194,14 @@ class SessionSummary(BaseModel):
 
 
 # =============================================================================
-# Diadi Session Request/Response Models
+# Diadi Talk Request/Response Models
 # =============================================================================
 
 
-class CreateSessionRequest(BaseModel):
-    """Request to create a new session."""
+class CreateTalkRequest(BaseModel):
+    """Request to create a new talk."""
 
-    goal: str = Field(..., max_length=200, description="Session goal (max 200 chars)")
+    goal: str = Field(..., max_length=200, description="Talk goal (max 200 chars)")
     relationship_context: str = Field(
         ..., description="Description of the relationship dynamic"
     )
@@ -206,10 +209,10 @@ class CreateSessionRequest(BaseModel):
     facilitator: FacilitatorConfig = Field(
         default_factory=FacilitatorConfig, description="Facilitator configuration"
     )
-    duration_minutes: int = Field(default=30, description="Session duration in minutes")
+    duration_minutes: int = Field(default=30, description="Talk duration in minutes")
     scheduled_at: Optional[str] = Field(
         None,
-        description="ISO8601 timestamp for scheduled sessions, or null for immediate",
+        description="ISO8601 timestamp for scheduled talks, or null for immediate",
     )
     platform: Platform = Field(default=Platform.MEET, description="Meeting platform")
     meeting_url: Optional[str] = Field(
@@ -218,7 +221,7 @@ class CreateSessionRequest(BaseModel):
     )
     skip_consent: bool = Field(
         default=False,
-        description="Skip partner consent for testing (creates session in ready status)",
+        description="Skip partner consent for testing (creates talk in ready status)",
     )
 
     class Config:
@@ -241,16 +244,12 @@ class CreateSessionRequest(BaseModel):
         }
 
 
-class CreateSessionResponse(BaseModel):
-    """Response after creating a session."""
+class CreateTalkResponse(BaseModel):
+    """Response after creating a talk."""
 
-    id: str = Field(..., description="Unique session identifier")
-    session_id: Optional[str] = Field(
-        None,
-        description="Deprecated alias for id (kept temporarily for compatibility)",
-    )
-    status: SessionStatus = Field(
-        ..., description="Session status (pending_consent or ready)"
+    id: str = Field(..., description="Unique talk identifier")
+    status: TalkStatus = Field(
+        ..., description="Talk status (pending_consent or ready)"
     )
     invite_link: str = Field(..., description="Full URL for partner invitation")
     invite_token: str = Field(..., description="Token for invitation")
@@ -267,31 +266,31 @@ class ConsentRequest(BaseModel):
 class ConsentResponse(BaseModel):
     """Response after recording consent."""
 
-    status: SessionStatus = Field(..., description="Updated session status")
+    status: TalkStatus = Field(..., description="Updated talk status")
     participants: List[Participant] = Field(
         ..., description="Updated participants list"
     )
 
 
-class StartSessionRequest(BaseModel):
-    """Request to start a session."""
+class StartTalkRequest(BaseModel):
+    """Request to start a talk."""
 
     meeting_url: Optional[str] = Field(
         None, description="URL of the meeting to join (required for external platforms)"
     )
 
 
-class StartSessionResponse(BaseModel):
-    """Response after starting a session."""
+class StartTalkResponse(BaseModel):
+    """Response after starting a talk."""
 
-    status: SessionStatus = Field(..., description="Session status (in_progress)")
+    status: TalkStatus = Field(..., description="Talk status (in_progress)")
     bot_id: str = Field(..., description="MeetingBaas bot ID")
     client_id: str = Field(..., description="Internal client ID")
-    event_url: str = Field(..., description="WebSocket URL for session events")
+    event_url: str = Field(..., description="WebSocket URL for talk events")
 
 
-class SessionEventPayload(BaseModel):
-    """Payload for WebSocket session events."""
+class TalkEventPayload(BaseModel):
+    """Payload for WebSocket talk events."""
 
     type: str = Field(
         ...,
@@ -307,26 +306,26 @@ class SessionEventPayload(BaseModel):
 class PauseResumeResponse(BaseModel):
     """Response model for pause/resume actions."""
 
-    status: SessionStatus = Field(
-        ..., description="Session status after pause/resume"
+    status: TalkStatus = Field(
+        ..., description="Talk status after pause/resume"
     )
 
 
-class EndSessionResponse(BaseModel):
-    """Response after ending a session."""
+class EndTalkResponse(BaseModel):
+    """Response after ending a talk."""
 
-    status: SessionStatus = Field(..., description="Session status (ended)")
+    status: TalkStatus = Field(..., description="Talk status (ended)")
     summary_available: bool = Field(
         default=False, description="Whether the summary is ready"
     )
 
 
-class SessionListResponse(BaseModel):
-    """Response for listing sessions."""
+class TalkListResponse(BaseModel):
+    """Response for listing talks."""
 
-    sessions: List[Session] = Field(..., description="List of sessions")
-    total: int = Field(..., description="Total number of sessions")
-    hasMore: bool = Field(..., description="Whether there are more sessions")
+    talks: List[Talk] = Field(..., description="List of talks")
+    total: int = Field(..., description="Total number of talks")
+    hasMore: bool = Field(..., description="Whether there are more talks")
 
 
 # =============================================================================

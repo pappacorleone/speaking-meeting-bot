@@ -1,6 +1,6 @@
-"""Summary generation service for Diadi facilitation sessions.
+"""Summary generation service for Diadi facilitation talks.
 
-Generates post-session summaries using OpenAI GPT-4.
+Generates post-talk summaries using OpenAI GPT-4.
 """
 
 import json
@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 import openai
 from loguru import logger
 
-from app.models import SessionSummary, TalkBalanceMetrics
+from app.models import TalkSummary, TalkBalanceMetrics
 
 
 # OpenAI API key from environment
@@ -18,7 +18,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 
 class SummaryService:
-    """Generates post-session summaries using OpenAI GPT-4."""
+    """Generates post-talk summaries using OpenAI GPT-4."""
 
     def __init__(self):
         """Initialize the summary service with OpenAI client."""
@@ -30,32 +30,32 @@ class SummaryService:
 
     async def generate_summary(
         self,
-        session_id: str,
+        talk_id: str,
         goal: str,
         duration_minutes: int,
         participants: List[Dict[str, Any]],
         balance_metrics: Optional[Dict[str, Any]] = None,
         intervention_history: Optional[List[Dict[str, Any]]] = None,
         transcript: Optional[str] = None,
-    ) -> Optional[SessionSummary]:
-        """Generate a post-session summary using OpenAI.
+    ) -> Optional[TalkSummary]:
+        """Generate a post-talk summary using OpenAI.
 
         Args:
-            session_id: The session identifier.
-            goal: The original session goal.
-            duration_minutes: Session duration in minutes.
+            talk_id: The talk identifier.
+            goal: The original talk goal.
+            duration_minutes: Talk duration in minutes.
             participants: List of participant dicts with id, name, role.
             balance_metrics: Optional talk balance metrics dict.
             intervention_history: Optional list of interventions that occurred.
-            transcript: Optional session transcript (if available).
+            transcript: Optional talk transcript (if available).
 
         Returns:
-            SessionSummary object if successful, None otherwise.
+            TalkSummary object if successful, None otherwise.
         """
         if not self.client:
             logger.error("OpenAI client not initialized - cannot generate summary")
             return self._create_fallback_summary(
-                session_id, goal, duration_minutes, participants, balance_metrics
+                talk_id, goal, duration_minutes, participants, balance_metrics
             )
 
         try:
@@ -91,7 +91,7 @@ class SummaryService:
             if not content:
                 logger.warning("OpenAI returned empty content for summary generation")
                 return self._create_fallback_summary(
-                    session_id, goal, duration_minutes, participants, balance_metrics
+                    talk_id, goal, duration_minutes, participants, balance_metrics
                 )
 
             # Parse the response
@@ -100,13 +100,13 @@ class SummaryService:
             # Build balance metrics
             balance = self._build_balance_metrics(balance_metrics, participants)
 
-            # Build SessionSummary
-            summary = SessionSummary(
-                session_id=session_id,
+            # Build TalkSummary
+            summary = TalkSummary(
+                talk_id=talk_id,
                 duration_minutes=duration_minutes,
                 consensus_summary=summary_data.get(
                     "consensus_summary",
-                    "Session completed. Key points were discussed.",
+                    "Talk completed. Key points were discussed.",
                 ),
                 action_items=summary_data.get("action_items", []),
                 balance=balance,
@@ -116,28 +116,28 @@ class SummaryService:
                 key_agreements=summary_data.get("key_agreements", []),
             )
 
-            logger.info(f"Generated summary for session {session_id}")
+            logger.info(f"Generated summary for talk {talk_id}")
             return summary
 
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse summary JSON: {e}")
             return self._create_fallback_summary(
-                session_id, goal, duration_minutes, participants, balance_metrics
+                talk_id, goal, duration_minutes, participants, balance_metrics
             )
         except openai.AuthenticationError as e:
             logger.error(f"OpenAI authentication error: {e}")
             return self._create_fallback_summary(
-                session_id, goal, duration_minutes, participants, balance_metrics
+                talk_id, goal, duration_minutes, participants, balance_metrics
             )
         except openai.RateLimitError as e:
             logger.error(f"OpenAI rate limit exceeded: {e}")
             return self._create_fallback_summary(
-                session_id, goal, duration_minutes, participants, balance_metrics
+                talk_id, goal, duration_minutes, participants, balance_metrics
             )
         except Exception as e:
             logger.error(f"Error generating summary: {e}")
             return self._create_fallback_summary(
-                session_id, goal, duration_minutes, participants, balance_metrics
+                talk_id, goal, duration_minutes, participants, balance_metrics
             )
 
     def _get_system_prompt(self) -> str:
@@ -177,7 +177,7 @@ Guidelines:
         participant_names = [p.get("name", "Participant") for p in participants]
 
         context_parts = [
-            f"Session Goal: {goal}",
+            f"Talk Goal: {goal}",
             f"Duration: {duration_minutes} minutes",
             f"Participants: {', '.join(participant_names)}",
         ]
@@ -212,7 +212,7 @@ Guidelines:
             context_parts.append(f"\nConversation Transcript:\n{transcript}")
         else:
             context_parts.append(
-                "\n(No transcript available - generate summary based on session metadata)"
+                "\n(No transcript available - generate summary based on talk metadata)"
             )
 
         return "\n".join(context_parts)
@@ -265,17 +265,17 @@ Guidelines:
 
     def _create_fallback_summary(
         self,
-        session_id: str,
+        talk_id: str,
         goal: str,
         duration_minutes: int,
         participants: List[Dict[str, Any]],
         balance_metrics: Optional[Dict[str, Any]],
-    ) -> SessionSummary:
+    ) -> TalkSummary:
         """Create a fallback summary when OpenAI is unavailable."""
         participant_names = [p.get("name", "Participant") for p in participants]
 
-        return SessionSummary(
-            session_id=session_id,
+        return TalkSummary(
+            talk_id=talk_id,
             duration_minutes=duration_minutes,
             consensus_summary=(
                 f"A {duration_minutes}-minute facilitated conversation took place between "

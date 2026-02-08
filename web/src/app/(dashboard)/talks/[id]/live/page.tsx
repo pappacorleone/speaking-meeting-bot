@@ -1,13 +1,13 @@
 /**
  * Live Facilitation Room Page
  *
- * The main page for active sessions with AI facilitation.
+ * The main page for active talks with AI facilitation.
  * Integrates WebSocket for real-time updates and displays:
  * - Talk balance indicator
- * - Session timer
+ * - Talk timer
  * - AI status indicator
  * - Goal snippet
- * - Session controls (end session, kill switch)
+ * - Talk controls (end talk, kill switch)
  */
 
 'use client';
@@ -15,32 +15,32 @@
 import { useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { getSession, endSession, pauseSession, resumeSession, logError } from '@/lib/api';
-import { useSessionEvents } from '@/hooks/use-session-events';
-import { useSessionStore } from '@/stores/session-store';
+import { getTalk, endTalk, pauseTalk, resumeTalk, logError } from '@/lib/api';
+import { useTalkEvents } from '@/hooks/use-talk-events';
+import { useTalkStore } from '@/stores/talk-store';
 import { useInterventionStore } from '@/stores/intervention-store';
 import {
   TalkBalance,
-  SessionTimer,
+  TalkTimer,
   AIStatusIndicator,
   GoalSnippet,
 } from '@/components/live';
 import {
-  SessionErrorFallback,
+  TalkErrorFallback,
   WebSocketDisconnectFallback,
   ConnectionStatusBanner,
 } from '@/components/error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import type { Session as ApiSession } from '@/lib/api/types';
-import type { Session, TalkBalanceMetrics } from '@/types/session';
+import type { Talk as ApiTalk } from '@/lib/api/types';
+import type { Talk, TalkBalanceMetrics } from '@/types/talk';
 import type {
   BalanceUpdateData,
   TimeRemainingData,
   AIStatusData,
   GoalDriftData,
-  SessionStateData,
+  TalkStateData,
 } from '@/types/events';
 import type { Intervention } from '@/types/intervention';
 
@@ -58,42 +58,42 @@ const API_KEY =
 // =============================================================================
 
 /**
- * Transform API session (snake_case) to frontend session (camelCase)
+ * Transform API talk (snake_case) to frontend talk (camelCase)
  */
-function transformSession(apiSession: ApiSession): Session {
+function transformTalk(apiTalk: ApiTalk): Talk {
   return {
-    id: apiSession.id,
-    title: apiSession.title,
-    goal: apiSession.goal,
-    relationshipContext: apiSession.relationship_context,
-    platform: apiSession.platform,
-    meetingUrl: apiSession.meeting_url,
-    durationMinutes: apiSession.duration_minutes,
-    scheduledAt: apiSession.scheduled_at,
-    status: apiSession.status,
-    participants: apiSession.participants.map((p) => ({
+    id: apiTalk.id,
+    title: apiTalk.title,
+    goal: apiTalk.goal,
+    relationshipContext: apiTalk.relationship_context,
+    platform: apiTalk.platform,
+    meetingUrl: apiTalk.meeting_url,
+    durationMinutes: apiTalk.duration_minutes,
+    scheduledAt: apiTalk.scheduled_at,
+    status: apiTalk.status,
+    participants: apiTalk.participants.map((p) => ({
       id: p.id,
       name: p.name,
       role: p.role,
       consented: p.consented,
     })),
     facilitator: {
-      persona: apiSession.facilitator.persona,
-      interruptAuthority: apiSession.facilitator.interrupt_authority,
-      directInquiry: apiSession.facilitator.direct_inquiry,
-      silenceDetection: apiSession.facilitator.silence_detection,
+      persona: apiTalk.facilitator.persona,
+      interruptAuthority: apiTalk.facilitator.interrupt_authority,
+      directInquiry: apiTalk.facilitator.direct_inquiry,
+      silenceDetection: apiTalk.facilitator.silence_detection,
     },
-    createdAt: apiSession.created_at,
-    inviteToken: apiSession.invite_token,
-    botId: apiSession.bot_id,
-    clientId: apiSession.client_id,
+    createdAt: apiTalk.created_at,
+    inviteToken: apiTalk.invite_token,
+    botId: apiTalk.bot_id,
+    clientId: apiTalk.client_id,
   };
 }
 
 /**
  * Get partner name from participants (the one who is not the creator)
  */
-function getPartnerName(participants: Session['participants']): string {
+function getPartnerName(participants: Talk['participants']): string {
   const invitee = participants.find((p) => p.role === 'invitee');
   return invitee?.name || 'Partner';
 }
@@ -103,9 +103,9 @@ function getPartnerName(participants: Session['participants']): string {
 // =============================================================================
 
 /**
- * Loading skeleton for the live session page
+ * Loading skeleton for the live talk page
  */
-function LiveSessionSkeleton() {
+function LiveTalkSkeleton() {
   return (
     <div className="flex flex-col h-full animate-pulse">
       {/* Header skeleton */}
@@ -130,35 +130,35 @@ function LiveSessionSkeleton() {
 }
 
 /**
- * Error state display - uses SessionErrorFallback for consistent error UI
+ * Error state display - uses TalkErrorFallback for consistent error UI
  */
-function LiveSessionError({
+function LiveTalkError({
   error,
-  sessionId,
+  talkId,
   onRetry
 }: {
   error: Error;
-  sessionId: string;
+  talkId: string;
   onRetry: () => void;
 }) {
   // Log the error for debugging
   useEffect(() => {
-    logError(error, { sessionId, component: 'LiveSessionPage' });
-  }, [error, sessionId]);
+    logError(error, { talkId, component: 'LiveTalkPage' });
+  }, [error, talkId]);
 
   return (
-    <SessionErrorFallback
+    <TalkErrorFallback
       error={error}
-      sessionId={sessionId}
+      talkId={talkId}
       onRetry={onRetry}
     />
   );
 }
 
 /**
- * Session not found / invalid state
+ * Talk not found / invalid state
  */
-function SessionNotActive({ status }: { status: string }) {
+function TalkNotActive({ status }: { status: string }) {
   const router = useRouter();
 
   return (
@@ -166,9 +166,9 @@ function SessionNotActive({ status }: { status: string }) {
       <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
         <InfoIcon className="w-8 h-8 text-muted-foreground" />
       </div>
-      <h2 className="text-xl font-semibold mb-2">Session Not Active</h2>
+      <h2 className="text-xl font-semibold mb-2">Talk Not Active</h2>
       <p className="text-muted-foreground mb-4 max-w-sm">
-        This session is currently <strong>{status}</strong> and cannot be joined.
+        This talk is currently <strong>{status}</strong> and cannot be joined.
       </p>
       <Button onClick={() => router.push('/hub')} variant="outline">
         Return to Hub
@@ -180,9 +180,9 @@ function SessionNotActive({ status }: { status: string }) {
 // ConnectionBanner is now imported from @/components/error
 
 /**
- * Session header with partner info and status
+ * Talk header with partner info and status
  */
-function SessionHeader({
+function TalkHeader({
   partnerName,
   aiStatus,
   facilitatorPaused,
@@ -194,7 +194,7 @@ function SessionHeader({
   return (
     <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border gap-3">
       <div className="min-w-0 flex-1">
-        <h1 className="text-base sm:text-lg font-semibold truncate">Session with {partnerName}</h1>
+        <h1 className="text-base sm:text-lg font-semibold truncate">Talk with {partnerName}</h1>
         <p className="text-xs sm:text-sm text-muted-foreground">
           {facilitatorPaused ? 'Facilitation Paused' : 'AI Facilitation Active'}
         </p>
@@ -241,7 +241,7 @@ function MetricsPanel({
       {/* Timer */}
       <Card>
         <CardContent className="p-3 sm:p-4">
-          <SessionTimer
+          <TalkTimer
             timeRemaining={timeRemaining}
             elapsedSeconds={elapsedSeconds}
             durationMinutes={durationMinutes}
@@ -262,16 +262,16 @@ function MetricsPanel({
 }
 
 /**
- * Session controls footer
+ * Talk controls footer
  */
-function SessionControls({
-  onEndSession,
+function TalkControls({
+  onEndTalk,
   onPauseFacilitator,
   facilitatorPaused,
   isEnding,
   isPausing,
 }: {
-  onEndSession: () => void;
+  onEndTalk: () => void;
   onPauseFacilitator: () => void;
   facilitatorPaused: boolean;
   isEnding: boolean;
@@ -296,11 +296,11 @@ function SessionControls({
         {facilitatorPaused ? 'Resume Facilitation' : 'Pause Facilitation'}
       </Button>
 
-      {/* End Session Button */}
+      {/* End Talk Button */}
       <Button
         variant="destructive"
         className="w-full h-10 sm:h-11 text-sm"
-        onClick={onEndSession}
+        onClick={onEndTalk}
         disabled={isEnding}
       >
         {isEnding ? (
@@ -308,7 +308,7 @@ function SessionControls({
         ) : (
           <PhoneOffIcon className="w-4 h-4 mr-2" />
         )}
-        End Session
+        End Talk
       </Button>
     </div>
   );
@@ -377,16 +377,16 @@ function LoadingSpinner({ className }: { className?: string }) {
 // Main Component
 // =============================================================================
 
-export default function LiveSessionPage() {
+export default function LiveTalkPage() {
   const params = useParams();
   const router = useRouter();
-  const sessionId = params.id as string;
+  const talkId = params.id as string;
 
   // ---------------------------------------------------------------------
-  // Session Store
+  // Talk Store
   // ---------------------------------------------------------------------
   const {
-    session,
+    talk,
     balance,
     aiStatus,
     timeRemaining,
@@ -396,8 +396,8 @@ export default function LiveSessionPage() {
     facilitatorPaused,
     isEnding,
     isPausing,
-    initSession,
-    clearSession,
+    initTalk,
+    clearTalk,
     setConnected,
     setConnectionError,
     setBalance,
@@ -408,42 +408,42 @@ export default function LiveSessionPage() {
     setFacilitatorPaused,
     setEnding,
     setPausing,
-    updateSession,
+    updateTalk,
     updateParticipants,
-  } = useSessionStore();
+  } = useTalkStore();
 
   // Intervention Store
   const { push: pushIntervention } = useInterventionStore();
 
   // ---------------------------------------------------------------------
-  // Fetch Session Data
+  // Fetch Talk Data
   // ---------------------------------------------------------------------
   const {
-    data: apiSession,
+    data: apiTalk,
     isLoading,
     error,
     refetch,
   } = useQuery({
-    queryKey: ['session', sessionId],
-    queryFn: () => getSession(sessionId, API_KEY),
-    enabled: !!sessionId,
+    queryKey: ['talk', talkId],
+    queryFn: () => getTalk(talkId, API_KEY),
+    enabled: !!talkId,
     refetchInterval: false,
   });
 
-  // Transform and initialize session in store
+  // Transform and initialize talk in store
   useEffect(() => {
-    console.log('[LiveSession] apiSession status:', apiSession?.status);
-    if (apiSession) {
-      const transformed = transformSession(apiSession);
-      console.log('[LiveSession] Initializing session in store, status:', transformed.status);
-      initSession(sessionId, transformed);
+    console.log('[LiveTalk] apiTalk status:', apiTalk?.status);
+    if (apiTalk) {
+      const transformed = transformTalk(apiTalk);
+      console.log('[LiveTalk] Initializing talk in store, status:', transformed.status);
+      initTalk(talkId, transformed);
     }
 
     return () => {
-      console.log('[LiveSession] Cleanup: clearing session');
-      clearSession();
+      console.log('[LiveTalk] Cleanup: clearing talk');
+      clearTalk();
     };
-  }, [apiSession, sessionId, initSession, clearSession]);
+  }, [apiTalk, talkId, initTalk, clearTalk]);
 
   // ---------------------------------------------------------------------
   // WebSocket Event Handlers
@@ -480,9 +480,9 @@ export default function LiveSessionPage() {
     [setGoalDrift]
   );
 
-  const handleSessionState = useCallback(
-    (data: SessionStateData) => {
-      updateSession({ status: data.status });
+  const handleTalkState = useCallback(
+    (data: TalkStateData) => {
+      updateTalk({ status: data.status });
       if (typeof data.facilitatorPaused === "boolean") {
         setFacilitatorPaused(data.facilitatorPaused);
       }
@@ -490,18 +490,18 @@ export default function LiveSessionPage() {
         setAIStatus(data.aiStatus);
       }
       if (data.durationMinutes) {
-        updateSession({ durationMinutes: data.durationMinutes });
+        updateTalk({ durationMinutes: data.durationMinutes });
       }
       if (data.participants) {
         updateParticipants(data.participants);
       }
 
-      // If session ended, redirect to summary
+      // If talk ended, redirect to summary
       if (data.status === 'ended') {
-        router.push(`/sessions/${sessionId}`);
+        router.push(`/talks/${talkId}`);
       }
     },
-    [updateSession, updateParticipants, setFacilitatorPaused, setAIStatus, router, sessionId]
+    [updateTalk, updateParticipants, setFacilitatorPaused, setAIStatus, router, talkId]
   );
 
   const handleIntervention = useCallback(
@@ -533,7 +533,7 @@ export default function LiveSessionPage() {
       onTimeRemaining: handleTimeRemaining,
       onAIStatus: handleAIStatus,
       onGoalDrift: handleGoalDrift,
-      onSessionState: handleSessionState,
+      onTalkState: handleTalkState,
       onIntervention: handleIntervention,
       onEscalation: handleIntervention,
       onConnect: handleConnect,
@@ -544,7 +544,7 @@ export default function LiveSessionPage() {
       handleTimeRemaining,
       handleAIStatus,
       handleGoalDrift,
-      handleSessionState,
+      handleTalkState,
       handleIntervention,
       handleConnect,
       handleDisconnect,
@@ -554,43 +554,43 @@ export default function LiveSessionPage() {
   // ---------------------------------------------------------------------
   // WebSocket Connection
   // ---------------------------------------------------------------------
-  const { connectionState, reconnectCount } = useSessionEvents(
-    session?.status === 'in_progress' || session?.status === 'paused' ? sessionId : null,
+  const { connectionState, reconnectCount } = useTalkEvents(
+    talk?.status === 'in_progress' || talk?.status === 'paused' ? talkId : null,
     { handlers, autoConnect: true }
   );
 
   // ---------------------------------------------------------------------
-  // Session Actions
+  // Talk Actions
   // ---------------------------------------------------------------------
-  const handleEndSession = useCallback(async () => {
-    if (!sessionId) return;
+  const handleEndTalk = useCallback(async () => {
+    if (!talkId) return;
 
     setEnding(true);
     try {
-      await endSession(sessionId, API_KEY);
-      router.push(`/sessions/${sessionId}`);
+      await endTalk(talkId, API_KEY);
+      router.push(`/talks/${talkId}`);
     } catch (err) {
-      console.error('Failed to end session:', err);
+      console.error('Failed to end talk:', err);
       setEnding(false);
     }
-  }, [sessionId, setEnding, router]);
+  }, [talkId, setEnding, router]);
 
   const handlePauseFacilitator = useCallback(async () => {
-    if (!sessionId) return;
+    if (!talkId) return;
     setPausing(true);
     try {
       const response = facilitatorPaused
-        ? await resumeSession(sessionId, API_KEY)
-        : await pauseSession(sessionId, API_KEY);
+        ? await resumeTalk(talkId, API_KEY)
+        : await pauseTalk(talkId, API_KEY);
       const paused = response.status === "paused";
       setFacilitatorPaused(paused);
-      updateSession({ status: response.status as Session["status"] });
+      updateTalk({ status: response.status as Talk["status"] });
     } catch (err) {
       console.error("Failed to toggle facilitation:", err);
     } finally {
       setPausing(false);
     }
-  }, [sessionId, facilitatorPaused, setPausing, setFacilitatorPaused, updateSession]);
+  }, [talkId, facilitatorPaused, setPausing, setFacilitatorPaused, updateTalk]);
 
   // ---------------------------------------------------------------------
   // Render
@@ -598,34 +598,34 @@ export default function LiveSessionPage() {
 
   // Loading state
   if (isLoading) {
-    return <LiveSessionSkeleton />;
+    return <LiveTalkSkeleton />;
   }
 
   // Error state
   if (error) {
-    const errorObj = error instanceof Error ? error : new Error('Failed to load session');
+    const errorObj = error instanceof Error ? error : new Error('Failed to load talk');
     return (
-      <LiveSessionError
+      <LiveTalkError
         error={errorObj}
-        sessionId={sessionId}
+        talkId={talkId}
         onRetry={() => refetch()}
       />
     );
   }
 
-  // Session not found
-  if (!session) {
-    console.log('[LiveSession] Session from store is null, showing skeleton');
-    return <LiveSessionSkeleton />;
+  // Talk not found
+  if (!talk) {
+    console.log('[LiveTalk] Talk from store is null, showing skeleton');
+    return <LiveTalkSkeleton />;
   }
 
-  // Session not active
-  if (session.status !== 'in_progress' && session.status !== 'paused') {
-    console.log('[LiveSession] Session not active, status:', session.status);
-    return <SessionNotActive status={session.status} />;
+  // Talk not active
+  if (talk.status !== 'in_progress' && talk.status !== 'paused') {
+    console.log('[LiveTalk] Talk not active, status:', talk.status);
+    return <TalkNotActive status={talk.status} />;
   }
 
-  const partnerName = getPartnerName(session.participants);
+  const partnerName = getPartnerName(talk.participants);
 
   return (
     <WebSocketDisconnectFallback
@@ -643,7 +643,7 @@ export default function LiveSessionPage() {
       <ConnectionStatusBanner connectionState={connectionState} reconnectCount={reconnectCount} />
 
       {/* Header */}
-      <SessionHeader
+      <TalkHeader
         partnerName={partnerName}
         aiStatus={aiStatus}
         facilitatorPaused={facilitatorPaused}
@@ -655,8 +655,8 @@ export default function LiveSessionPage() {
           balance={balance}
           timeRemaining={timeRemaining}
           elapsedSeconds={elapsedSeconds}
-          durationMinutes={session.durationMinutes}
-          goal={session.goal}
+          durationMinutes={talk.durationMinutes}
+          goal={talk.goal}
           isOnGoal={isOnGoal}
           goalDriftSeconds={goalDriftSeconds}
           onTick={incrementElapsed}
@@ -664,8 +664,8 @@ export default function LiveSessionPage() {
       </div>
 
       {/* Footer Controls */}
-      <SessionControls
-        onEndSession={handleEndSession}
+      <TalkControls
+        onEndTalk={handleEndTalk}
         onPauseFacilitator={handlePauseFacilitator}
         facilitatorPaused={facilitatorPaused}
         isEnding={isEnding}

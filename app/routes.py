@@ -14,20 +14,20 @@ from app.models import (
     BotRequest,
     ConsentRequest,
     ConsentResponse,
-    CreateSessionRequest,
-    CreateSessionResponse,
-    EndSessionResponse,
+    CreateTalkRequest,
+    CreateTalkResponse,
+    EndTalkResponse,
     JoinResponse,
     LeaveBotRequest,
     PauseResumeResponse,
     PersonaImageRequest,
     PersonaImageResponse,
-    Session,
-    SessionListResponse,
-    SessionStatus,
-    SessionSummary,
-    StartSessionRequest,
-    StartSessionResponse,
+    Talk,
+    TalkListResponse,
+    TalkStatus,
+    TalkSummary,
+    StartTalkRequest,
+    StartTalkResponse,
 )
 from app.services.image_service import image_service
 from config.persona_utils import persona_manager
@@ -50,8 +50,8 @@ from config.prompts import PERSONA_INTERACTION_INSTRUCTIONS
 # Import the new persona detail extraction service
 from app.services.persona_detail_extraction import extract_persona_details_from_prompt
 
-# Import session service
-from app.services.session_service import session_service
+# Import talk service
+from app.services.talk_service import talk_service
 
 router = APIRouter()
 
@@ -645,36 +645,39 @@ async def generate_persona_image(request: PersonaImageRequest) -> PersonaImageRe
 
 
 # =============================================================================
-# Diadi Session Routes
+# Diadi Talk Routes
 # =============================================================================
 
 
 @router.post(
-    "/sessions",
-    tags=["sessions"],
-    response_model=CreateSessionResponse,
+    "/talks",
+    tags=["talks"],
+    response_model=CreateTalkResponse,
     status_code=status.HTTP_201_CREATED,
     responses={
-        201: {"description": "Session successfully created"},
+        201: {"description": "Talk successfully created"},
         400: {"description": "Bad request - Missing required fields or invalid data"},
     },
 )
-async def create_session(
-    request: CreateSessionRequest,
+async def create_talk(
+    request: CreateTalkRequest,
     client_request: Request,
 ):
     """
-    Create a new Diadi facilitation session.
+    Create a new Diadi facilitation talk.
 
-    Creates a session in pending_consent status and generates an invite token
+    Creates a talk in pending_consent status and generates an invite token
     for the partner. The creator is implicitly consented.
     """
     try:
         # Get creator name from the first participant (creator)
         # For now, we use a placeholder - in production, this would come from auth
-        creator_name = "Session Creator"
+        creator_name = "Talk Creator"
 
-        session = await session_service.create_session(
+        # Link talk to anonymous user session
+        owner_session_id = getattr(client_request.state, "user_session_id", None)
+
+        talk = await talk_service.create_talk(
             creator_name=creator_name,
             partner_name=request.partner_name,
             goal=request.goal,
@@ -685,6 +688,7 @@ async def create_session(
             scheduled_at=request.scheduled_at,
             meeting_url=request.meeting_url,
             skip_consent=request.skip_consent,
+            owner_session_id=owner_session_id,
         )
 
         # Build the invite link
@@ -694,14 +698,13 @@ async def create_session(
             + "://"
             + client_request.headers.get("host", "localhost:7014")
         )
-        invite_link = f"{base_url}/invite/{session.invite_token}"
+        invite_link = f"{base_url}/invite/{talk.invite_token}"
 
-        return CreateSessionResponse(
-            id=session.id,
-            session_id=session.id,
-            status=session.status,
+        return CreateTalkResponse(
+            id=talk.id,
+            status=talk.status,
             invite_link=invite_link,
-            invite_token=session.invite_token,
+            invite_token=talk.invite_token,
         )
 
     except ValueError as e:
@@ -710,163 +713,169 @@ async def create_session(
             detail=str(e),
         )
     except Exception as e:
-        logger.error(f"Error creating session: {e}")
+        logger.error(f"Error creating talk: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create session",
+            detail="Failed to create talk",
         )
 
 
 @router.get(
-    "/sessions",
-    tags=["sessions"],
-    response_model=SessionListResponse,
+    "/talks",
+    tags=["talks"],
+    response_model=TalkListResponse,
     responses={
-        200: {"description": "List of sessions returned"},
+        200: {"description": "List of talks returned"},
     },
 )
-async def list_sessions(
+async def list_talks(
+    client_request: Request,
     status_filter: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
 ):
     """
-    List all sessions, optionally filtered by status.
+    List talks for the current user, optionally filtered by status.
 
     Args:
         status_filter: Optional status to filter by (e.g., "draft", "in_progress").
-        limit: Maximum number of sessions to return (default 50).
-        offset: Number of sessions to skip for pagination (default 0).
+        limit: Maximum number of talks to return (default 50).
+        offset: Number of talks to skip for pagination (default 0).
 
     Returns:
-        Object with sessions array, total count, and hasMore flag.
+        Object with talks array, total count, and hasMore flag.
     """
-    sessions = session_service.list_sessions(status=status_filter)
+    from core.talk_store import list_talks_async
+
+    owner_session_id = getattr(client_request.state, "user_session_id", None)
+    talks = await list_talks_async(
+        owner_session_id=owner_session_id, status=status_filter
+    )
 
     # Apply pagination
-    total = len(sessions)
-    paginated_sessions = sessions[offset : offset + limit]
+    total = len(talks)
+    paginated_talks = talks[offset : offset + limit]
     has_more = (offset + limit) < total
 
-    return SessionListResponse(
-        sessions=paginated_sessions,
+    return TalkListResponse(
+        talks=paginated_talks,
         total=total,
         hasMore=has_more,
     )
 
 
 @router.get(
-    "/sessions/invite/{invite_token}",
-    tags=["sessions"],
-    response_model=Session,
+    "/talks/invite/{invite_token}",
+    tags=["talks"],
+    response_model=Talk,
     responses={
-        200: {"description": "Session details returned"},
-        404: {"description": "Session not found for invite token"},
+        200: {"description": "Talk details returned"},
+        404: {"description": "Talk not found for invite token"},
     },
 )
-async def get_session_by_invite_token(invite_token: str):
+async def get_talk_by_invite_token(invite_token: str):
     """
-    Get a session by its invite token.
+    Get a talk by its invite token.
 
-    This endpoint is used by partners to view session details before consenting.
-    The invite token is included in the invite link shared by the session creator.
+    This endpoint is used by partners to view talk details before consenting.
+    The invite token is included in the invite link shared by the talk creator.
 
     Args:
         invite_token: The unique invite token from the invite link.
 
     Returns:
-        The Session object (with limited fields for privacy).
+        The Talk object (with limited fields for privacy).
 
     Raises:
-        HTTPException: 404 if no session found for the invite token.
+        HTTPException: 404 if no talk found for the invite token.
     """
-    session = session_service.get_session_by_invite_token(invite_token)
+    talk = talk_service.get_talk_by_invite_token(invite_token)
 
-    if not session:
+    if not talk:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found for invite token",
+            detail="Talk not found for invite token",
         )
 
-    return session
+    return talk
 
 
 @router.get(
-    "/sessions/{session_id}",
-    tags=["sessions"],
-    response_model=Session,
+    "/talks/{talk_id}",
+    tags=["talks"],
+    response_model=Talk,
     responses={
-        200: {"description": "Session details returned"},
-        404: {"description": "Session not found"},
+        200: {"description": "Talk details returned"},
+        404: {"description": "Talk not found"},
     },
 )
-async def get_session(session_id: str):
+async def get_talk(talk_id: str):
     """
-    Get a single session by ID.
+    Get a single talk by ID.
 
     Args:
-        session_id: The unique session identifier.
+        talk_id: The unique talk identifier.
 
     Returns:
-        The Session object.
+        The Talk object.
 
     Raises:
-        HTTPException: 404 if session not found.
+        HTTPException: 404 if talk not found.
     """
-    session = session_service.get_session(session_id)
+    talk = talk_service.get_talk(talk_id)
 
-    if not session:
+    if not talk:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found",
+            detail="Talk not found",
         )
 
-    return session
+    return talk
 
 
 @router.post(
-    "/sessions/{session_id}/consent",
-    tags=["sessions"],
+    "/talks/{talk_id}/consent",
+    tags=["talks"],
     response_model=ConsentResponse,
     responses={
         200: {"description": "Consent recorded successfully"},
         400: {"description": "Invalid invite token or consent already recorded"},
-        404: {"description": "Session not found"},
+        404: {"description": "Talk not found"},
     },
 )
-async def record_consent(session_id: str, request: ConsentRequest):
+async def record_consent(talk_id: str, request: ConsentRequest):
     """
-    Record partner consent for a session.
+    Record partner consent for a talk.
 
-    When a partner receives an invite link, they view the session details and
+    When a partner receives an invite link, they view the talk details and
     can choose to consent or decline. This endpoint records their decision.
 
     - If consented: Partner is added to participants, and if both parties have
-      consented, the session status transitions to "ready".
-    - If declined: The session is archived privately (creator is not notified
+      consented, the talk status transitions to "ready".
+    - If declined: The talk is archived privately (creator is not notified
       of the specific reason).
 
     Args:
-        session_id: The session identifier.
+        talk_id: The talk identifier.
         request: ConsentRequest with invite_token, invitee_name, and consented flag.
 
     Returns:
         ConsentResponse with updated status and participants list.
 
     Raises:
-        HTTPException: 404 if session not found, 400 if invalid token.
+        HTTPException: 404 if talk not found, 400 if invalid token.
     """
     try:
-        session = await session_service.record_consent(
-            session_id=session_id,
+        talk = await talk_service.record_consent(
+            talk_id=talk_id,
             invite_token=request.invite_token,
             invitee_name=request.invitee_name,
             consented=request.consented,
         )
 
         return ConsentResponse(
-            status=session.status,
-            participants=session.participants,
+            status=talk.status,
+            participants=talk.participants,
         )
 
     except ValueError as e:
@@ -890,43 +899,43 @@ async def record_consent(session_id: str, request: ConsentRequest):
 
 
 @router.post(
-    "/sessions/{session_id}/start",
-    tags=["sessions"],
-    response_model=StartSessionResponse,
+    "/talks/{talk_id}/start",
+    tags=["talks"],
+    response_model=StartTalkResponse,
     responses={
-        200: {"description": "Session started successfully"},
-        400: {"description": "Session not ready to start or invalid request"},
-        404: {"description": "Session not found"},
-        500: {"description": "Failed to start session (MeetingBaas or Pipecat error)"},
+        200: {"description": "Talk started successfully"},
+        400: {"description": "Talk not ready to start or invalid request"},
+        404: {"description": "Talk not found"},
+        500: {"description": "Failed to start talk (MeetingBaas or Pipecat error)"},
     },
 )
-async def start_session(
-    session_id: str,
-    request: StartSessionRequest,
+async def start_talk(
+    talk_id: str,
+    request: StartTalkRequest,
     client_request: Request,
 ):
     """
-    Start a Diadi facilitation session.
+    Start a Diadi facilitation talk.
 
-    This endpoint initiates the live session by:
+    This endpoint initiates the live talk by:
     1. Loading the configured facilitator persona
     2. Creating a MeetingBaas bot to join the meeting
     3. Starting a Pipecat process for AI audio pipeline
-    4. Transitioning the session status to "in_progress"
+    4. Transitioning the talk status to "in_progress"
 
     Prerequisites:
-    - Session must exist and be in "ready" status (both participants consented)
+    - Talk must exist and be in "ready" status (both participants consented)
     - A valid meeting URL must be provided
 
     Args:
-        session_id: The session identifier.
-        request: StartSessionRequest with meeting_url.
+        talk_id: The talk identifier.
+        request: StartTalkRequest with meeting_url.
 
     Returns:
-        StartSessionResponse with status, bot_id, client_id, and event_url.
+        StartTalkResponse with status, bot_id, client_id, and event_url.
 
     Raises:
-        HTTPException: 404 if session not found, 400 if not ready, 500 if start fails.
+        HTTPException: 404 if talk not found, 400 if not ready, 500 if start fails.
     """
     # Get API key from request state (set by middleware)
     api_key = client_request.state.api_key
@@ -935,14 +944,14 @@ async def start_session(
     websocket_url, _ = determine_websocket_url(None, client_request)
 
     try:
-        result = await session_service.start_session(
-            session_id=session_id,
+        result = await talk_service.start_talk(
+            talk_id=talk_id,
             meeting_url=request.meeting_url,
             api_key=api_key,
             websocket_base_url=websocket_url,
         )
 
-        return StartSessionResponse(
+        return StartTalkResponse(
             status=result["status"],
             bot_id=result["bot_id"],
             client_id=result["client_id"],
@@ -962,49 +971,49 @@ async def start_session(
                 detail=error_message,
             )
     except RuntimeError as e:
-        logger.error(f"Failed to start session {session_id}: {e}")
+        logger.error(f"Failed to start talk {talk_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
         )
     except Exception as e:
-        logger.error(f"Unexpected error starting session {session_id}: {e}")
+        logger.error(f"Unexpected error starting talk {talk_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to start session",
+            detail="Failed to start talk",
         )
 
 
 @router.post(
-    "/sessions/{session_id}/pause",
-    tags=["sessions"],
+    "/talks/{talk_id}/pause",
+    tags=["talks"],
     response_model=PauseResumeResponse,
     responses={
         200: {"description": "Facilitation paused successfully"},
-        400: {"description": "Session not in progress"},
-        404: {"description": "Session not found"},
+        400: {"description": "Talk not in progress"},
+        404: {"description": "Talk not found"},
     },
 )
-async def pause_session(session_id: str):
+async def pause_talk(talk_id: str):
     """
-    Pause AI facilitation for a session (kill switch).
+    Pause AI facilitation for a talk (kill switch).
 
-    This immediately pauses AI interventions while keeping the session active.
-    The session status transitions from "in_progress" to "paused".
+    This immediately pauses AI interventions while keeping the talk active.
+    The talk status transitions from "in_progress" to "paused".
     Participants can still continue their conversation without AI assistance.
 
     Args:
-        session_id: The session identifier.
+        talk_id: The talk identifier.
 
     Returns:
         PauseResumeResponse with status "paused".
 
     Raises:
-        HTTPException: 404 if session not found, 400 if not in progress.
+        HTTPException: 404 if talk not found, 400 if not in progress.
     """
     try:
-        session = await session_service.pause_facilitation(session_id)
-        return PauseResumeResponse(status=session.status)
+        talk = await talk_service.pause_facilitation(talk_id)
+        return PauseResumeResponse(status=talk.status)
 
     except ValueError as e:
         error_message = str(e)
@@ -1019,42 +1028,42 @@ async def pause_session(session_id: str):
                 detail=error_message,
             )
     except Exception as e:
-        logger.error(f"Error pausing session {session_id}: {e}")
+        logger.error(f"Error pausing talk {talk_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to pause session",
+            detail="Failed to pause talk",
         )
 
 
 @router.post(
-    "/sessions/{session_id}/resume",
-    tags=["sessions"],
+    "/talks/{talk_id}/resume",
+    tags=["talks"],
     response_model=PauseResumeResponse,
     responses={
         200: {"description": "Facilitation resumed successfully"},
-        400: {"description": "Session not paused"},
-        404: {"description": "Session not found"},
+        400: {"description": "Talk not paused"},
+        404: {"description": "Talk not found"},
     },
 )
-async def resume_session(session_id: str):
+async def resume_talk(talk_id: str):
     """
-    Resume AI facilitation for a paused session.
+    Resume AI facilitation for a paused talk.
 
-    This re-enables AI interventions for a previously paused session.
-    The session status transitions from "paused" back to "in_progress".
+    This re-enables AI interventions for a previously paused talk.
+    The talk status transitions from "paused" back to "in_progress".
 
     Args:
-        session_id: The session identifier.
+        talk_id: The talk identifier.
 
     Returns:
         PauseResumeResponse with status "in_progress".
 
     Raises:
-        HTTPException: 404 if session not found, 400 if not paused.
+        HTTPException: 404 if talk not found, 400 if not paused.
     """
     try:
-        session = await session_service.resume_facilitation(session_id)
-        return PauseResumeResponse(status=session.status)
+        talk = await talk_service.resume_facilitation(talk_id)
+        return PauseResumeResponse(status=talk.status)
 
     except ValueError as e:
         error_message = str(e)
@@ -1069,56 +1078,56 @@ async def resume_session(session_id: str):
                 detail=error_message,
             )
     except Exception as e:
-        logger.error(f"Error resuming session {session_id}: {e}")
+        logger.error(f"Error resuming talk {talk_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to resume session",
+            detail="Failed to resume talk",
         )
 
 
 @router.post(
-    "/sessions/{session_id}/end",
-    tags=["sessions"],
-    response_model=EndSessionResponse,
+    "/talks/{talk_id}/end",
+    tags=["talks"],
+    response_model=EndTalkResponse,
     responses={
-        200: {"description": "Session ended successfully"},
-        400: {"description": "Session cannot be ended (not in progress or paused)"},
-        404: {"description": "Session not found"},
+        200: {"description": "Talk ended successfully"},
+        400: {"description": "Talk cannot be ended (not in progress or paused)"},
+        404: {"description": "Talk not found"},
     },
 )
-async def end_session(session_id: str, client_request: Request):
+async def end_talk(talk_id: str, client_request: Request):
     """
-    End a Diadi facilitation session.
+    End a Diadi facilitation talk.
 
-    This endpoint ends the session by:
+    This endpoint ends the talk by:
     1. Terminating the Pipecat AI process
     2. Making the MeetingBaas bot leave the meeting
     3. Closing all WebSocket connections
     4. Cleaning up in-memory state
-    5. Broadcasting session end event to connected clients
+    5. Broadcasting talk end event to connected clients
     6. Triggering async summary generation
 
-    The session must be in "in_progress" or "paused" status to be ended.
+    The talk must be in "in_progress" or "paused" status to be ended.
 
     Args:
-        session_id: The session identifier.
+        talk_id: The talk identifier.
 
     Returns:
-        EndSessionResponse with status "ended" and summaryAvailable flag.
+        EndTalkResponse with status "ended" and summaryAvailable flag.
 
     Raises:
-        HTTPException: 404 if session not found, 400 if session cannot be ended.
+        HTTPException: 404 if talk not found, 400 if talk cannot be ended.
     """
     # Get API key from request state (set by middleware)
     api_key = client_request.state.api_key
 
     try:
-        result = await session_service.end_session(
-            session_id=session_id,
+        result = await talk_service.end_talk(
+            talk_id=talk_id,
             api_key=api_key,
         )
 
-        return EndSessionResponse(
+        return EndTalkResponse(
             status=result["status"],
             summary_available=result["summary_available"],
         )
@@ -1136,25 +1145,25 @@ async def end_session(session_id: str, client_request: Request):
                 detail=error_message,
             )
     except Exception as e:
-        logger.error(f"Error ending session {session_id}: {e}")
+        logger.error(f"Error ending talk {talk_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to end session",
+            detail="Failed to end talk",
         )
 
 
 @router.get(
-    "/sessions/{session_id}/summary",
-    tags=["sessions"],
-    response_model=SessionSummary,
+    "/talks/{talk_id}/summary",
+    tags=["talks"],
+    response_model=TalkSummary,
     responses={
-        200: {"description": "Session summary returned"},
-        404: {"description": "Session not found or summary not available"},
+        200: {"description": "Talk summary returned"},
+        404: {"description": "Talk not found or summary not available"},
     },
 )
-async def get_session_summary(session_id: str, client_request: Request):
+async def get_talk_summary(talk_id: str, client_request: Request):
     """
-    Get the summary for a completed session.
+    Get the summary for a completed talk.
 
     Returns the AI-generated summary including:
     - Consensus summary of the conversation
@@ -1163,31 +1172,31 @@ async def get_session_summary(session_id: str, client_request: Request):
     - Talk balance metrics
     - Intervention count
 
-    The summary is generated asynchronously when a session ends.
-    It may take a few seconds to become available after session end.
+    The summary is generated asynchronously when a talk ends.
+    It may take a few seconds to become available after talk end.
 
     Args:
-        session_id: The session identifier.
+        talk_id: The talk identifier.
 
     Returns:
-        SessionSummary object with conversation insights.
+        TalkSummary object with conversation insights.
 
     Raises:
-        HTTPException: 404 if session not found or summary not yet available.
+        HTTPException: 404 if talk not found or summary not yet available.
     """
     # Import here to avoid circular dependency
-    from core.session_store import get_session, get_summary
+    from core.talk_store import get_talk_async, get_summary_async
 
-    # First check if the session exists
-    session = get_session(session_id)
-    if not session:
+    # First check if the talk exists
+    talk = await get_talk_async(talk_id)
+    if not talk:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found",
+            detail="Talk not found",
         )
 
-    # Get the summary
-    summary = get_summary(session_id)
+    # Get the summary (checks in-memory first, falls back to SQLite)
+    summary = await get_summary_async(talk_id)
     if not summary:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

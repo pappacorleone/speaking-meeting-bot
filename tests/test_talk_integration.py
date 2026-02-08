@@ -1,7 +1,7 @@
-"""Integration tests for Diadi session lifecycle.
+"""Integration tests for Diadi talk lifecycle.
 
 Tests the complete flow:
-1. Session creation -> Invite -> Consent -> Start -> Pause/Resume -> End -> Summary
+1. Talk creation -> Invite -> Consent -> Start -> Pause/Resume -> End -> Summary
 """
 
 import asyncio
@@ -36,8 +36,8 @@ TEST_API_KEY = "test-api-key"
 HEADERS = {"x-meeting-baas-api-key": TEST_API_KEY}
 
 
-class TestSessionCRUD:
-    """Tests for session CRUD operations."""
+class TestTalkCRUD:
+    """Tests for talk CRUD operations."""
 
     @pytest_asyncio.fixture
     async def client(self):
@@ -55,8 +55,8 @@ class TestSessionCRUD:
                 yield client
 
     @pytest.mark.asyncio
-    async def test_create_session(self, client):
-        """Test creating a new session."""
+    async def test_create_talk(self, client):
+        """Test creating a new talk."""
         request_data = {
             "partner_name": "Test Partner",
             "goal": "Discuss project timeline and deliverables",
@@ -71,31 +71,29 @@ class TestSessionCRUD:
             "platform": "diadi",
         }
 
-        response = await client.post("/sessions", json=request_data, headers=HEADERS)
+        response = await client.post("/talks", json=request_data, headers=HEADERS)
 
         assert response.status_code == 201
         data = response.json()
         assert "id" in data
-        assert "session_id" in data
-        assert data["id"] == data["session_id"]
         assert data["status"] == "pending_consent"
         assert "invite_link" in data
         assert "invite_token" in data
 
     @pytest.mark.asyncio
-    async def test_create_session_missing_required_fields(self, client):
-        """Test creating session without required fields."""
+    async def test_create_talk_missing_required_fields(self, client):
+        """Test creating talk without required fields."""
         request_data = {
             "partner_name": "Test Partner",
             # Missing goal
         }
 
-        response = await client.post("/sessions", json=request_data, headers=HEADERS)
+        response = await client.post("/talks", json=request_data, headers=HEADERS)
 
         assert response.status_code == 422  # Validation error
 
     @pytest.mark.asyncio
-    async def test_create_session_requires_meeting_url_for_external(self, client):
+    async def test_create_talk_requires_meeting_url_for_external(self, client):
         """Test meeting URL requirement for external platforms."""
         request_data = {
             "partner_name": "Test Partner",
@@ -106,14 +104,14 @@ class TestSessionCRUD:
             "platform": "meet",
         }
 
-        response = await client.post("/sessions", json=request_data, headers=HEADERS)
+        response = await client.post("/talks", json=request_data, headers=HEADERS)
 
         assert response.status_code == 400
         assert "Meeting URL is required" in response.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_create_session_rejects_invalid_meet_url(self, client):
-        """Test Meet URL validation on session creation."""
+    async def test_create_talk_rejects_invalid_meet_url(self, client):
+        """Test Meet URL validation on talk creation."""
         request_data = {
             "partner_name": "Test Partner",
             "goal": "Discuss next steps",
@@ -124,17 +122,17 @@ class TestSessionCRUD:
             "meeting_url": "https://example.com/invalid",
         }
 
-        response = await client.post("/sessions", json=request_data, headers=HEADERS)
+        response = await client.post("/talks", json=request_data, headers=HEADERS)
 
         assert response.status_code == 400
         assert "Google Meet" in response.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_list_sessions(self, client):
-        """Test listing all sessions."""
-        # Create a session first
+    async def test_list_talks(self, client):
+        """Test listing all talks."""
+        # Create a talk first
         create_response = await client.post(
-            "/sessions",
+            "/talks",
             json={
                 "partner_name": "Test Partner",
                 "goal": "Test goal",
@@ -146,36 +144,36 @@ class TestSessionCRUD:
         )
         assert create_response.status_code == 201
 
-        # List sessions
-        response = await client.get("/sessions", headers=HEADERS)
+        # List talks
+        response = await client.get("/talks", headers=HEADERS)
 
         assert response.status_code == 200
         data = response.json()
-        assert "sessions" in data
+        assert "talks" in data
         assert "total" in data
         assert "hasMore" in data
-        assert len(data["sessions"]) >= 1
+        assert len(data["talks"]) >= 1
 
     @pytest.mark.asyncio
-    async def test_list_sessions_with_status_filter(self, client):
-        """Test listing sessions with status filter."""
+    async def test_list_talks_with_status_filter(self, client):
+        """Test listing talks with status filter."""
         response = await client.get(
-            "/sessions?status_filter=pending_consent",
+            "/talks?status_filter=pending_consent",
             headers=HEADERS,
         )
 
         assert response.status_code == 200
         data = response.json()
-        # All returned sessions should have pending_consent status
-        for session in data["sessions"]:
-            assert session["status"] == "pending_consent"
+        # All returned talks should have pending_consent status
+        for talk in data["talks"]:
+            assert talk["status"] == "pending_consent"
 
     @pytest.mark.asyncio
-    async def test_get_session_by_id(self, client):
-        """Test getting a session by ID."""
-        # Create a session first
+    async def test_get_talk_by_id(self, client):
+        """Test getting a talk by ID."""
+        # Create a talk first
         create_response = await client.post(
-            "/sessions",
+            "/talks",
             json={
                 "partner_name": "Test Partner",
                 "goal": "Test goal",
@@ -185,20 +183,20 @@ class TestSessionCRUD:
             },
             headers=HEADERS,
         )
-        session_id = create_response.json()["id"]
+        talk_id = create_response.json()["id"]
 
-        # Get session by ID
-        response = await client.get(f"/sessions/{session_id}", headers=HEADERS)
+        # Get talk by ID
+        response = await client.get(f"/talks/{talk_id}", headers=HEADERS)
 
         assert response.status_code == 200
         data = response.json()
-        assert data["id"] == session_id
+        assert data["id"] == talk_id
         assert data["goal"] == "Test goal"
 
     @pytest.mark.asyncio
-    async def test_get_session_not_found(self, client):
-        """Test getting a non-existent session."""
-        response = await client.get("/sessions/non-existent-id", headers=HEADERS)
+    async def test_get_talk_not_found(self, client):
+        """Test getting a non-existent talk."""
+        response = await client.get("/talks/non-existent-id", headers=HEADERS)
 
         assert response.status_code == 404
 
@@ -221,11 +219,11 @@ class TestInviteAndConsent:
                 yield client
 
     @pytest.mark.asyncio
-    async def test_get_session_by_invite_token(self, client):
-        """Test looking up session by invite token."""
-        # Create a session
+    async def test_get_talk_by_invite_token(self, client):
+        """Test looking up talk by invite token."""
+        # Create a talk
         create_response = await client.post(
-            "/sessions",
+            "/talks",
             json={
                 "partner_name": "Test Partner",
                 "goal": "Test goal",
@@ -238,25 +236,25 @@ class TestInviteAndConsent:
         invite_token = create_response.json()["invite_token"]
 
         # Look up by invite token
-        response = await client.get(f"/sessions/invite/{invite_token}", headers=HEADERS)
+        response = await client.get(f"/talks/invite/{invite_token}", headers=HEADERS)
 
         assert response.status_code == 200
         data = response.json()
         assert data["invite_token"] == invite_token
 
     @pytest.mark.asyncio
-    async def test_get_session_by_invalid_invite_token(self, client):
-        """Test looking up session with invalid invite token."""
-        response = await client.get("/sessions/invite/invalid-token", headers=HEADERS)
+    async def test_get_talk_by_invalid_invite_token(self, client):
+        """Test looking up talk with invalid invite token."""
+        response = await client.get("/talks/invite/invalid-token", headers=HEADERS)
 
         assert response.status_code == 404
 
     @pytest.mark.asyncio
     async def test_record_consent_accept(self, client):
         """Test recording partner consent (accept)."""
-        # Create a session
+        # Create a talk
         create_response = await client.post(
-            "/sessions",
+            "/talks",
             json={
                 "partner_name": "Test Partner",
                 "goal": "Test goal",
@@ -267,12 +265,12 @@ class TestInviteAndConsent:
             headers=HEADERS,
         )
         data = create_response.json()
-        session_id = data["id"]
+        talk_id = data["id"]
         invite_token = data["invite_token"]
 
         # Record consent
         consent_response = await client.post(
-            f"/sessions/{session_id}/consent",
+            f"/talks/{talk_id}/consent",
             json={
                 "invite_token": invite_token,
                 "invitee_name": "Partner Name",
@@ -289,9 +287,9 @@ class TestInviteAndConsent:
     @pytest.mark.asyncio
     async def test_record_consent_decline(self, client):
         """Test recording partner consent (decline)."""
-        # Create a session
+        # Create a talk
         create_response = await client.post(
-            "/sessions",
+            "/talks",
             json={
                 "partner_name": "Test Partner",
                 "goal": "Test goal",
@@ -302,12 +300,12 @@ class TestInviteAndConsent:
             headers=HEADERS,
         )
         data = create_response.json()
-        session_id = data["id"]
+        talk_id = data["id"]
         invite_token = data["invite_token"]
 
         # Decline consent
         consent_response = await client.post(
-            f"/sessions/{session_id}/consent",
+            f"/talks/{talk_id}/consent",
             json={
                 "invite_token": invite_token,
                 "invitee_name": "Partner Name",
@@ -323,9 +321,9 @@ class TestInviteAndConsent:
     @pytest.mark.asyncio
     async def test_record_consent_invalid_token(self, client):
         """Test recording consent with invalid invite token."""
-        # Create a session
+        # Create a talk
         create_response = await client.post(
-            "/sessions",
+            "/talks",
             json={
                 "partner_name": "Test Partner",
                 "goal": "Test goal",
@@ -335,11 +333,11 @@ class TestInviteAndConsent:
             },
             headers=HEADERS,
         )
-        session_id = create_response.json()["id"]
+        talk_id = create_response.json()["id"]
 
         # Try consent with wrong token
         consent_response = await client.post(
-            f"/sessions/{session_id}/consent",
+            f"/talks/{talk_id}/consent",
             json={
                 "invite_token": "wrong-token",
                 "invitee_name": "Partner Name",
@@ -351,8 +349,8 @@ class TestInviteAndConsent:
         assert consent_response.status_code == 400
 
 
-class TestSessionLifecycle:
-    """Tests for session start, pause, resume, and end."""
+class TestTalkLifecycle:
+    """Tests for talk start, pause, resume, and end."""
 
     @pytest_asyncio.fixture
     async def client(self):
@@ -369,11 +367,11 @@ class TestSessionLifecycle:
                 yield client
 
     @pytest_asyncio.fixture
-    async def ready_session(self, client):
-        """Create a session in 'ready' status (both parties consented)."""
-        # Create session
+    async def ready_talk(self, client):
+        """Create a talk in 'ready' status (both parties consented)."""
+        # Create talk
         create_response = await client.post(
-            "/sessions",
+            "/talks",
             json={
                 "partner_name": "Test Partner",
                 "goal": "Test goal for lifecycle testing",
@@ -388,7 +386,7 @@ class TestSessionLifecycle:
 
         # Record consent to make it ready
         await client.post(
-            f"/sessions/{data['id']}/consent",
+            f"/talks/{data['id']}/consent",
             json={
                 "invite_token": data["invite_token"],
                 "invitee_name": "Partner Name",
@@ -400,18 +398,18 @@ class TestSessionLifecycle:
         return data["id"]
 
     @pytest.mark.asyncio
-    @patch("app.services.session_service.create_meeting_bot")
-    @patch("app.services.session_service.start_pipecat_process")
-    async def test_start_session(
-        self, mock_pipecat, mock_meetingbaas, client, ready_session
+    @patch("app.services.talk_service.create_meeting_bot")
+    @patch("app.services.talk_service.start_pipecat_process")
+    async def test_start_talk(
+        self, mock_pipecat, mock_meetingbaas, client, ready_talk
     ):
-        """Test starting a session."""
+        """Test starting a talk."""
         # Mock MeetingBaas bot creation
         mock_meetingbaas.return_value = "mock-bot-id"
         mock_pipecat.return_value = MagicMock()
 
         response = await client.post(
-            f"/sessions/{ready_session}/start",
+            f"/talks/{ready_talk}/start",
             json={"meeting_url": "https://zoom.us/j/123456789"},
             headers=HEADERS,
         )
@@ -424,11 +422,11 @@ class TestSessionLifecycle:
         assert "event_url" in data
 
     @pytest.mark.asyncio
-    async def test_start_session_not_ready(self, client):
-        """Test starting a session that's not in ready status."""
-        # Create session (still pending_consent)
+    async def test_start_talk_not_ready(self, client):
+        """Test starting a talk that's not in ready status."""
+        # Create talk (still pending_consent)
         create_response = await client.post(
-            "/sessions",
+            "/talks",
             json={
                 "partner_name": "Test Partner",
                 "goal": "Test goal",
@@ -439,11 +437,11 @@ class TestSessionLifecycle:
             },
             headers=HEADERS,
         )
-        session_id = create_response.json()["id"]
+        talk_id = create_response.json()["id"]
 
         # Try to start without consent
         response = await client.post(
-            f"/sessions/{session_id}/start",
+            f"/talks/{talk_id}/start",
             json={"meeting_url": "https://zoom.us/j/123456789"},
             headers=HEADERS,
         )
@@ -451,25 +449,25 @@ class TestSessionLifecycle:
         assert response.status_code == 400
 
     @pytest.mark.asyncio
-    @patch("app.services.session_service.create_meeting_bot")
-    @patch("app.services.session_service.start_pipecat_process")
-    async def test_pause_session(
-        self, mock_pipecat, mock_meetingbaas, client, ready_session
+    @patch("app.services.talk_service.create_meeting_bot")
+    @patch("app.services.talk_service.start_pipecat_process")
+    async def test_pause_talk(
+        self, mock_pipecat, mock_meetingbaas, client, ready_talk
     ):
-        """Test pausing a session (kill switch)."""
+        """Test pausing a talk (kill switch)."""
         mock_meetingbaas.return_value = "mock-bot-id"
         mock_pipecat.return_value = MagicMock()
 
-        # Start the session first
+        # Start the talk first
         await client.post(
-            f"/sessions/{ready_session}/start",
+            f"/talks/{ready_talk}/start",
             json={"meeting_url": "https://zoom.us/j/123456789"},
             headers=HEADERS,
         )
 
-        # Pause the session
+        # Pause the talk
         response = await client.post(
-            f"/sessions/{ready_session}/pause",
+            f"/talks/{ready_talk}/pause",
             headers=HEADERS,
         )
 
@@ -478,28 +476,28 @@ class TestSessionLifecycle:
         assert data["status"] == "paused"
 
     @pytest.mark.asyncio
-    @patch("app.services.session_service.create_meeting_bot")
-    @patch("app.services.session_service.start_pipecat_process")
-    async def test_resume_session(
-        self, mock_pipecat, mock_meetingbaas, client, ready_session
+    @patch("app.services.talk_service.create_meeting_bot")
+    @patch("app.services.talk_service.start_pipecat_process")
+    async def test_resume_talk(
+        self, mock_pipecat, mock_meetingbaas, client, ready_talk
     ):
-        """Test resuming a paused session."""
+        """Test resuming a paused talk."""
         mock_meetingbaas.return_value = "mock-bot-id"
         mock_pipecat.return_value = MagicMock()
 
-        # Start the session
+        # Start the talk
         await client.post(
-            f"/sessions/{ready_session}/start",
+            f"/talks/{ready_talk}/start",
             json={"meeting_url": "https://zoom.us/j/123456789"},
             headers=HEADERS,
         )
 
-        # Pause the session
-        await client.post(f"/sessions/{ready_session}/pause", headers=HEADERS)
+        # Pause the talk
+        await client.post(f"/talks/{ready_talk}/pause", headers=HEADERS)
 
-        # Resume the session
+        # Resume the talk
         response = await client.post(
-            f"/sessions/{ready_session}/resume",
+            f"/talks/{ready_talk}/resume",
             headers=HEADERS,
         )
 
@@ -508,46 +506,46 @@ class TestSessionLifecycle:
         assert data["status"] == "in_progress"
 
     @pytest.mark.asyncio
-    async def test_pause_session_not_in_progress(self, client, ready_session):
-        """Test pausing a session that's not in progress."""
+    async def test_pause_talk_not_in_progress(self, client, ready_talk):
+        """Test pausing a talk that's not in progress."""
         # Try to pause without starting
         response = await client.post(
-            f"/sessions/{ready_session}/pause",
+            f"/talks/{ready_talk}/pause",
             headers=HEADERS,
         )
 
         assert response.status_code == 400
 
     @pytest.mark.asyncio
-    @patch("app.services.session_service.create_meeting_bot")
-    @patch("app.services.session_service.start_pipecat_process")
-    @patch("app.services.session_service.terminate_process_gracefully")
-    @patch("app.services.session_service.leave_meeting_bot")
-    async def test_end_session(
+    @patch("app.services.talk_service.create_meeting_bot")
+    @patch("app.services.talk_service.start_pipecat_process")
+    @patch("app.services.talk_service.terminate_process_gracefully")
+    @patch("app.services.talk_service.leave_meeting_bot")
+    async def test_end_talk(
         self,
         mock_leave,
         mock_terminate,
         mock_pipecat,
         mock_meetingbaas,
         client,
-        ready_session,
+        ready_talk,
     ):
-        """Test ending a session."""
+        """Test ending a talk."""
         mock_meetingbaas.return_value = "mock-bot-id"
         mock_pipecat.return_value = MagicMock()
         mock_terminate.return_value = True
         mock_leave.return_value = True
 
-        # Start the session
+        # Start the talk
         await client.post(
-            f"/sessions/{ready_session}/start",
+            f"/talks/{ready_talk}/start",
             json={"meeting_url": "https://zoom.us/j/123456789"},
             headers=HEADERS,
         )
 
-        # End the session
+        # End the talk
         response = await client.post(
-            f"/sessions/{ready_session}/end",
+            f"/talks/{ready_talk}/end",
             headers=HEADERS,
         )
 
@@ -557,8 +555,8 @@ class TestSessionLifecycle:
         assert "summary_available" in data
 
 
-class TestSessionSummary:
-    """Tests for session summary endpoint."""
+class TestTalkSummary:
+    """Tests for talk summary endpoint."""
 
     @pytest_asyncio.fixture
     async def client(self):
@@ -575,18 +573,18 @@ class TestSessionSummary:
                 yield client
 
     @pytest.mark.asyncio
-    async def test_get_summary_session_not_found(self, client):
-        """Test getting summary for non-existent session."""
-        response = await client.get("/sessions/non-existent/summary", headers=HEADERS)
+    async def test_get_summary_talk_not_found(self, client):
+        """Test getting summary for non-existent talk."""
+        response = await client.get("/talks/non-existent/summary", headers=HEADERS)
 
         assert response.status_code == 404
 
     @pytest.mark.asyncio
     async def test_get_summary_not_available(self, client):
         """Test getting summary when not yet generated."""
-        # Create a session
+        # Create a talk
         create_response = await client.post(
-            "/sessions",
+            "/talks",
             json={
                 "partner_name": "Test Partner",
                 "goal": "Test goal",
@@ -596,10 +594,10 @@ class TestSessionSummary:
             },
             headers=HEADERS,
         )
-        session_id = create_response.json()["id"]
+        talk_id = create_response.json()["id"]
 
         # Try to get summary (not available yet)
-        response = await client.get(f"/sessions/{session_id}/summary", headers=HEADERS)
+        response = await client.get(f"/talks/{talk_id}/summary", headers=HEADERS)
 
         assert response.status_code == 404
         assert "not available" in response.json()["detail"].lower()
@@ -626,7 +624,7 @@ class TestAPIAuthentication:
     async def test_missing_api_key(self, client):
         """Test request without API key."""
         response = await client.post(
-            "/sessions",
+            "/talks",
             json={
                 "partner_name": "Test Partner",
                 "goal": "Test goal",
@@ -667,10 +665,10 @@ class TestFacilitatorPersonas:
                 yield client
 
     @pytest.mark.asyncio
-    async def test_create_session_neutral_mediator(self, client):
-        """Test creating session with neutral_mediator persona."""
+    async def test_create_talk_neutral_mediator(self, client):
+        """Test creating talk with neutral_mediator persona."""
         response = await client.post(
-            "/sessions",
+            "/talks",
             json={
                 "partner_name": "Test Partner",
                 "goal": "Test goal",
@@ -683,17 +681,17 @@ class TestFacilitatorPersonas:
 
         assert response.status_code == 201
 
-        # Get session to verify persona
-        session_id = response.json()["id"]
-        get_response = await client.get(f"/sessions/{session_id}", headers=HEADERS)
+        # Get talk to verify persona
+        talk_id = response.json()["id"]
+        get_response = await client.get(f"/talks/{talk_id}", headers=HEADERS)
         data = get_response.json()
         assert data["facilitator"]["persona"] == "neutral_mediator"
 
     @pytest.mark.asyncio
-    async def test_create_session_deep_empath(self, client):
-        """Test creating session with deep_empath persona."""
+    async def test_create_talk_deep_empath(self, client):
+        """Test creating talk with deep_empath persona."""
         response = await client.post(
-            "/sessions",
+            "/talks",
             json={
                 "partner_name": "Test Partner",
                 "goal": "Test goal",
@@ -706,16 +704,16 @@ class TestFacilitatorPersonas:
 
         assert response.status_code == 201
 
-        session_id = response.json()["id"]
-        get_response = await client.get(f"/sessions/{session_id}", headers=HEADERS)
+        talk_id = response.json()["id"]
+        get_response = await client.get(f"/talks/{talk_id}", headers=HEADERS)
         data = get_response.json()
         assert data["facilitator"]["persona"] == "deep_empath"
 
     @pytest.mark.asyncio
-    async def test_create_session_decision_catalyst(self, client):
-        """Test creating session with decision_catalyst persona."""
+    async def test_create_talk_decision_catalyst(self, client):
+        """Test creating talk with decision_catalyst persona."""
         response = await client.post(
-            "/sessions",
+            "/talks",
             json={
                 "partner_name": "Test Partner",
                 "goal": "Make a decision about project direction",
@@ -728,8 +726,8 @@ class TestFacilitatorPersonas:
 
         assert response.status_code == 201
 
-        session_id = response.json()["id"]
-        get_response = await client.get(f"/sessions/{session_id}", headers=HEADERS)
+        talk_id = response.json()["id"]
+        get_response = await client.get(f"/talks/{talk_id}", headers=HEADERS)
         data = get_response.json()
         assert data["facilitator"]["persona"] == "decision_catalyst"
 

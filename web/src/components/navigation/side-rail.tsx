@@ -94,13 +94,13 @@ export function SideRail({
         ))}
       </nav>
 
-      {/* New Session CTA */}
+      {/* New Talk CTA */}
       <div className="border-t p-4">
         {isExpanded ? (
           <Button asChild className="w-full" variant="secondary">
-            <a href="/sessions/new">
+            <a href="/talks/new">
               <Plus className="h-4 w-4" />
-              <span>New Session</span>
+              <span>New Talk</span>
             </a>
           </Button>
         ) : (
@@ -109,12 +109,12 @@ export function SideRail({
             size="icon"
             variant="secondary"
             className="w-full"
-            title="New Session"
-            aria-label="New Session"
+            title="New Talk"
+            aria-label="New Talk"
           >
-            <a href="/sessions/new">
+            <a href="/talks/new">
               <Plus className="h-5 w-5" aria-hidden="true" />
-              <span className="sr-only">New Session</span>
+              <span className="sr-only">New Talk</span>
             </a>
           </Button>
         )}

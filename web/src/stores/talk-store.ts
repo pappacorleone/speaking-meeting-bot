@@ -1,5 +1,5 @@
 /**
- * Zustand store for live session UI state.
+ * Zustand store for live talk UI state.
  * Manages real-time metrics, connection state, and facilitator settings.
  */
 
@@ -7,10 +7,10 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type {
   TalkBalanceMetrics,
-  Session,
+  Talk,
   Participant,
   FacilitatorConfig,
-} from '@/types/session';
+} from '@/types/talk';
 import type { AIStatus, TimeRemainingData, GoalDriftData, ParticipantStatusData } from '@/types/events';
 
 // =============================================================================
@@ -24,10 +24,10 @@ export interface ParticipantConnectionStatus {
   isSpeaking: boolean;
 }
 
-export interface SessionUIState {
-  // Session reference
-  sessionId: string | null;
-  session: Session | null;
+export interface TalkUIState {
+  // Talk reference
+  talkId: string | null;
+  talk: Talk | null;
 
   // Connection state
   isConnected: boolean;
@@ -51,16 +51,16 @@ export interface SessionUIState {
   facilitatorPaused: boolean;
   facilitatorConfig: FacilitatorConfig | null;
 
-  // Session lifecycle
+  // Talk lifecycle
   isStarting: boolean;
   isEnding: boolean;
   isPausing: boolean;
 }
 
-export interface SessionUIActions {
+export interface TalkUIActions {
   // Initialization
-  initSession: (sessionId: string, session: Session) => void;
-  clearSession: () => void;
+  initTalk: (talkId: string, talk: Talk) => void;
+  clearTalk: () => void;
 
   // Connection
   setConnected: (isConnected: boolean) => void;
@@ -84,26 +84,26 @@ export interface SessionUIActions {
   setFacilitatorPaused: (paused: boolean) => void;
   updateFacilitatorConfig: (config: Partial<FacilitatorConfig>) => void;
 
-  // Session lifecycle
+  // Talk lifecycle
   setStarting: (isStarting: boolean) => void;
   setEnding: (isEnding: boolean) => void;
   setPausing: (isPausing: boolean) => void;
 
-  // Update session data
-  updateSession: (updates: Partial<Session>) => void;
+  // Update talk data
+  updateTalk: (updates: Partial<Talk>) => void;
   updateParticipants: (participants: Participant[]) => void;
 }
 
-export type SessionStore = SessionUIState & SessionUIActions;
+export type TalkStore = TalkUIState & TalkUIActions;
 
 // =============================================================================
 // Initial State
 // =============================================================================
 
-const initialState: SessionUIState = {
-  // Session reference
-  sessionId: null,
-  session: null,
+const initialState: TalkUIState = {
+  // Talk reference
+  talkId: null,
+  talk: null,
 
   // Connection state
   isConnected: false,
@@ -127,7 +127,7 @@ const initialState: SessionUIState = {
   facilitatorPaused: false,
   facilitatorConfig: null,
 
-  // Session lifecycle
+  // Talk lifecycle
   isStarting: false,
   isEnding: false,
   isPausing: false,
@@ -137,7 +137,7 @@ const initialState: SessionUIState = {
 // Store
 // =============================================================================
 
-export const useSessionStore = create<SessionStore>()(
+export const useTalkStore = create<TalkStore>()(
   devtools(
     (set, get) => ({
       ...initialState,
@@ -146,11 +146,11 @@ export const useSessionStore = create<SessionStore>()(
       // Initialization
       // =========================================================================
 
-      initSession: (sessionId, session) => {
+      initTalk: (talkId, talk) => {
         set({
-          sessionId,
-          session,
-          facilitatorConfig: session.facilitator,
+          talkId,
+          talk,
+          facilitatorConfig: talk.facilitator,
           facilitatorPaused: false,
           balance: null,
           timeRemaining: null,
@@ -163,7 +163,7 @@ export const useSessionStore = create<SessionStore>()(
         });
       },
 
-      clearSession: () => {
+      clearTalk: () => {
         set(initialState);
       },
 
@@ -273,7 +273,7 @@ export const useSessionStore = create<SessionStore>()(
       },
 
       // =========================================================================
-      // Session Lifecycle
+      // Talk Lifecycle
       // =========================================================================
 
       setStarting: (isStarting) => {
@@ -289,24 +289,24 @@ export const useSessionStore = create<SessionStore>()(
       },
 
       // =========================================================================
-      // Session Updates
+      // Talk Updates
       // =========================================================================
 
-      updateSession: (updates) => {
+      updateTalk: (updates) => {
         set((state) => ({
-          session: state.session ? { ...state.session, ...updates } : null,
+          talk: state.talk ? { ...state.talk, ...updates } : null,
         }));
       },
 
       updateParticipants: (participants) => {
         set((state) => ({
-          session: state.session
-            ? { ...state.session, participants }
+          talk: state.talk
+            ? { ...state.talk, participants }
             : null,
         }));
       },
     }),
-    { name: 'session-store' }
+    { name: 'talk-store' }
   )
 );
 
@@ -314,23 +314,23 @@ export const useSessionStore = create<SessionStore>()(
 // Selectors
 // =============================================================================
 
-export const selectIsSessionActive = (state: SessionStore): boolean => {
-  return state.session?.status === 'in_progress';
+export const selectIsTalkActive = (state: TalkStore): boolean => {
+  return state.talk?.status === 'in_progress';
 };
 
-export const selectIsSessionPaused = (state: SessionStore): boolean => {
-  return state.session?.status === 'paused' || state.facilitatorPaused;
+export const selectIsTalkPaused = (state: TalkStore): boolean => {
+  return state.talk?.status === 'paused' || state.facilitatorPaused;
 };
 
-export const selectCanStartSession = (state: SessionStore): boolean => {
-  return state.session?.status === 'ready' && !state.isStarting;
+export const selectCanStartTalk = (state: TalkStore): boolean => {
+  return state.talk?.status === 'ready' && !state.isStarting;
 };
 
-export const selectTimeRemainingPercent = (state: SessionStore): number => {
+export const selectTimeRemainingPercent = (state: TalkStore): number => {
   return state.timeRemaining?.percentComplete ?? 0;
 };
 
-export const selectDominantSpeaker = (state: SessionStore): string | null => {
+export const selectDominantSpeaker = (state: TalkStore): string | null => {
   if (!state.balance) return null;
   const { participantA, participantB } = state.balance;
   if (participantA.percentage > participantB.percentage) {
@@ -341,13 +341,13 @@ export const selectDominantSpeaker = (state: SessionStore): string | null => {
   return null;
 };
 
-export const selectAllParticipantsConnected = (state: SessionStore): boolean => {
+export const selectAllParticipantsConnected = (state: TalkStore): boolean => {
   const statuses = Array.from(state.participantStatuses.values());
   if (statuses.length === 0) return false;
   return statuses.every((s) => s.isConnected);
 };
 
-export const selectCurrentSpeaker = (state: SessionStore): string | null => {
+export const selectCurrentSpeaker = (state: TalkStore): string | null => {
   const statuses = Array.from(state.participantStatuses.values());
   const speaking = statuses.find((s) => s.isSpeaking);
   return speaking?.name ?? null;

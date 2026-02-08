@@ -4,17 +4,17 @@ import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Mail, AlertCircle, CheckCircle2 } from "lucide-react";
-import { getSessionByInviteToken, recordConsent } from "@/lib/api/sessions";
-import { ConsentForm } from "@/components/session/consent-form";
+import { getTalkByInviteToken, recordConsent } from "@/lib/api/talks";
+import { ConsentForm } from "@/components/talk/consent-form";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import type { Session, ConsentRequest } from "@/lib/api/types";
+import type { Talk, ConsentRequest } from "@/lib/api/types";
 
 /**
  * InvitePage - Partner invitation landing page.
  *
  * Partners arrive here via an invite link (e.g., /invite/abc123).
- * They can view session details and accept or decline the invitation.
+ * They can view talk details and accept or decline the invitation.
  */
 export default function InvitePage() {
   const params = useParams();
@@ -25,14 +25,14 @@ export default function InvitePage() {
     "accepted" | "declined" | null
   >(null);
 
-  // Fetch session data using the invite token
+  // Fetch talk data using the invite token
   const {
-    data: session,
+    data: talk,
     isLoading,
     error,
-  } = useQuery<Session, Error>({
-    queryKey: ["session", "invite", token],
-    queryFn: () => getSessionByInviteToken(token),
+  } = useQuery<Talk, Error>({
+    queryKey: ["talk", "invite", token],
+    queryFn: () => getTalkByInviteToken(token),
     enabled: !!token,
     retry: false,
   });
@@ -40,18 +40,18 @@ export default function InvitePage() {
   // Consent mutation
   const consentMutation = useMutation({
     mutationFn: async ({
-      sessionId,
+      talkId,
       data,
     }: {
-      sessionId: string;
+      talkId: string;
       data: ConsentRequest;
-    }) => recordConsent(sessionId, data),
+    }) => recordConsent(talkId, data),
     onSuccess: (_response, variables) => {
       if (variables.data.consented) {
         setConsentResult("accepted");
-        // Redirect to session detail page after a brief delay
+        // Redirect to talk detail page after a brief delay
         setTimeout(() => {
-          router.push(`/sessions/${variables.sessionId}`);
+          router.push(`/talks/${variables.talkId}`);
         }, 2000);
       } else {
         setConsentResult("declined");
@@ -61,17 +61,17 @@ export default function InvitePage() {
 
   // Get the creator's name from participants
   const getCreatorName = (): string => {
-    if (!session?.participants) return "Someone";
-    const creator = session.participants.find((p) => p.role === "creator");
+    if (!talk?.participants) return "Someone";
+    const creator = talk.participants.find((p) => p.role === "creator");
     return creator?.name || "Someone";
   };
 
   // Handle accept
   const handleAccept = async (inviteeName: string) => {
-    if (!session) return;
+    if (!talk) return;
 
     await consentMutation.mutateAsync({
-      sessionId: session.id,
+      talkId: talk.id,
       data: {
         invite_token: token,
         invitee_name: inviteeName,
@@ -82,10 +82,10 @@ export default function InvitePage() {
 
   // Handle decline
   const handleDecline = async () => {
-    if (!session) return;
+    if (!talk) return;
 
     await consentMutation.mutateAsync({
-      sessionId: session.id,
+      talkId: talk.id,
       data: {
         invite_token: token,
         invitee_name: "", // Name not needed for decline
@@ -107,7 +107,7 @@ export default function InvitePage() {
   }
 
   // Error state - invalid or expired token
-  if (error || !session) {
+  if (error || !talk) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center space-y-4 max-w-md">
@@ -129,11 +129,11 @@ export default function InvitePage() {
     );
   }
 
-  // Session already started or ended
+  // Talk already started or ended
   if (
-    session.status === "in_progress" ||
-    session.status === "ended" ||
-    session.status === "archived"
+    talk.status === "in_progress" ||
+    talk.status === "ended" ||
+    talk.status === "archived"
   ) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -142,12 +142,12 @@ export default function InvitePage() {
             <AlertCircle className="h-6 w-6 text-warning" />
           </div>
           <h1 className="font-serif text-2xl font-semibold">
-            Session No Longer Available
+            Talk No Longer Available
           </h1>
           <p className="text-muted-foreground">
-            {session.status === "archived"
-              ? "This session has been cancelled."
-              : "This session has already started or ended."}
+            {talk.status === "archived"
+              ? "This talk has been cancelled."
+              : "This talk has already started or ended."}
           </p>
           <Button asChild variant="outline">
             <Link href="/">Go to Home</Link>
@@ -169,7 +169,7 @@ export default function InvitePage() {
             You&apos;re All Set!
           </h1>
           <p className="text-muted-foreground">
-            You&apos;ve accepted the invitation. Redirecting you to the session
+            You&apos;ve accepted the invitation. Redirecting you to the talk
             details...
           </p>
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto" />
@@ -220,10 +220,10 @@ export default function InvitePage() {
         <main className="flex-1 px-4 pb-8 flex flex-col items-center">
           <ConsentForm
             inviterName={getCreatorName()}
-            goal={session.goal}
-            scheduledAt={session.scheduled_at}
-            durationMinutes={session.duration_minutes}
-            meetingUrl={session.meeting_url}
+            goal={talk.goal}
+            scheduledAt={talk.scheduled_at}
+            durationMinutes={talk.duration_minutes}
+            meetingUrl={talk.meeting_url}
             onAccept={handleAccept}
             onDecline={handleDecline}
             isSubmitting={consentMutation.isPending}
@@ -259,10 +259,10 @@ export default function InvitePage() {
         <div className="flex-1 flex items-center justify-center p-8 bg-muted/30">
           <ConsentForm
             inviterName={getCreatorName()}
-            goal={session.goal}
-            scheduledAt={session.scheduled_at}
-            durationMinutes={session.duration_minutes}
-            meetingUrl={session.meeting_url}
+            goal={talk.goal}
+            scheduledAt={talk.scheduled_at}
+            durationMinutes={talk.duration_minutes}
+            meetingUrl={talk.meeting_url}
             onAccept={handleAccept}
             onDecline={handleDecline}
             isSubmitting={consentMutation.isPending}

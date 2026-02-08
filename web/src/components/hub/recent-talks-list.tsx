@@ -5,25 +5,25 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/common/empty-state";
-import type { Session, SessionStatus } from "@/types/session";
-import { getStatusLabel, getSessionStatusGroup } from "@/types/session";
+import type { Talk, TalkStatus } from "@/types/talk";
+import { getStatusLabel, getTalkStatusGroup } from "@/types/talk";
 
-interface RecentSessionsListProps {
-  sessions: Session[];
+interface RecentTalksListProps {
+  talks: Talk[];
   className?: string;
-  /** Maximum number of sessions to show */
+  /** Maximum number of talks to show */
   limit?: number;
   /** Show "View All" link */
   showViewAll?: boolean;
 }
 
 /**
- * SessionStatusIcon renders an icon based on session status.
+ * TalkStatusIcon renders an icon based on talk status.
  */
-function SessionStatusIcon({ status }: { status: SessionStatus }) {
+function TalkStatusIcon({ status }: { status: TalkStatus }) {
   // Simple icon representation using emoji/characters
   // Could be replaced with proper icon library
-  const icons: Record<SessionStatus, string> = {
+  const icons: Record<TalkStatus, string> = {
     draft: "📝",
     pending_consent: "⏳",
     ready: "✓",
@@ -33,7 +33,7 @@ function SessionStatusIcon({ status }: { status: SessionStatus }) {
     archived: "📁",
   };
 
-  const statusGroup = getSessionStatusGroup(status);
+  const statusGroup = getTalkStatusGroup(status);
   const bgColors: Record<string, string> = {
     active: "bg-status-active/10 text-status-active",
     upcoming: "bg-status-info/10 text-status-info",
@@ -53,17 +53,17 @@ function SessionStatusIcon({ status }: { status: SessionStatus }) {
 }
 
 /**
- * SessionListItem displays a single session in the recent sessions list.
+ * TalkListItem displays a single talk in the recent talks list.
  */
-function SessionListItem({ session }: { session: Session }) {
+function TalkListItem({ talk }: { talk: Talk }) {
   // Find partner name
-  const partner = session.participants.find((p) => p.role === "invitee");
+  const partner = talk.participants.find((p) => p.role === "invitee");
   const partnerName = partner?.name || "Partner";
 
   // Format date
-  const date = session.scheduledAt
-    ? new Date(session.scheduledAt)
-    : new Date(session.createdAt);
+  const date = talk.scheduledAt
+    ? new Date(talk.scheduledAt)
+    : new Date(talk.createdAt);
   const formattedDate = date.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -73,15 +73,15 @@ function SessionListItem({ session }: { session: Session }) {
 
   return (
     <Link
-      href={`/sessions/${session.id}`}
+      href={`/talks/${talk.id}`}
       className="block group"
     >
       <Card className="p-4 transition-shadow hover:shadow-elevated">
         <div className="flex items-start gap-3">
-          <SessionStatusIcon status={session.status} />
+          <TalkStatusIcon status={talk.status} />
           <div className="flex-1 min-w-0">
             <h4 className="font-medium text-sm truncate group-hover:text-primary">
-              {session.title || session.goal}
+              {talk.title || talk.goal}
             </h4>
             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
               <span>{partnerName}</span>
@@ -92,13 +92,13 @@ function SessionListItem({ session }: { session: Session }) {
           <span
             className={cn(
               "text-xs px-2 py-0.5 rounded-full whitespace-nowrap",
-              session.status === "ended" && "bg-muted text-muted-foreground",
-              session.status === "ready" && "bg-status-active/10 text-status-active",
-              session.status === "pending_consent" && "bg-status-warning/10 text-status-warning",
-              session.status === "draft" && "bg-status-info/10 text-status-info"
+              talk.status === "ended" && "bg-muted text-muted-foreground",
+              talk.status === "ready" && "bg-status-active/10 text-status-active",
+              talk.status === "pending_consent" && "bg-status-warning/10 text-status-warning",
+              talk.status === "draft" && "bg-status-info/10 text-status-info"
             )}
           >
-            {getStatusLabel(session.status)}
+            {getStatusLabel(talk.status)}
           </span>
         </div>
       </Card>
@@ -107,19 +107,19 @@ function SessionListItem({ session }: { session: Session }) {
 }
 
 /**
- * RecentSessionsList displays a list of recent sessions with status indicators.
- * Shows an empty state when no sessions exist.
+ * RecentTalksList displays a list of recent talks with status indicators.
+ * Shows an empty state when no talks exist.
  */
-export function RecentSessionsList({
-  sessions,
+export function RecentTalksList({
+  talks,
   className,
   limit = 5,
   showViewAll = true,
-}: RecentSessionsListProps) {
-  const displayedSessions = sessions.slice(0, limit);
-  const hasMore = sessions.length > limit;
+}: RecentTalksListProps) {
+  const displayedTalks = talks.slice(0, limit);
+  const hasMore = talks.length > limit;
 
-  if (sessions.length === 0) {
+  if (talks.length === 0) {
     return (
       <div className={className}>
         <EmptyState
@@ -138,11 +138,11 @@ export function RecentSessionsList({
               />
             </svg>
           }
-          title="No sessions yet"
-          description="Start your first facilitated conversation by creating a new session."
+          title="No talks yet"
+          description="Start your first facilitated conversation by creating a new talk."
           action={{
-            label: "New Session",
-            href: "/sessions/new",
+            label: "New Talk",
+            href: "/talks/new",
           }}
         />
       </div>
@@ -153,10 +153,10 @@ export function RecentSessionsList({
     <div className={className}>
       {/* Section header */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-header">Recent Sessions</h2>
+        <h2 className="section-header">Recent Talks</h2>
         {showViewAll && hasMore && (
           <Link
-            href="/sessions"
+            href="/talks"
             className="text-xs font-medium uppercase tracking-wider text-primary hover:underline"
           >
             View All
@@ -164,10 +164,10 @@ export function RecentSessionsList({
         )}
       </div>
 
-      {/* Sessions list */}
+      {/* Talks list */}
       <div className="space-y-3">
-        {displayedSessions.map((session) => (
-          <SessionListItem key={session.id} session={session} />
+        {displayedTalks.map((talk) => (
+          <TalkListItem key={talk.id} talk={talk} />
         ))}
       </div>
     </div>

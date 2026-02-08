@@ -36,16 +36,16 @@ export function MobileNav({ className }: MobileNavProps) {
           isActive={pathname.startsWith(MOBILE_NAV_ITEMS[0].href)}
         />
 
-        {/* Center CTA button - New Session */}
+        {/* Center CTA button - New Talk */}
         <Link
-          href="/sessions/new"
+          href="/talks/new"
           className={cn(
             "flex h-14 w-14 -mt-6 items-center justify-center rounded-full",
             "bg-secondary text-secondary-foreground shadow-elevated",
             "hover:bg-secondary/90 transition-colors",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           )}
-          aria-label="New Session"
+          aria-label="New Talk"
         >
           <Plus className="h-6 w-6" />
         </Link>

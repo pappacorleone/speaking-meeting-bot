@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { z } from "zod";
-import type { FacilitatorConfig } from "@/types/session";
+import type { FacilitatorConfig } from "@/types/talk";
 
 // =============================================================================
 // Zod Validation Schemas
@@ -83,12 +83,12 @@ export const stepLaunchSchema = z
   });
 
 // Combined schema for full form validation
-export const sessionWizardSchema = stepIdentitySchema
+export const talkWizardSchema = stepIdentitySchema
   .merge(stepGoalSchema)
   .merge(stepFacilitatorSchema)
   .merge(stepLaunchSchema);
 
-export type SessionWizardFormData = z.infer<typeof sessionWizardSchema>;
+export type TalkWizardFormData = z.infer<typeof talkWizardSchema>;
 
 // =============================================================================
 // Step Configuration
@@ -111,7 +111,7 @@ export const WIZARD_STEPS: WizardStepConfig[] = [
   {
     id: 1,
     key: "goal",
-    title: "Session Goal",
+    title: "Talk Goal",
     description: "What do you want to accomplish?",
   },
   {
@@ -124,7 +124,7 @@ export const WIZARD_STEPS: WizardStepConfig[] = [
     id: 3,
     key: "review",
     title: "Review & Confirm",
-    description: "Review your session details",
+    description: "Review your talk details",
   },
   {
     id: 4,
@@ -140,7 +140,7 @@ export const WIZARD_STEPS: WizardStepConfig[] = [
 
 export interface WizardState {
   currentStep: number;
-  formData: SessionWizardFormData;
+  formData: TalkWizardFormData;
   stepErrors: Record<number, Record<string, string>>;
   isSubmitting: boolean;
   isComplete: boolean;
@@ -150,7 +150,7 @@ type WizardAction =
   | { type: "NEXT_STEP" }
   | { type: "PREV_STEP" }
   | { type: "GO_TO_STEP"; payload: number }
-  | { type: "SET_STEP_DATA"; payload: Partial<SessionWizardFormData> }
+  | { type: "SET_STEP_DATA"; payload: Partial<TalkWizardFormData> }
   | { type: "SET_STEP_ERRORS"; payload: { step: number; errors: Record<string, string> } }
   | { type: "CLEAR_STEP_ERRORS"; payload: number }
   | { type: "SET_SUBMITTING"; payload: boolean }
@@ -168,11 +168,11 @@ const DEFAULT_FACILITATOR_CONFIG: FacilitatorConfig = {
   silenceDetection: true,
 };
 
-const DEFAULT_FORM_DATA: SessionWizardFormData = {
+const DEFAULT_FORM_DATA: TalkWizardFormData = {
   // Step 0: Identity & Bond
   partnerName: "",
   relationshipContext: "",
-  // Step 1: Session Goal
+  // Step 1: Talk Goal
   goal: "",
   scheduledAt: undefined,
   durationMinutes: 30,
@@ -261,7 +261,7 @@ interface WizardContextValue {
   // State
   state: WizardState;
   currentStep: number;
-  formData: SessionWizardFormData;
+  formData: TalkWizardFormData;
   stepErrors: Record<string, string>;
   isSubmitting: boolean;
   isComplete: boolean;
@@ -280,10 +280,10 @@ interface WizardContextValue {
   goToStep: (step: number) => void;
 
   // Data management
-  setStepData: (data: Partial<SessionWizardFormData>) => void;
-  setFieldValue: <K extends keyof SessionWizardFormData>(
+  setStepData: (data: Partial<TalkWizardFormData>) => void;
+  setFieldValue: <K extends keyof TalkWizardFormData>(
     field: K,
-    value: SessionWizardFormData[K]
+    value: TalkWizardFormData[K]
   ) => void;
 
   // Validation
@@ -323,8 +323,8 @@ function getSchemaForStep(step: number): z.ZodType | null {
 
 function extractStepData(
   step: number,
-  formData: SessionWizardFormData
-): Partial<SessionWizardFormData> {
+  formData: TalkWizardFormData
+): Partial<TalkWizardFormData> {
   switch (step) {
     case 0:
       return {
@@ -367,7 +367,7 @@ function extractStepData(
 
 interface WizardProviderProps {
   children: ReactNode;
-  initialData?: Partial<SessionWizardFormData>;
+  initialData?: Partial<TalkWizardFormData>;
   initialStep?: number;
 }
 
@@ -435,15 +435,15 @@ export function WizardProvider({
   }, []);
 
   // Set partial form data
-  const setStepData = useCallback((data: Partial<SessionWizardFormData>) => {
+  const setStepData = useCallback((data: Partial<TalkWizardFormData>) => {
     dispatch({ type: "SET_STEP_DATA", payload: data });
   }, []);
 
   // Set individual field value
   const setFieldValue = useCallback(
-    <K extends keyof SessionWizardFormData>(
+    <K extends keyof TalkWizardFormData>(
       field: K,
-      value: SessionWizardFormData[K]
+      value: TalkWizardFormData[K]
     ) => {
       dispatch({ type: "SET_STEP_DATA", payload: { [field]: value } });
     },

@@ -47,7 +47,7 @@ export interface WaitingRoomProps {
   meetingUrl?: string;
   /** Session goal for context */
   goal?: string;
-  /** Called when user clicks "Start Session" (only when all ready) */
+  /** Called when user clicks "Start Talk" (only when all ready) */
   onStartSession?: () => void;
   /** Whether the start action is loading */
   isStarting?: boolean;
@@ -301,7 +301,7 @@ export function WaitingRoom({
                 Starting...
               </>
             ) : (
-              "Start Session"
+              "Start Talk"
             )}
           </Button>
         )}
@@ -316,8 +316,8 @@ export function WaitingRoom({
             </CardTitle>
             <CardDescription className="text-base">
               {partnerReady
-                ? "Both participants are ready. You can start the facilitated session."
-                : "We are just making sure the partner connection is stable before we begin the facilitated session."}
+                ? "Both participants are ready. You can start the facilitated talk."
+                : "We are just making sure the partner connection is stable before we begin the facilitated talk."}
             </CardDescription>
           </CardHeader>
 
@@ -400,7 +400,7 @@ export function WaitingRoom({
             {goal && (
               <div className="rounded-lg border border-border p-4">
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
-                  Session Goal
+                  Talk Goal
                 </p>
                 <p className="text-sm text-foreground line-clamp-2">{goal}</p>
               </div>
@@ -443,7 +443,7 @@ export function WaitingRoom({
                 </a>
               )}
 
-              {/* Start Session Button */}
+              {/* Start Talk Button */}
               {onStartSession && (
                 <Button
                   variant="secondary"
@@ -457,7 +457,7 @@ export function WaitingRoom({
                       Starting...
                     </>
                   ) : (
-                    "Start Session"
+                    "Start Talk"
                   )}
                 </Button>
               )}

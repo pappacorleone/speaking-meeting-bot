@@ -3,10 +3,10 @@
  */
 
 export {
-  useSessionEvents,
-  type UseSessionEventsOptions,
-  type UseSessionEventsReturn,
-} from './use-session-events';
+  useTalkEvents,
+  type UseTalkEventsOptions,
+  type UseTalkEventsReturn,
+} from './use-talk-events';
 
 export {
   useFocusTrap,

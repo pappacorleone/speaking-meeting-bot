@@ -3,22 +3,22 @@
  * Centralized exports for all application state stores.
  */
 
-// Session store - live session UI state
+// Talk store - live talk UI state
 export {
-  useSessionStore,
-  type SessionUIState,
-  type SessionUIActions,
-  type SessionStore,
+  useTalkStore,
+  type TalkUIState,
+  type TalkUIActions,
+  type TalkStore,
   type ParticipantConnectionStatus,
   // Selectors
-  selectIsSessionActive,
-  selectIsSessionPaused,
-  selectCanStartSession,
+  selectIsTalkActive,
+  selectIsTalkPaused,
+  selectCanStartTalk,
   selectTimeRemainingPercent,
   selectDominantSpeaker,
   selectAllParticipantsConnected,
   selectCurrentSpeaker,
-} from './session-store';
+} from './talk-store';
 
 // Intervention store - intervention queue management
 export {

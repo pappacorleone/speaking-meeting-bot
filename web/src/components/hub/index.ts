@@ -1,3 +1,3 @@
-export { ActiveSessionCard } from "./active-session-card";
-export { RecentSessionsList } from "./recent-sessions-list";
+export { ActiveTalkCard } from "./active-talk-card";
+export { RecentTalksList } from "./recent-talks-list";
 export { SearchBar } from "./search-bar";

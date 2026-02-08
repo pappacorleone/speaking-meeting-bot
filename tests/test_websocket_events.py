@@ -1,6 +1,6 @@
-"""Integration tests for WebSocket session events.
+"""Integration tests for WebSocket talk events.
 
-Tests the WebSocket endpoint for real-time session updates:
+Tests the WebSocket endpoint for real-time talk updates:
 - Connection management
 - Event broadcasting (balance_update, intervention, etc.)
 - Ping/pong heartbeat
@@ -13,21 +13,21 @@ from unittest.mock import patch, MagicMock
 import pytest
 import pytest_asyncio
 
-# Test session data for WebSocket tests
+# Test talk data for WebSocket tests
 TEST_API_KEY = "test-api-key"
 HEADERS = {"x-meeting-baas-api-key": TEST_API_KEY}
 
 
-class TestWebSocketSessionEvents:
-    """Tests for WebSocket session events endpoint."""
+class TestWebSocketTalkEvents:
+    """Tests for WebSocket talk events endpoint."""
 
     @pytest_asyncio.fixture
-    async def test_session(self):
-        """Create a test session in the store."""
-        from core.session_store import create_session
+    async def test_talk(self):
+        """Create a test talk in the store."""
+        from core.talk_store import create_talk
         from app.models import (
-            Session,
-            SessionStatus,
+            Talk,
+            TalkStatus,
             Platform,
             Participant,
             FacilitatorConfig,
@@ -35,9 +35,9 @@ class TestWebSocketSessionEvents:
         )
         from datetime import datetime
 
-        session = Session(
-            id="test-session-123",
-            status=SessionStatus.IN_PROGRESS,
+        talk = Talk(
+            id="test-talk-123",
+            status=TalkStatus.IN_PROGRESS,
             goal="Test goal for WebSocket testing",
             participants=[
                 Participant(
@@ -65,12 +65,12 @@ class TestWebSocketSessionEvents:
             created_at=datetime.utcnow(),
         )
 
-        create_session(session)
-        return session.id
+        create_talk(talk)
+        return talk.id
 
     @pytest.mark.asyncio
-    async def test_websocket_connection(self, test_session):
-        """Test WebSocket connection to session events."""
+    async def test_websocket_connection(self, test_talk):
+        """Test WebSocket connection to talk events."""
         with patch("config.validation.run_startup_validation"):
             from app.main import create_app
             from httpx import ASGITransport, AsyncClient
@@ -80,10 +80,10 @@ class TestWebSocketSessionEvents:
             app = create_app()
 
             async with aconnect_ws(
-                f"http://test/sessions/{test_session}/events",
+                f"http://test/talks/{test_talk}/events",
                 app,
             ) as ws:
-                # Should receive initial session state
+                # Should receive initial talk state
                 message = await asyncio.wait_for(ws.receive_json(), timeout=5.0)
 
                 assert message["type"] == "session_state"
@@ -95,7 +95,7 @@ class TestWebSocketSessionEvents:
                 assert message["data"]["aiStatus"] == "listening"
 
     @pytest.mark.asyncio
-    async def test_websocket_ping_pong(self, test_session):
+    async def test_websocket_ping_pong(self, test_talk):
         """Test WebSocket ping/pong heartbeat."""
         with patch("config.validation.run_startup_validation"):
             from app.main import create_app
@@ -104,7 +104,7 @@ class TestWebSocketSessionEvents:
             app = create_app()
 
             async with aconnect_ws(
-                f"http://test/sessions/{test_session}/events",
+                f"http://test/talks/{test_talk}/events",
                 app,
             ) as ws:
                 # Receive initial state
@@ -118,7 +118,7 @@ class TestWebSocketSessionEvents:
                 assert message["type"] == "pong"
 
     @pytest.mark.asyncio
-    async def test_websocket_update_settings(self, test_session):
+    async def test_websocket_update_settings(self, test_talk):
         """Test update_settings payload uses data envelope."""
         with patch("config.validation.run_startup_validation"):
             from app.main import create_app
@@ -127,7 +127,7 @@ class TestWebSocketSessionEvents:
             app = create_app()
 
             async with aconnect_ws(
-                f"http://test/sessions/{test_session}/events",
+                f"http://test/talks/{test_talk}/events",
                 app,
             ) as ws:
                 # Receive initial state
@@ -147,8 +147,8 @@ class TestWebSocketSessionEvents:
                 assert message["data"] == settings_payload
 
     @pytest.mark.asyncio
-    async def test_websocket_nonexistent_session(self):
-        """Test WebSocket connection to non-existent session."""
+    async def test_websocket_nonexistent_talk(self):
+        """Test WebSocket connection to non-existent talk."""
         with patch("config.validation.run_startup_validation"):
             from app.main import create_app
             from httpx_ws import aconnect_ws
@@ -159,7 +159,7 @@ class TestWebSocketSessionEvents:
             # Should disconnect with 4004 code (not found)
             with pytest.raises(WebSocketDisconnect) as exc_info:
                 async with aconnect_ws(
-                    "http://test/sessions/nonexistent/events",
+                    "http://test/talks/nonexistent/events",
                     app,
                 ) as ws:
                     await ws.receive_json()
@@ -173,15 +173,15 @@ class TestBalanceUpdateEvents:
     @pytest.mark.asyncio
     async def test_balance_update_broadcast(self):
         """Test broadcasting balance update events."""
-        from core.session_store import (
-            create_session,
+        from core.talk_store import (
+            create_talk,
             register_event_connection,
-            broadcast_session_event,
-            SESSION_EVENTS,
+            broadcast_talk_event,
+            TALK_EVENTS,
         )
         from app.models import (
-            Session,
-            SessionStatus,
+            Talk,
+            TalkStatus,
             Platform,
             Participant,
             FacilitatorConfig,
@@ -190,10 +190,10 @@ class TestBalanceUpdateEvents:
         from datetime import datetime
         from unittest.mock import AsyncMock
 
-        # Create a session
-        session = Session(
-            id="balance-test-session",
-            status=SessionStatus.IN_PROGRESS,
+        # Create a talk
+        talk = Talk(
+            id="balance-test-talk",
+            status=TalkStatus.IN_PROGRESS,
             goal="Test balance updates",
             participants=[
                 Participant(
@@ -209,18 +209,18 @@ class TestBalanceUpdateEvents:
             invite_token="test-token",
             created_at=datetime.utcnow(),
         )
-        create_session(session)
+        create_talk(talk)
 
         # Create mock WebSocket
         mock_ws = AsyncMock()
         mock_ws.send_json = AsyncMock()
 
         # Register the mock connection
-        register_event_connection(session.id, mock_ws)
+        register_event_connection(talk.id, mock_ws)
 
         # Broadcast balance update
-        await broadcast_session_event(
-            session.id,
+        await broadcast_talk_event(
+            talk.id,
             "balance_update",
             {
                 "participantA": {"id": "p1", "name": "Alice", "percentage": 60},
@@ -242,14 +242,14 @@ class TestInterventionEvents:
     @pytest.mark.asyncio
     async def test_intervention_event_broadcast(self):
         """Test broadcasting intervention events."""
-        from core.session_store import (
-            create_session,
+        from core.talk_store import (
+            create_talk,
             register_event_connection,
-            broadcast_session_event,
+            broadcast_talk_event,
         )
         from app.models import (
-            Session,
-            SessionStatus,
+            Talk,
+            TalkStatus,
             Platform,
             Participant,
             FacilitatorConfig,
@@ -258,10 +258,10 @@ class TestInterventionEvents:
         from datetime import datetime
         from unittest.mock import AsyncMock
 
-        # Create a session
-        session = Session(
-            id="intervention-test-session",
-            status=SessionStatus.IN_PROGRESS,
+        # Create a talk
+        talk = Talk(
+            id="intervention-test-talk",
+            status=TalkStatus.IN_PROGRESS,
             goal="Test intervention events",
             participants=[
                 Participant(
@@ -277,18 +277,18 @@ class TestInterventionEvents:
             invite_token="test-token",
             created_at=datetime.utcnow(),
         )
-        create_session(session)
+        create_talk(talk)
 
         # Create mock WebSocket
         mock_ws = AsyncMock()
         mock_ws.send_json = AsyncMock()
 
         # Register connection
-        register_event_connection(session.id, mock_ws)
+        register_event_connection(talk.id, mock_ws)
 
         # Broadcast intervention
-        await broadcast_session_event(
-            session.id,
+        await broadcast_talk_event(
+            talk.id,
             "intervention",
             {
                 "id": "intervention-1",
@@ -307,20 +307,20 @@ class TestInterventionEvents:
         assert call_args["data"]["priority"] == "medium"
 
 
-class TestSessionStateEvents:
-    """Tests for session state change events."""
+class TestTalkStateEvents:
+    """Tests for talk state change events."""
 
     @pytest.mark.asyncio
-    async def test_session_pause_event(self):
-        """Test session pause state event."""
-        from core.session_store import (
-            create_session,
+    async def test_talk_pause_event(self):
+        """Test talk pause state event."""
+        from core.talk_store import (
+            create_talk,
             register_event_connection,
-            broadcast_session_event,
+            broadcast_talk_event,
         )
         from app.models import (
-            Session,
-            SessionStatus,
+            Talk,
+            TalkStatus,
             Platform,
             Participant,
             FacilitatorConfig,
@@ -329,9 +329,9 @@ class TestSessionStateEvents:
         from datetime import datetime
         from unittest.mock import AsyncMock
 
-        session = Session(
-            id="pause-test-session",
-            status=SessionStatus.IN_PROGRESS,
+        talk = Talk(
+            id="pause-test-talk",
+            status=TalkStatus.IN_PROGRESS,
             goal="Test pause events",
             participants=[
                 Participant(
@@ -344,15 +344,15 @@ class TestSessionStateEvents:
             invite_token="test-token",
             created_at=datetime.utcnow(),
         )
-        create_session(session)
+        create_talk(talk)
 
         mock_ws = AsyncMock()
         mock_ws.send_json = AsyncMock()
-        register_event_connection(session.id, mock_ws)
+        register_event_connection(talk.id, mock_ws)
 
         # Broadcast pause event
-        await broadcast_session_event(
-            session.id,
+        await broadcast_talk_event(
+            talk.id,
             "session_state",
             {"facilitatorPaused": True},
         )

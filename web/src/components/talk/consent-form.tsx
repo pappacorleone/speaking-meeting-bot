@@ -27,7 +27,7 @@ interface ConsentFormProps {
 }
 
 /**
- * ConsentForm handles partner consent for joining a facilitated session.
+ * ConsentForm handles partner consent for joining a facilitated talk.
  * Displays session details and AI consent explanation before accepting.
  */
 export function ConsentForm({
@@ -85,7 +85,7 @@ export function ConsentForm({
     <div className={cn("w-full max-w-lg", className)}>
       <Card>
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Session Details</CardTitle>
+          <CardTitle className="text-2xl">Talk Details</CardTitle>
           <CardDescription>
             {inviterName} has invited you to a facilitated conversation
           </CardDescription>
@@ -200,7 +200,7 @@ export function ConsentForm({
           <div className="flex justify-center">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary/10 px-3 py-1 text-xs font-medium text-secondary">
               <Lock className="h-3 w-3" />
-              End-to-End Encrypted Session
+              End-to-End Encrypted Talk
             </span>
           </div>
 

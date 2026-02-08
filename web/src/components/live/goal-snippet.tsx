@@ -1,7 +1,7 @@
 /**
  * Goal Snippet Component
  *
- * Displays the session goal in a compact format for the live session view.
+ * Displays the talk goal in a compact format for the live talk view.
  * Shows goal text with optional drift warning indicator.
  */
 
@@ -101,7 +101,7 @@ export function GoalSnippet({
       {/* Header row */}
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
-          Session Goal
+          Talk Goal
         </span>
         <span
           className={cn(

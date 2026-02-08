@@ -1,16 +1,16 @@
 "use client";
 
 import { useWizardFormData, useWizardNavigation } from "./wizard-provider";
-import { PersonaSelector } from "@/components/session/persona-selector";
-import { ParameterToggles } from "@/components/session/parameter-toggles";
+import { PersonaSelector } from "@/components/talk/persona-selector";
+import { ParameterToggles } from "@/components/talk/parameter-toggles";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, ArrowLeft } from "lucide-react";
-import type { FacilitatorPersona, FacilitatorConfig } from "@/types/session";
+import type { FacilitatorPersona, FacilitatorConfig } from "@/types/talk";
 
 /**
  * Step 2: Facilitator Calibration
  *
- * Third step of the session creation wizard where users configure:
+ * Third step of the talk creation wizard where users configure:
  * - AI facilitator persona (Neutral Mediator, Deep Empath, Decision Catalyst)
  * - Agent parameters (Interrupt Authority, Direct Inquiry, Silence Detection)
  *
@@ -88,7 +88,7 @@ export function StepFacilitator() {
 
           {/* Helper text */}
           <p className="text-xs text-muted-foreground mt-4">
-            These settings can be adjusted during the session via the
+            These settings can be adjusted during the talk via the
             facilitator settings panel.
           </p>
         </div>

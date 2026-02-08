@@ -4,17 +4,17 @@ import { useWizardFormData, useWizardNavigation } from "./wizard-provider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowRight, ArrowLeft, Pencil } from "lucide-react";
-import type { FacilitatorPersona } from "@/types/session";
+import type { FacilitatorPersona } from "@/types/talk";
 
 /**
  * Step 3: Review & Connect
  *
- * Fourth step of the session creation wizard where users review all
- * entered information before finalizing the session setup.
+ * Fourth step of the talk creation wizard where users review all
+ * entered information before finalizing the talk setup.
  *
  * Displays summary of:
  * - Partner name
- * - Session goal
+ * - Talk goal
  * - Selected facilitator persona
  * - Duration and schedule (if set)
  *

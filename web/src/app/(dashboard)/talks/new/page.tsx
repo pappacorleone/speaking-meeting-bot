@@ -10,9 +10,9 @@ import {
   StepFacilitator,
   StepReview,
   StepLaunch,
-} from "@/components/session/wizard";
-import { createSession } from "@/lib/api/sessions";
-import type { CreateSessionRequest } from "@/lib/api/types";
+} from "@/components/talk/wizard";
+import { createTalk } from "@/lib/api/talks";
+import type { CreateTalkRequest } from "@/lib/api/types";
 import { Card } from "@/components/ui/card";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 
@@ -101,7 +101,7 @@ function ErrorAlert({ message }: { message: string }) {
       <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
       <div className="flex-1">
         <p className="text-sm text-destructive font-medium">
-          Failed to create session
+          Failed to create talk
         </p>
         <p className="text-sm text-destructive/80 mt-1">{message}</p>
       </div>
@@ -109,8 +109,8 @@ function ErrorAlert({ message }: { message: string }) {
   );
 }
 
-// Form data type for session creation
-interface SessionFormData {
+// Form data type for talk creation
+interface TalkFormData {
   partnerName: string;
   relationshipContext: string;
   goal: string;
@@ -128,10 +128,10 @@ interface SessionFormData {
 
 // Wrapper component that has access to wizard context
 interface WizardContentWithSubmitProps {
-  onCreateSession: (formData: SessionFormData) => Promise<void>;
+  onCreateTalk: (formData: TalkFormData) => Promise<void>;
 }
 
-function WizardContentWithSubmit({ onCreateSession }: WizardContentWithSubmitProps) {
+function WizardContentWithSubmit({ onCreateTalk }: WizardContentWithSubmitProps) {
   const { currentStep, formData, setSubmitting, isSubmitting, validateStep } = useWizard();
   const [error, setError] = useState<string | null>(null);
 
@@ -153,14 +153,14 @@ function WizardContentWithSubmit({ onCreateSession }: WizardContentWithSubmitPro
     setSubmitting(true);
 
     try {
-      await onCreateSession(formData);
+      await onCreateTalk(formData);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "An unexpected error occurred";
       setError(message);
       setSubmitting(false);
     }
-  }, [formData, onCreateSession, setSubmitting, validateStep]);
+  }, [formData, onCreateTalk, setSubmitting, validateStep]);
 
   // Render appropriate step
   const renderStep = () => {
@@ -174,7 +174,7 @@ function WizardContentWithSubmit({ onCreateSession }: WizardContentWithSubmitPro
       case 3:
         return <StepReview />;
       case 4:
-        return <StepLaunch onCreateSession={handleSubmit} isSubmitting={isSubmitting} />;
+        return <StepLaunch onCreateTalk={handleSubmit} isSubmitting={isSubmitting} />;
       default:
         return <StepIdentity />;
     }
@@ -189,12 +189,12 @@ function WizardContentWithSubmit({ onCreateSession }: WizardContentWithSubmitPro
 }
 
 // Main page component
-export default function NewSessionPage() {
+export default function NewTalkPage() {
   const router = useRouter();
 
-  // Handle session creation
-  const handleCreateSession = useCallback(
-    async (formData: SessionFormData) => {
+  // Handle talk creation
+  const handleCreateTalk = useCallback(
+    async (formData: TalkFormData) => {
       // Get API key from environment or storage
       // For now, we'll use a placeholder - in production this would come from auth
       const apiKey =
@@ -203,7 +203,7 @@ export default function NewSessionPage() {
         "";
 
       // Transform wizard form data to API request format
-      const request: CreateSessionRequest = {
+      const request: CreateTalkRequest = {
         goal: formData.goal,
         relationship_context: formData.relationshipContext,
         partner_name: formData.partnerName,
@@ -221,12 +221,12 @@ export default function NewSessionPage() {
         skip_consent: process.env.NODE_ENV === 'development',
       };
 
-      // Create session via API
-      const response = await createSession(request, apiKey);
+      // Create talk via API
+      const response = await createTalk(request, apiKey);
 
       // Redirect to the session detail page
-      const sessionId = response.id || response.session_id;
-      router.push(`/sessions/${sessionId}`);
+      const talkId = response.id || response.talk_id;
+      router.push(`/talks/${talkId}`);
     },
     [router]
   );
@@ -237,7 +237,7 @@ export default function NewSessionPage() {
         {/* Page header */}
         <div className="mb-8">
           <h1 className="text-2xl font-serif text-foreground sr-only">
-            Create New Session
+            Create New Talk
           </h1>
         </div>
 
@@ -246,7 +246,7 @@ export default function NewSessionPage() {
           <Card className="p-6 md:p-8">
             <WizardProgress />
             <MobileProgress />
-            <WizardContentWithSubmit onCreateSession={handleCreateSession} />
+            <WizardContentWithSubmit onCreateTalk={handleCreateTalk} />
           </Card>
         </WizardProvider>
       </div>

@@ -3,7 +3,7 @@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import type { FacilitatorConfig } from "@/types/session";
+import type { FacilitatorConfig } from "@/types/talk";
 
 /**
  * Parameter configuration for display

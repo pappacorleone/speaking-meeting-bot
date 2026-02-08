@@ -1,17 +1,17 @@
 /**
- * WebSocket hook for real-time session events.
+ * WebSocket hook for real-time talk events.
  * Provides connection management with automatic reconnection and event routing.
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { getWebSocketUrl } from '@/lib/api/client';
 import type {
-  SessionEvent,
-  SessionEventHandlers,
+  TalkEvent,
+  TalkEventHandlers,
   WebSocketConnectionState,
   BalanceUpdateData,
   TimeRemainingData,
-  SessionStateData,
+  TalkStateData,
   ParticipantStatusData,
   AIStatusData,
   GoalDriftData,
@@ -36,16 +36,16 @@ const HEARTBEAT_INTERVAL = 30000;
 // Types
 // =============================================================================
 
-export interface UseSessionEventsOptions {
-  /** Whether to automatically connect when sessionId is provided */
+export interface UseTalkEventsOptions {
+  /** Whether to automatically connect when talkId is provided */
   autoConnect?: boolean;
   /** Event handlers for different event types */
-  handlers?: SessionEventHandlers;
+  handlers?: TalkEventHandlers;
   /** Maximum reconnection attempts (default: 5) */
   maxReconnectAttempts?: number;
 }
 
-export interface UseSessionEventsReturn {
+export interface UseTalkEventsReturn {
   /** Current connection state */
   connectionState: WebSocketConnectionState;
   /** Whether the WebSocket is connected */
@@ -70,10 +70,10 @@ export interface UseSessionEventsReturn {
 // Hook Implementation
 // =============================================================================
 
-export function useSessionEvents(
-  sessionId: string | null,
-  options: UseSessionEventsOptions = {}
-): UseSessionEventsReturn {
+export function useTalkEvents(
+  talkId: string | null,
+  options: UseTalkEventsOptions = {}
+): UseTalkEventsReturn {
   const {
     autoConnect = true,
     handlers = {},
@@ -99,7 +99,7 @@ export function useSessionEvents(
   // Event Routing
   // -------------------------------------------------------------------------
 
-  const routeEvent = useCallback((event: SessionEvent) => {
+  const routeEvent = useCallback((event: TalkEvent) => {
     const currentHandlers = handlersRef.current;
 
     switch (event.type) {
@@ -110,7 +110,7 @@ export function useSessionEvents(
         currentHandlers.onTimeRemaining?.(event.data as TimeRemainingData);
         break;
       case 'session_state':
-        currentHandlers.onSessionState?.(event.data as SessionStateData);
+        currentHandlers.onTalkState?.(event.data as TalkStateData);
         break;
       case 'intervention':
         currentHandlers.onIntervention?.(event.data as Intervention);
@@ -131,7 +131,7 @@ export function useSessionEvents(
         currentHandlers.onError?.(event.data as ErrorData);
         break;
       default:
-        console.warn('[useSessionEvents] Unknown event type:', event.type);
+        console.warn('[useTalkEvents] Unknown event type:', event.type);
     }
   }, []);
 
@@ -189,7 +189,7 @@ export function useSessionEvents(
     setReconnectCount(reconnectAttemptRef.current);
 
     console.log(
-      `[useSessionEvents] Reconnecting in ${delay}ms (attempt ${reconnectAttemptRef.current}/${maxReconnectAttempts})`
+      `[useTalkEvents] Reconnecting in ${delay}ms (attempt ${reconnectAttemptRef.current}/${maxReconnectAttempts})`
     );
 
     reconnectTimeoutRef.current = setTimeout(() => {
@@ -199,8 +199,8 @@ export function useSessionEvents(
   }, [maxReconnectAttempts]);
 
   const connectInternal = useCallback(() => {
-    if (!sessionId) {
-      console.warn('[useSessionEvents] Cannot connect: no sessionId provided');
+    if (!talkId) {
+      console.warn('[useTalkEvents] Cannot connect: no talkId provided');
       return;
     }
 
@@ -213,15 +213,15 @@ export function useSessionEvents(
     setConnectionState('connecting');
     setError(null);
 
-    const wsUrl = getWebSocketUrl(`/sessions/${sessionId}/events`);
-    console.log('[useSessionEvents] Connecting to:', wsUrl);
+    const wsUrl = getWebSocketUrl(`/talks/${talkId}/events`);
+    console.log('[useTalkEvents] Connecting to:', wsUrl);
 
     try {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('[useSessionEvents] Connected');
+        console.log('[useTalkEvents] Connected');
         setConnectionState('connected');
         setError(null);
         reconnectAttemptRef.current = 0;
@@ -235,11 +235,11 @@ export function useSessionEvents(
       };
 
       ws.onclose = (event) => {
-        console.log('[useSessionEvents] Connection closed:', event.code, event.reason);
+        console.log('[useTalkEvents] Connection closed:', event.code, event.reason);
         stopHeartbeat();
 
-        // Don't reconnect on normal closure (1000) or if sessionId is null
-        if (event.code === 1000 || !sessionId) {
+        // Don't reconnect on normal closure (1000) or if talkId is null
+        if (event.code === 1000 || !talkId) {
           setConnectionState('disconnected');
           handlersRef.current.onDisconnect?.(event.reason || 'Connection closed');
           return;
@@ -248,8 +248,8 @@ export function useSessionEvents(
         // Handle session not found (custom code 4004)
         if (event.code === 4004) {
           setConnectionState('error');
-          setError('Session not found');
-          handlersRef.current.onDisconnect?.('Session not found');
+          setError('Talk not found');
+          handlersRef.current.onDisconnect?.('Talk not found');
           return;
         }
 
@@ -259,34 +259,34 @@ export function useSessionEvents(
       };
 
       ws.onerror = (event) => {
-        console.error('[useSessionEvents] WebSocket error:', event);
+        console.error('[useTalkEvents] WebSocket error:', event);
         setError('Connection error');
       };
 
       ws.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data) as SessionEvent;
+          const data = JSON.parse(event.data) as TalkEvent;
 
           // Handle pong response (ignore, just for keepalive)
-          if (data.type === 'pong' as SessionEvent['type']) {
+          if (data.type === 'pong' as TalkEvent['type']) {
             return;
           }
 
           routeEvent(data);
         } catch (err) {
-          console.error('[useSessionEvents] Failed to parse message:', err, event.data);
+          console.error('[useTalkEvents] Failed to parse message:', err, event.data);
         }
       };
     } catch (err) {
-      console.error('[useSessionEvents] Failed to create WebSocket:', err);
+      console.error('[useTalkEvents] Failed to create WebSocket:', err);
       setConnectionState('error');
       setError('Failed to connect');
       scheduleReconnect();
     }
-  }, [sessionId, startHeartbeat, stopHeartbeat, scheduleReconnect, routeEvent]);
+  }, [talkId, startHeartbeat, stopHeartbeat, scheduleReconnect, routeEvent]);
 
   const disconnect = useCallback(() => {
-    console.log('[useSessionEvents] Disconnecting');
+    console.log('[useTalkEvents] Disconnecting');
     clearReconnectTimeout();
     stopHeartbeat();
 
@@ -317,7 +317,7 @@ export function useSessionEvents(
 
   const sendMessage = useCallback((message: object): boolean => {
     if (wsRef.current?.readyState !== WebSocket.OPEN) {
-      console.warn('[useSessionEvents] Cannot send message: not connected');
+      console.warn('[useTalkEvents] Cannot send message: not connected');
       return false;
     }
 
@@ -325,7 +325,7 @@ export function useSessionEvents(
       wsRef.current.send(JSON.stringify(message));
       return true;
     } catch (err) {
-      console.error('[useSessionEvents] Failed to send message:', err);
+      console.error('[useTalkEvents] Failed to send message:', err);
       return false;
     }
   }, []);
@@ -349,14 +349,14 @@ export function useSessionEvents(
   // -------------------------------------------------------------------------
 
   useEffect(() => {
-    if (autoConnect && sessionId) {
+    if (autoConnect && talkId) {
       connect();
     }
 
     return () => {
       disconnect();
     };
-  }, [sessionId, autoConnect]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [talkId, autoConnect]); // eslint-disable-line react-hooks/exhaustive-deps
   // Note: connect and disconnect are intentionally omitted to prevent reconnection loops
 
   // -------------------------------------------------------------------------

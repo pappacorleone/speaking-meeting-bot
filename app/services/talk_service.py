@@ -1,6 +1,6 @@
-"""Session service for Diadi facilitation sessions.
+"""Talk service for Diadi facilitation talks.
 
-Handles session lifecycle, state transitions, and business logic.
+Handles talk lifecycle, state transitions, and business logic.
 """
 
 import json
@@ -15,36 +15,36 @@ from app.models import (
     FacilitatorConfig,
     Participant,
     Platform,
-    Session,
-    SessionStatus,
+    Talk,
+    TalkStatus,
 )
-from core.session_store import (
+from core.talk_store import (
     close_event_connections,
-    create_session as store_create_session,
-    get_session as store_get_session,
-    get_session_by_invite_token as store_get_session_by_token,
+    create_talk as store_create_talk,
+    get_talk as store_get_talk,
+    get_talk_by_invite_token as store_get_talk_by_token,
     get_summary,
-    list_sessions as store_list_sessions,
+    list_talks as store_list_talks,
     get_balance_snapshot,
     get_intervention_history,
-    pause_session_timer,
-    resume_session_timer,
+    pause_talk_timer,
+    resume_talk_timer,
     store_balance_metrics,
     start_balance_tracker,
     start_intervention_engine,
-    start_session_timer,
+    start_talk_timer,
     stop_balance_tracker,
     stop_intervention_engine,
-    stop_session_timer,
-    update_session as store_update_session,
+    stop_talk_timer,
+    update_talk as store_update_talk,
 )
 
 ALLOWED_DURATIONS = {15, 30, 45, 60}
 MEET_URL_PATTERN = re.compile(r"^https://meet\.google\.com/[a-z0-9-]+(?:\?.*)?$", re.IGNORECASE)
 
 
-class SessionService:
-    """Manages session lifecycle and state transitions."""
+class TalkService:
+    """Manages talk lifecycle and state transitions."""
 
     def _normalize_meeting_url(self, meeting_url: Optional[str]) -> Optional[str]:
         if meeting_url is None:
@@ -72,31 +72,31 @@ class SessionService:
 
         return normalized
 
-    def _build_session_state_payload(
+    def _build_talk_state_payload(
         self,
-        session: Session,
+        talk: Talk,
         ai_status: Optional[str] = None,
         facilitator_paused: Optional[bool] = None,
     ) -> Dict[str, Any]:
         paused = facilitator_paused
         if paused is None:
-            paused = session.status == SessionStatus.PAUSED
+            paused = talk.status == TalkStatus.PAUSED
 
-        status_value = session.status.value
+        status_value = talk.status.value
         if ai_status is None:
-            if status_value == SessionStatus.ENDING.value:
+            if status_value == TalkStatus.ENDING.value:
                 ai_status = "ending"
             elif paused:
                 ai_status = "paused"
-            elif status_value == SessionStatus.IN_PROGRESS.value:
+            elif status_value == TalkStatus.IN_PROGRESS.value:
                 ai_status = "listening"
             else:
                 ai_status = "idle"
 
         return {
             "status": status_value,
-            "goal": session.goal,
-            "durationMinutes": session.duration_minutes,
+            "goal": talk.goal,
+            "durationMinutes": talk.duration_minutes,
             "participants": [
                 {
                     "id": p.id,
@@ -104,21 +104,21 @@ class SessionService:
                     "role": p.role,
                     "consented": p.consented,
                 }
-                for p in session.participants
+                for p in talk.participants
             ],
             "facilitatorConfig": {
-                "persona": session.facilitator.persona.value,
-                "interruptAuthority": session.facilitator.interrupt_authority,
-                "directInquiry": session.facilitator.direct_inquiry,
-                "silenceDetection": session.facilitator.silence_detection,
+                "persona": talk.facilitator.persona.value,
+                "interruptAuthority": talk.facilitator.interrupt_authority,
+                "directInquiry": talk.facilitator.direct_inquiry,
+                "silenceDetection": talk.facilitator.silence_detection,
             },
-            "botId": session.bot_id,
-            "clientId": session.client_id,
+            "botId": talk.bot_id,
+            "clientId": talk.client_id,
             "facilitatorPaused": paused,
             "aiStatus": ai_status,
         }
 
-    async def create_session(
+    async def create_talk(
         self,
         creator_name: str,
         partner_name: str,
@@ -130,28 +130,29 @@ class SessionService:
         scheduled_at: Optional[str] = None,
         meeting_url: Optional[str] = None,
         skip_consent: bool = False,
-    ) -> Session:
-        """Create a new session in pending_consent status (or ready in dev mode).
+        owner_session_id: Optional[str] = None,
+    ) -> Talk:
+        """Create a new talk in pending_consent status (or ready in dev mode).
 
         Args:
-            creator_name: Name of the session creator.
+            creator_name: Name of the talk creator.
             partner_name: Name of the invited partner.
-            goal: The session goal (max 200 chars).
+            goal: The talk goal (max 200 chars).
             relationship_context: Context about the relationship.
             facilitator_config: Optional facilitator configuration.
-            duration_minutes: Session duration in minutes.
+            duration_minutes: Talk duration in minutes.
             platform: Meeting platform to use.
             scheduled_at: Optional scheduled time (ISO format).
             meeting_url: Optional meeting URL for external platforms.
-            skip_consent: Skip partner consent for testing (creates session in ready status).
+            skip_consent: Skip partner consent for testing (creates talk in ready status).
 
         Returns:
-            The created Session object.
+            The created Talk object.
         """
         self._validate_duration(duration_minutes)
         meeting_url = self._validate_meeting_url(platform, meeting_url)
 
-        session_id = secrets.token_urlsafe(16)
+        talk_id = secrets.token_urlsafe(16)
         invite_token = secrets.token_urlsafe(32)
         creator_id = secrets.token_urlsafe(8)
 
@@ -179,14 +180,14 @@ class SessionService:
                     consented=True,  # Test partner auto-consents
                 )
             )
-            initial_status = SessionStatus.READY
-            logger.info(f"Skipping consent for session {session_id} (dev mode)")
+            initial_status = TalkStatus.READY
+            logger.info(f"Skipping consent for talk {talk_id} (dev mode)")
         else:
-            initial_status = SessionStatus.PENDING_CONSENT
+            initial_status = TalkStatus.PENDING_CONSENT
 
-        session = Session(
-            id=session_id,
-            title=f"Session with {partner_name}",
+        talk = Talk(
+            id=talk_id,
+            title=f"Talk with {partner_name}",
             goal=goal,
             relationship_context=relationship_context,
             partner_name=partner_name,
@@ -199,76 +200,77 @@ class SessionService:
             facilitator=facilitator_config,
             created_at=datetime.utcnow().isoformat(),
             invite_token=invite_token,
+            owner_session_id=owner_session_id,
         )
 
-        store_create_session(session)
-        logger.info(f"Created session {session_id} for {creator_name}")
+        store_create_talk(talk)
+        logger.info(f"Created talk {talk_id} for {creator_name}")
 
-        return session
+        return talk
 
-    def get_session(self, session_id: str) -> Optional[Session]:
-        """Retrieve a session by ID.
+    def get_talk(self, talk_id: str) -> Optional[Talk]:
+        """Retrieve a talk by ID.
 
         Args:
-            session_id: The unique session identifier.
+            talk_id: The unique talk identifier.
 
         Returns:
-            The Session object if found, None otherwise.
+            The Talk object if found, None otherwise.
         """
-        return store_get_session(session_id)
+        return store_get_talk(talk_id)
 
-    def get_session_by_invite_token(self, invite_token: str) -> Optional[Session]:
-        """Retrieve a session by its invite token.
+    def get_talk_by_invite_token(self, invite_token: str) -> Optional[Talk]:
+        """Retrieve a talk by its invite token.
 
         Args:
             invite_token: The unique invite token.
 
         Returns:
-            The Session object if found, None otherwise.
+            The Talk object if found, None otherwise.
         """
-        return store_get_session_by_token(invite_token)
+        return store_get_talk_by_token(invite_token)
 
-    def list_sessions(self, status: Optional[str] = None) -> List[Session]:
-        """List all sessions, optionally filtered by status.
+    def list_talks(self, status: Optional[str] = None) -> List[Talk]:
+        """List all talks, optionally filtered by status.
 
         Args:
             status: Optional status filter (e.g., "draft", "in_progress").
 
         Returns:
-            List of Session objects matching the filter.
+            List of Talk objects matching the filter.
         """
-        return store_list_sessions(status)
+        return store_list_talks(status)
 
     async def record_consent(
         self,
-        session_id: str,
+        talk_id: str,
         invite_token: str,
         invitee_name: str,
         consented: bool,
-    ) -> Session:
+    ) -> Talk:
         """Record partner consent and transition status if both consented.
 
         Args:
-            session_id: The session identifier.
+            talk_id: The talk identifier.
             invite_token: The invite token for verification.
             invitee_name: Name of the invitee.
             consented: Whether the invitee consented.
 
         Returns:
-            The updated Session object.
+            The updated Talk object.
 
         Raises:
-            ValueError: If session not found or invalid token.
+            ValueError: If talk not found or invalid token.
         """
-        session = store_get_session(session_id)
-        if not session:
-            raise ValueError("Session not found")
-        if session.invite_token != invite_token:
+        talk = store_get_talk(talk_id)
+        if not talk:
+            raise ValueError("Talk not found")
+        if talk.invite_token != invite_token:
             raise ValueError("Invalid invite token")
 
         if consented:
             invitee_id = secrets.token_urlsafe(8)
-            session.participants.append(
+            talk.participants.append(
                 Participant(
                     id=invitee_id,
                     name=invitee_name,
@@ -277,28 +279,28 @@ class SessionService:
                 )
             )
             # Check if both consented
-            if all(p.consented for p in session.participants):
-                session.status = SessionStatus.READY
-                logger.info(f"Session {session_id} is ready - both parties consented")
+            if all(p.consented for p in talk.participants):
+                talk.status = TalkStatus.READY
+                logger.info(f"Talk {talk_id} is ready - both parties consented")
         else:
             # Decline is private - don't notify creator
-            session.status = SessionStatus.ARCHIVED
-            logger.info(f"Session {session_id} archived - partner declined")
+            talk.status = TalkStatus.ARCHIVED
+            logger.info(f"Talk {talk_id} archived - partner declined")
 
-        store_update_session(session_id, session)
-        return session
+        store_update_talk(talk_id, talk)
+        return talk
 
-    async def start_session(
+    async def start_talk(
         self,
-        session_id: str,
+        talk_id: str,
         meeting_url: Optional[str],
         api_key: str,
         websocket_base_url: str,
     ) -> Dict[str, Any]:
-        """Start the session: spawn Pipecat, call MeetingBaas.
+        """Start the talk: spawn Pipecat, call MeetingBaas.
 
         Args:
-            session_id: The session identifier.
+            talk_id: The talk identifier.
             meeting_url: Optional meeting platform URL (required for external platforms).
             api_key: The MeetingBaas API key for bot creation.
             websocket_base_url: Base URL for WebSocket connections.
@@ -307,23 +309,23 @@ class SessionService:
             Dict with status, bot_id, client_id, and event_url.
 
         Raises:
-            ValueError: If session not found or not ready.
+            ValueError: If talk not found or not ready.
             RuntimeError: If bot creation fails.
         """
-        print(f"[DEBUG start_session] websocket_base_url: {websocket_base_url}")
-        print(f"[DEBUG start_session] api_key: {api_key[:15]}..." if api_key else "api_key: None")
-        session = store_get_session(session_id)
-        if not session:
-            raise ValueError("Session not found")
-        if session.status != SessionStatus.READY:
+        print(f"[DEBUG start_talk] websocket_base_url: {websocket_base_url}")
+        print(f"[DEBUG start_talk] api_key: {api_key[:15]}..." if api_key else "api_key: None")
+        talk = store_get_talk(talk_id)
+        if not talk:
+            raise ValueError("Talk not found")
+        if talk.status != TalkStatus.READY:
             raise ValueError(
-                f"Session not ready to start (current status: {session.status.value})"
+                f"Talk not ready to start (current status: {talk.status.value})"
             )
-        if session.platform == Platform.DIADI:
+        if talk.platform == Platform.DIADI:
             raise ValueError("Diadi platform is coming soon")
 
-        meeting_url = meeting_url or session.meeting_url
-        meeting_url = self._validate_meeting_url(session.platform, meeting_url)
+        meeting_url = meeting_url or talk.meeting_url
+        meeting_url = self._validate_meeting_url(talk.platform, meeting_url)
 
         # Import dependencies here to avoid circular imports
         from config.persona_utils import persona_manager
@@ -332,11 +334,11 @@ class SessionService:
         from core.process import start_pipecat_process
         from scripts.meetingbaas_api import create_meeting_bot
 
-        # Generate unique client ID for this session
+        # Generate unique client ID for this talk
         client_id = secrets.token_urlsafe(16)
 
         # Load persona based on facilitator configuration
-        persona_name = session.facilitator.persona.value
+        persona_name = talk.facilitator.persona.value
         try:
             persona_data = persona_manager.get_persona(persona_name)
             persona_data["is_temporary"] = False
@@ -352,7 +354,7 @@ class SessionService:
                 persona_data = persona_manager.get_persona("baas_onboarder")
                 persona_data["is_temporary"] = False
 
-        logger.info(f"Loaded persona '{persona_name}' for session {session_id}")
+        logger.info(f"Loaded persona '{persona_name}' for talk {talk_id}")
 
         # Resolve voice ID if not present
         if not persona_data.get("cartesia_voice_id"):
@@ -363,13 +365,13 @@ class SessionService:
             persona_data["cartesia_voice_id"] = cartesia_voice_id
             logger.info(f"Resolved voice ID for persona: {cartesia_voice_id}")
 
-        # Build entry message with session context
+        # Build entry message with talk context
         entry_message = persona_data.get("entry_message", "")
         if not entry_message:
             display_name = persona_data.get("name", "AI Facilitator")
             entry_message = (
                 f"Hello, I'm {display_name}. "
-                f"I'm here to help facilitate your conversation about: {session.goal}"
+                f"I'm here to help facilitate your conversation about: {talk.goal}"
             )
 
         # Fixed streaming audio frequency for consistency
@@ -401,8 +403,8 @@ class SessionService:
             bot_image=persona_data.get("image"),
             entry_message=entry_message,
             extra={
-                "session_id": session_id,
-                "goal": session.goal,
+                "talk_id": talk_id,
+                "goal": talk.goal,
                 "facilitator_persona": persona_name,
             },
             streaming_audio_frequency=streaming_audio_frequency,
@@ -439,41 +441,41 @@ class SessionService:
         PIPECAT_PROCESSES[client_id] = process
         logger.info(f"Started Pipecat process with PID {process.pid}")
 
-        # Update session state
-        session.status = SessionStatus.IN_PROGRESS
-        session.meeting_url = meeting_url
-        session.bot_id = meetingbaas_bot_id
-        session.client_id = client_id
+        # Update talk state
+        talk.status = TalkStatus.IN_PROGRESS
+        talk.meeting_url = meeting_url
+        talk.bot_id = meetingbaas_bot_id
+        talk.client_id = client_id
 
-        store_update_session(session_id, session)
-        logger.info(f"Session {session_id} started successfully")
+        store_update_talk(talk_id, talk)
+        logger.info(f"Talk {talk_id} started successfully")
 
         # Start time tracking and broadcast initial state
-        start_session_timer(session_id, session.duration_minutes)
-        start_balance_tracker(session)
-        start_intervention_engine(session)
+        start_talk_timer(talk_id, talk.duration_minutes)
+        start_balance_tracker(talk)
+        start_intervention_engine(talk)
         try:
-            from core.session_store import broadcast_session_event
+            from core.talk_store import broadcast_talk_event
 
-            await broadcast_session_event(
-                session_id,
+            await broadcast_talk_event(
+                talk_id,
                 "session_state",
-                self._build_session_state_payload(session),
+                self._build_talk_state_payload(talk),
             )
         except Exception as e:
-            logger.warning(f"Failed to broadcast session start state: {e}")
+            logger.warning(f"Failed to broadcast talk start state: {e}")
 
         return {
-            "status": session.status,
+            "status": talk.status,
             "bot_id": meetingbaas_bot_id,
             "client_id": client_id,
-            "event_url": f"/sessions/{session_id}/events",
+            "event_url": f"/talks/{talk_id}/events",
         }
 
-    async def end_session(self, session_id: str, api_key: str) -> Dict[str, Any]:
-        """End the session, cleanup resources, generate summary.
+    async def end_talk(self, talk_id: str, api_key: str) -> Dict[str, Any]:
+        """End the talk, cleanup resources, generate summary.
 
-        This method handles the full session end lifecycle following the proven
+        This method handles the full talk end lifecycle following the proven
         cleanup order from leave_bot():
         1. Idempotency check (return early if already ended/ending)
         2. Set transitional ENDING status and broadcast
@@ -485,72 +487,72 @@ class SessionService:
         8. Terminate Pipecat process
         9. Clean up in-memory state
         10. Stop timers and trackers
-        11. Update session status to ENDED
+        11. Update talk status to ENDED
         12. Broadcast final session_state event
         13. Generate summary
 
         Args:
-            session_id: The session identifier.
+            talk_id: The talk identifier.
             api_key: The MeetingBaas API key for bot removal.
 
         Returns:
             Dict with status and summary_available flag.
 
         Raises:
-            ValueError: If session not found or not in a state that can be ended.
+            ValueError: If talk not found or not in a state that can be ended.
         """
         import asyncio
 
-        session = store_get_session(session_id)
-        if not session:
-            raise ValueError("Session not found")
+        talk = store_get_talk(talk_id)
+        if not talk:
+            raise ValueError("Talk not found")
 
         # Idempotency: If already ended, return cached result
-        if session.status == SessionStatus.ENDED:
-            logger.info(f"Session {session_id} already ended, returning cached result")
+        if talk.status == TalkStatus.ENDED:
+            logger.info(f"Talk {talk_id} already ended, returning cached result")
             return {
-                "status": session.status,
-                "summary_available": get_summary(session_id) is not None,
+                "status": talk.status,
+                "summary_available": get_summary(talk_id) is not None,
             }
 
         # Idempotency: If already ending, return current status
-        if session.status == SessionStatus.ENDING:
-            logger.warning(f"Session {session_id} is already ending")
+        if talk.status == TalkStatus.ENDING:
+            logger.warning(f"Talk {talk_id} is already ending")
             return {
-                "status": session.status,
+                "status": talk.status,
                 "summary_available": False,
             }
 
-        # Session can be ended from in_progress or paused states
-        if session.status not in [SessionStatus.IN_PROGRESS, SessionStatus.PAUSED]:
+        # Talk can be ended from in_progress or paused states
+        if talk.status not in [TalkStatus.IN_PROGRESS, TalkStatus.PAUSED]:
             raise ValueError(
-                f"Session cannot be ended (current status: {session.status.value})"
+                f"Talk cannot be ended (current status: {talk.status.value})"
             )
 
         # Import dependencies here to avoid circular imports
         from core.connection import MEETING_DETAILS, PIPECAT_PROCESSES, registry
         from core.process import terminate_process_gracefully
         from core.router import router as message_router
-        from core.session_store import broadcast_session_event
+        from core.talk_store import broadcast_talk_event
         from scripts.meetingbaas_api import leave_meeting_bot
 
-        client_id = session.client_id
-        bot_id = session.bot_id
+        client_id = talk.client_id
+        bot_id = talk.bot_id
 
         # =====================================================================
         # STEP 1: Set transitional ENDING status and broadcast
         # =====================================================================
-        session.status = SessionStatus.ENDING
-        store_update_session(session_id, session)
-        logger.info(f"Session {session_id} transitioning to ending status")
+        talk.status = TalkStatus.ENDING
+        store_update_talk(talk_id, talk)
+        logger.info(f"Talk {talk_id} transitioning to ending status")
 
         try:
-            await broadcast_session_event(
-                session_id,
+            await broadcast_talk_event(
+                talk_id,
                 "session_state",
                 {
-                    **self._build_session_state_payload(
-                        session, ai_status="ending", facilitator_paused=True
+                    **self._build_talk_state_payload(
+                        talk, ai_status="ending", facilitator_paused=True
                     ),
                 },
             )
@@ -560,10 +562,10 @@ class SessionService:
         # =====================================================================
         # STEP 2: Capture metrics BEFORE cleanup (while trackers still active)
         # =====================================================================
-        intervention_history = get_intervention_history(session_id)
+        intervention_history = get_intervention_history(talk_id)
 
         balance_metrics = None
-        balance_snapshot = get_balance_snapshot(session_id)
+        balance_snapshot = get_balance_snapshot(talk_id)
         if balance_snapshot and balance_snapshot.get("status") != "waiting_for_speakers":
             balance_metrics = {
                 "participant_a": {
@@ -578,7 +580,7 @@ class SessionService:
                 },
                 "status": balance_snapshot["status"],
             }
-            store_balance_metrics(session_id, balance_metrics)
+            store_balance_metrics(talk_id, balance_metrics)
 
         # =====================================================================
         # STEP 3: Call MeetingBaas API to make the bot leave FIRST
@@ -608,7 +610,7 @@ class SessionService:
             if client_id in registry.pipecat_connections:
                 try:
                     await registry.disconnect(client_id, is_pipecat=True)
-                    logger.info(f"Closed Pipecat WebSocket for session {session_id}")
+                    logger.info(f"Closed Pipecat WebSocket for talk {talk_id}")
                 except Exception as e:
                     logger.error(f"Error closing Pipecat WebSocket: {e}")
 
@@ -616,14 +618,14 @@ class SessionService:
             if registry.get_client_output(client_id):
                 try:
                     await registry.disconnect(client_id, client_direction="output")
-                    logger.info(f"Closed client OUTPUT WebSocket for session {session_id}")
+                    logger.info(f"Closed client OUTPUT WebSocket for talk {talk_id}")
                 except Exception as e:
                     logger.error(f"Error closing client OUTPUT WebSocket: {e}")
 
             if registry.get_client_input(client_id):
                 try:
                     await registry.disconnect(client_id, client_direction="input")
-                    logger.info(f"Closed client INPUT WebSocket for session {session_id}")
+                    logger.info(f"Closed client INPUT WebSocket for talk {talk_id}")
                 except Exception as e:
                     logger.error(f"Error closing client INPUT WebSocket: {e}")
 
@@ -631,7 +633,7 @@ class SessionService:
         # STEP 6: CRITICAL - Wait grace period for messages to flush
         # =====================================================================
         await asyncio.sleep(0.5)
-        logger.debug(f"Grace period complete for session {session_id}")
+        logger.debug(f"Grace period complete for talk {talk_id}")
 
         # =====================================================================
         # STEP 7: Terminate Pipecat process AFTER WebSockets are closed
@@ -642,11 +644,11 @@ class SessionService:
                 try:
                     if terminate_process_gracefully(process, timeout=3.0):
                         logger.info(
-                            f"Gracefully terminated Pipecat process for session {session_id}"
+                            f"Gracefully terminated Pipecat process for talk {talk_id}"
                         )
                     else:
                         logger.warning(
-                            f"Had to forcefully kill Pipecat process for session {session_id}"
+                            f"Had to forcefully kill Pipecat process for talk {talk_id}"
                         )
                 except Exception as e:
                     logger.error(f"Error terminating Pipecat process: {e}")
@@ -659,41 +661,41 @@ class SessionService:
         # =====================================================================
         if client_id and client_id in MEETING_DETAILS:
             MEETING_DETAILS.pop(client_id, None)
-            logger.info(f"Cleaned up meeting details for session {session_id}")
+            logger.info(f"Cleaned up meeting details for talk {talk_id}")
 
         # =====================================================================
         # STEP 9: Stop time tracking and runtime engines
         # =====================================================================
-        stop_session_timer(session_id)
-        stop_intervention_engine(session_id)
-        stop_balance_tracker(session_id)
+        stop_talk_timer(talk_id)
+        stop_intervention_engine(talk_id)
+        stop_balance_tracker(talk_id)
 
         # =====================================================================
-        # STEP 10: Update session status to ENDED
+        # STEP 10: Update talk status to ENDED
         # =====================================================================
-        session.status = SessionStatus.ENDED
-        store_update_session(session_id, session)
-        logger.info(f"Session {session_id} ended successfully")
+        talk.status = TalkStatus.ENDED
+        store_update_talk(talk_id, talk)
+        logger.info(f"Talk {talk_id} ended successfully")
 
         # =====================================================================
         # STEP 11: Broadcast final session_state event
         # =====================================================================
         try:
-            await broadcast_session_event(
-                session_id,
+            await broadcast_talk_event(
+                talk_id,
                 "session_state",
                 {
-                    **self._build_session_state_payload(
-                        session, ai_status="idle", facilitator_paused=False
+                    **self._build_talk_state_payload(
+                        talk, ai_status="idle", facilitator_paused=False
                     ),
                 },
             )
         except Exception as e:
-            logger.warning(f"Error broadcasting session end event: {e}")
+            logger.warning(f"Error broadcasting talk end event: {e}")
 
         # Close all event WebSocket connections with code 1000 to prevent reconnection
         try:
-            await close_event_connections(session_id)
+            await close_event_connections(talk_id)
         except Exception as e:
             logger.warning(f"Error closing event connections: {e}")
 
@@ -701,137 +703,137 @@ class SessionService:
         # STEP 12: Generate summary
         # =====================================================================
         summary_available = await self._generate_summary(
-            session_id,
+            talk_id,
             balance_metrics=balance_metrics,
             intervention_history=intervention_history,
         )
 
         return {
-            "status": session.status,
+            "status": talk.status,
             "summary_available": summary_available,
         }
 
-    async def pause_facilitation(self, session_id: str) -> Session:
+    async def pause_facilitation(self, talk_id: str) -> Talk:
         """Pause AI facilitation (kill switch).
 
-        Immediately pauses AI interventions while keeping the session active.
+        Immediately pauses AI interventions while keeping the talk active.
         This is the kill switch functionality that gives participants control.
 
         Args:
-            session_id: The session identifier.
+            talk_id: The talk identifier.
 
         Returns:
-            The updated Session object with status "paused".
+            The updated Talk object with status "paused".
 
         Raises:
-            ValueError: If session not found or not in progress.
+            ValueError: If talk not found or not in progress.
         """
-        session = store_get_session(session_id)
-        if not session:
-            raise ValueError("Session not found")
+        talk = store_get_talk(talk_id)
+        if not talk:
+            raise ValueError("Talk not found")
 
-        if session.status != SessionStatus.IN_PROGRESS:
-            raise ValueError("Session not in progress")
+        if talk.status != TalkStatus.IN_PROGRESS:
+            raise ValueError("Talk not in progress")
 
-        session.status = SessionStatus.PAUSED
-        store_update_session(session_id, session)
-        logger.info(f"Paused facilitation for session {session_id}")
+        talk.status = TalkStatus.PAUSED
+        store_update_talk(talk_id, talk)
+        logger.info(f"Paused facilitation for talk {talk_id}")
 
         # Notify Pipecat to stop interventions
-        await self._notify_pipecat(session.client_id, {"action": "pause"})
+        await self._notify_pipecat(talk.client_id, {"action": "pause"})
 
-        pause_session_timer(session_id)
+        pause_talk_timer(talk_id)
 
         # Broadcast pause event to connected clients
-        from core.session_store import broadcast_session_event
+        from core.talk_store import broadcast_talk_event
 
-        await broadcast_session_event(
-            session_id,
+        await broadcast_talk_event(
+            talk_id,
             "session_state",
             {
-                **self._build_session_state_payload(
-                    session, ai_status="paused", facilitator_paused=True
+                **self._build_talk_state_payload(
+                    talk, ai_status="paused", facilitator_paused=True
                 ),
             },
         )
 
-        return session
+        return talk
 
-    async def resume_facilitation(self, session_id: str) -> Session:
+    async def resume_facilitation(self, talk_id: str) -> Talk:
         """Resume AI facilitation after pause.
 
-        Re-enables AI interventions for a previously paused session.
+        Re-enables AI interventions for a previously paused talk.
 
         Args:
-            session_id: The session identifier.
+            talk_id: The talk identifier.
 
         Returns:
-            The updated Session object with status "in_progress".
+            The updated Talk object with status "in_progress".
 
         Raises:
-            ValueError: If session not found or not paused.
+            ValueError: If talk not found or not paused.
         """
-        session = store_get_session(session_id)
-        if not session:
-            raise ValueError("Session not found")
+        talk = store_get_talk(talk_id)
+        if not talk:
+            raise ValueError("Talk not found")
 
-        if session.status != SessionStatus.PAUSED:
-            raise ValueError("Session not paused")
+        if talk.status != TalkStatus.PAUSED:
+            raise ValueError("Talk not paused")
 
-        session.status = SessionStatus.IN_PROGRESS
-        store_update_session(session_id, session)
-        logger.info(f"Resumed facilitation for session {session_id}")
+        talk.status = TalkStatus.IN_PROGRESS
+        store_update_talk(talk_id, talk)
+        logger.info(f"Resumed facilitation for talk {talk_id}")
 
         # Notify Pipecat to resume interventions
-        await self._notify_pipecat(session.client_id, {"action": "resume"})
+        await self._notify_pipecat(talk.client_id, {"action": "resume"})
 
-        resume_session_timer(session_id)
+        resume_talk_timer(talk_id)
 
         # Broadcast resume event to connected clients
-        from core.session_store import broadcast_session_event
+        from core.talk_store import broadcast_talk_event
 
-        await broadcast_session_event(
-            session_id,
+        await broadcast_talk_event(
+            talk_id,
             "session_state",
             {
-                **self._build_session_state_payload(
-                    session, ai_status="listening", facilitator_paused=False
+                **self._build_talk_state_payload(
+                    talk, ai_status="listening", facilitator_paused=False
                 ),
             },
         )
 
-        return session
+        return talk
 
     async def _generate_summary(
         self,
-        session_id: str,
+        talk_id: str,
         balance_metrics: Optional[Dict[str, Any]] = None,
         intervention_history: Optional[List[Dict[str, Any]]] = None,
     ) -> bool:
-        """Generate post-session summary using OpenAI.
+        """Generate post-talk summary using OpenAI.
 
         Args:
-            session_id: The session identifier.
+            talk_id: The talk identifier.
             balance_metrics: Optional talk balance metrics to include.
             intervention_history: Optional intervention history to include.
 
         Returns:
             True if summary was generated and stored, False otherwise.
         """
-        session = store_get_session(session_id)
-        if not session:
-            logger.warning(f"Cannot generate summary: session {session_id} not found")
+        talk = store_get_talk(talk_id)
+        if not talk:
+            logger.warning(f"Cannot generate summary: talk {talk_id} not found")
             return False
 
         # Import summary service here to avoid circular imports
         from app.services.summary_service import summary_service
-        from core.session_store import store_summary
+        from core.talk_store import store_summary
 
         try:
             # Prepare participants data
             participants = [
                 {"id": p.id, "name": p.name, "role": p.role}
-                for p in session.participants
+                for p in talk.participants
             ]
 
             # TODO: Wire in live balance metrics when available.
@@ -839,9 +841,9 @@ class SessionService:
 
             # Generate summary via SummaryService
             summary = await summary_service.generate_summary(
-                session_id=session_id,
-                goal=session.goal,
-                duration_minutes=session.duration_minutes,
+                talk_id=talk_id,
+                goal=talk.goal,
+                duration_minutes=talk.duration_minutes,
                 participants=participants,
                 balance_metrics=balance_metrics,
                 intervention_history=intervention_history,
@@ -850,17 +852,17 @@ class SessionService:
 
             if summary:
                 # Store the summary
-                store_summary(session_id, summary)
-                logger.info(f"Generated and stored summary for session {session_id}")
+                store_summary(talk_id, summary)
+                logger.info(f"Generated and stored summary for talk {talk_id}")
                 return True
             else:
                 logger.warning(
-                    f"Summary generation returned None for session {session_id}"
+                    f"Summary generation returned None for talk {talk_id}"
                 )
                 return False
 
         except Exception as e:
-            logger.error(f"Error generating summary for session {session_id}: {e}")
+            logger.error(f"Error generating summary for talk {talk_id}: {e}")
             return False
 
     async def _notify_pipecat(self, client_id: Optional[str], message: dict) -> None:
@@ -895,4 +897,4 @@ class SessionService:
 
 
 # Create global service instance
-session_service = SessionService()
+talk_service = TalkService()

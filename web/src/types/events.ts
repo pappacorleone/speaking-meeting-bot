@@ -1,16 +1,16 @@
 /**
- * WebSocket event types for real-time session communication.
+ * WebSocket event types for real-time talk communication.
  * These define the structure of events sent from the backend to frontend.
  */
 
-import type { SessionStatus, Participant, FacilitatorConfig } from './session';
+import type { TalkStatus, Participant, FacilitatorConfig } from './talk';
 import type { Intervention } from './intervention';
 
 // =============================================================================
 // Event Type Literals
 // =============================================================================
 
-export type SessionEventType =
+export type TalkEventType =
   | 'session_state'
   | 'balance_update'
   | 'intervention'
@@ -25,8 +25,8 @@ export type SessionEventType =
 // Base Event Interface
 // =============================================================================
 
-export interface SessionEvent<T = unknown> {
-  type: SessionEventType;
+export interface TalkEvent<T = unknown> {
+  type: TalkEventType;
   data: T;
   timestamp: string;
 }
@@ -48,8 +48,8 @@ export interface TimeRemainingData {
   percentComplete: number;
 }
 
-export interface SessionStateData {
-  status: SessionStatus;
+export interface TalkStateData {
+  status: TalkStatus;
   goal?: string;
   durationMinutes?: number;
   participants?: Participant[];
@@ -59,7 +59,7 @@ export interface SessionStateData {
   facilitatorPaused?: boolean;
   aiStatus?: AIStatus;
   reason?: string;
-  previousStatus?: SessionStatus;
+  previousStatus?: TalkStatus;
 }
 
 export interface ParticipantStatusData {
@@ -92,39 +92,39 @@ export interface ErrorData {
 // Typed Event Interfaces
 // =============================================================================
 
-export interface BalanceUpdateEvent extends SessionEvent<BalanceUpdateData> {
+export interface BalanceUpdateEvent extends TalkEvent<BalanceUpdateData> {
   type: 'balance_update';
 }
 
-export interface TimeRemainingEvent extends SessionEvent<TimeRemainingData> {
+export interface TimeRemainingEvent extends TalkEvent<TimeRemainingData> {
   type: 'time_remaining';
 }
 
-export interface SessionStateEvent extends SessionEvent<SessionStateData> {
+export interface TalkStateEvent extends TalkEvent<TalkStateData> {
   type: 'session_state';
 }
 
-export interface InterventionEvent extends SessionEvent<Intervention> {
+export interface InterventionEvent extends TalkEvent<Intervention> {
   type: 'intervention';
 }
 
-export interface EscalationEvent extends SessionEvent<Intervention> {
+export interface EscalationEvent extends TalkEvent<Intervention> {
   type: 'escalation';
 }
 
-export interface ParticipantStatusEvent extends SessionEvent<ParticipantStatusData> {
+export interface ParticipantStatusEvent extends TalkEvent<ParticipantStatusData> {
   type: 'participant_status';
 }
 
-export interface AIStatusEvent extends SessionEvent<AIStatusData> {
+export interface AIStatusEvent extends TalkEvent<AIStatusData> {
   type: 'ai_status';
 }
 
-export interface GoalDriftEvent extends SessionEvent<GoalDriftData> {
+export interface GoalDriftEvent extends TalkEvent<GoalDriftData> {
   type: 'goal_drift';
 }
 
-export interface ErrorEvent extends SessionEvent<ErrorData> {
+export interface ErrorEvent extends TalkEvent<ErrorData> {
   type: 'error';
 }
 
@@ -132,10 +132,10 @@ export interface ErrorEvent extends SessionEvent<ErrorData> {
 // Union Type for All Events
 // =============================================================================
 
-export type AnySessionEvent =
+export type AnyTalkEvent =
   | BalanceUpdateEvent
   | TimeRemainingEvent
-  | SessionStateEvent
+  | TalkStateEvent
   | InterventionEvent
   | EscalationEvent
   | ParticipantStatusEvent
@@ -147,39 +147,39 @@ export type AnySessionEvent =
 // Type Guards
 // =============================================================================
 
-export function isBalanceUpdateEvent(event: SessionEvent): event is BalanceUpdateEvent {
+export function isBalanceUpdateEvent(event: TalkEvent): event is BalanceUpdateEvent {
   return event.type === 'balance_update';
 }
 
-export function isTimeRemainingEvent(event: SessionEvent): event is TimeRemainingEvent {
+export function isTimeRemainingEvent(event: TalkEvent): event is TimeRemainingEvent {
   return event.type === 'time_remaining';
 }
 
-export function isSessionStateEvent(event: SessionEvent): event is SessionStateEvent {
+export function isTalkStateEvent(event: TalkEvent): event is TalkStateEvent {
   return event.type === 'session_state';
 }
 
-export function isInterventionEvent(event: SessionEvent): event is InterventionEvent {
+export function isInterventionEvent(event: TalkEvent): event is InterventionEvent {
   return event.type === 'intervention';
 }
 
-export function isEscalationEvent(event: SessionEvent): event is EscalationEvent {
+export function isEscalationEvent(event: TalkEvent): event is EscalationEvent {
   return event.type === 'escalation';
 }
 
-export function isParticipantStatusEvent(event: SessionEvent): event is ParticipantStatusEvent {
+export function isParticipantStatusEvent(event: TalkEvent): event is ParticipantStatusEvent {
   return event.type === 'participant_status';
 }
 
-export function isAIStatusEvent(event: SessionEvent): event is AIStatusEvent {
+export function isAIStatusEvent(event: TalkEvent): event is AIStatusEvent {
   return event.type === 'ai_status';
 }
 
-export function isGoalDriftEvent(event: SessionEvent): event is GoalDriftEvent {
+export function isGoalDriftEvent(event: TalkEvent): event is GoalDriftEvent {
   return event.type === 'goal_drift';
 }
 
-export function isErrorEvent(event: SessionEvent): event is ErrorEvent {
+export function isErrorEvent(event: TalkEvent): event is ErrorEvent {
   return event.type === 'error';
 }
 
@@ -212,10 +212,10 @@ export interface WebSocketState {
 // Event Handlers Type
 // =============================================================================
 
-export interface SessionEventHandlers {
+export interface TalkEventHandlers {
   onBalanceUpdate?: (data: BalanceUpdateData) => void;
   onTimeRemaining?: (data: TimeRemainingData) => void;
-  onSessionState?: (data: SessionStateData) => void;
+  onTalkState?: (data: TalkStateData) => void;
   onIntervention?: (data: Intervention) => void;
   onEscalation?: (data: Intervention) => void;
   onParticipantStatus?: (data: ParticipantStatusData) => void;

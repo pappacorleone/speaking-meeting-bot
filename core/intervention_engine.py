@@ -1,6 +1,6 @@
 """Intervention engine for AI facilitation decisions.
 
-The InterventionEngine monitors session metrics and decides when and how
+The InterventionEngine monitors talk metrics and decides when and how
 to intervene to maintain healthy conversation dynamics. It follows a
 minimal intervention philosophy: visual-first, voice only for severe cases.
 
@@ -164,9 +164,9 @@ class InterventionTemplates:
 
 
 class InterventionEngine:
-    """Decides when and how to intervene during a facilitated session.
+    """Decides when and how to intervene during a facilitated talk.
 
-    The engine monitors various session metrics and determines if an
+    The engine monitors various talk metrics and determines if an
     intervention is warranted. It implements the minimal intervention
     philosophy: intervene only when genuinely helpful, prefer visual
     over voice, and respect natural conversation flow.
@@ -183,7 +183,7 @@ class InterventionEngine:
         - Emotional disclosure in progress
         - Repair attempt in progress (apology, reconciliation)
         - Too soon since last intervention
-        - First 3 minutes of session
+        - First 3 minutes of talk
         - Grief or crisis expression
     """
 
@@ -205,25 +205,25 @@ class InterventionEngine:
 
     def __init__(
         self,
-        session_id: str,
-        session_start: datetime,
-        session_duration_minutes: int = 30,
+        talk_id: str,
+        talk_start: datetime,
+        talk_duration_minutes: int = 30,
         facilitator_config: Optional[Dict[str, Any]] = None,
     ):
         """Initialize the intervention engine.
 
         Args:
-            session_id: Unique session identifier.
-            session_start: When the session started.
-            session_duration_minutes: Planned session duration.
+            talk_id: Unique talk identifier.
+            talk_start: When the talk started.
+            talk_duration_minutes: Planned talk duration.
             facilitator_config: Configuration dict with:
                 - interrupt_authority: Can interrupt speakers
                 - direct_inquiry: Can ask probing questions
                 - silence_detection: React to silence
         """
-        self.session_id = session_id
-        self.session_start = session_start
-        self.session_duration = timedelta(minutes=session_duration_minutes)
+        self.talk_id = talk_id
+        self.talk_start = talk_start
+        self.talk_duration = timedelta(minutes=talk_duration_minutes)
 
         # Facilitator configuration
         config = facilitator_config or {}
@@ -292,14 +292,14 @@ class InterventionEngine:
         self.goal_drift_start = None
         self.silence_start = None
 
-    def get_session_elapsed(self) -> timedelta:
-        """Get time elapsed since session start."""
-        return datetime.utcnow() - self.session_start
+    def get_talk_elapsed(self) -> timedelta:
+        """Get time elapsed since talk start."""
+        return datetime.utcnow() - self.talk_start
 
     def get_time_remaining(self) -> timedelta:
-        """Get time remaining in the session."""
-        elapsed = self.get_session_elapsed()
-        remaining = self.session_duration - elapsed
+        """Get time remaining in the talk."""
+        elapsed = self.get_talk_elapsed()
+        remaining = self.talk_duration - elapsed
         return max(remaining, timedelta(0))
 
     def can_intervene(
@@ -323,7 +323,7 @@ class InterventionEngine:
 
         # First 3 minutes: no interventions (except icebreaker)
         if intervention_type != InterventionType.ICEBREAKER:
-            if self.get_session_elapsed() < self.FIRST_MINUTES_QUIET:
+            if self.get_talk_elapsed() < self.FIRST_MINUTES_QUIET:
                 return False
 
         # Global cooldown since last intervention
@@ -576,12 +576,12 @@ class InterventionEngine:
         return None
 
     def create_icebreaker(self, session_goal: str = "") -> Optional[Intervention]:
-        """Create an icebreaker intervention for session start.
+        """Create an icebreaker intervention for talk start.
 
-        Called explicitly at session start, not part of regular evaluation.
+        Called explicitly at talk start, not part of regular evaluation.
 
         Args:
-            session_goal: Session goal for context.
+            session_goal: Talk goal for context.
 
         Returns:
             Icebreaker intervention or None if not appropriate.
@@ -661,25 +661,25 @@ class InterventionEngine:
         return "your partner"
 
     def get_stats(self) -> Dict[str, Any]:
-        """Get intervention statistics for the session.
+        """Get intervention statistics for the talk.
 
         Returns:
             Dict with intervention counts and history.
         """
         return {
-            "session_id": self.session_id,
+            "talk_id": self.talk_id,
             "total_interventions": self.intervention_count,
             "intervention_rate_per_30min": self._calculate_intervention_rate(),
             "interventions_by_type": self._count_by_type(),
             "interventions_by_modality": self._count_by_modality(),
             "is_paused": self.is_paused,
-            "session_elapsed_seconds": self.get_session_elapsed().total_seconds(),
+            "talk_elapsed_seconds": self.get_talk_elapsed().total_seconds(),
             "time_remaining_seconds": self.get_time_remaining().total_seconds(),
         }
 
     def _calculate_intervention_rate(self) -> float:
         """Calculate interventions per 30 minutes."""
-        elapsed_minutes = self.get_session_elapsed().total_seconds() / 60
+        elapsed_minutes = self.get_talk_elapsed().total_seconds() / 60
         if elapsed_minutes < 1:
             return 0.0
         return (self.intervention_count / elapsed_minutes) * 30

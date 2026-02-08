@@ -2,7 +2,7 @@
 
 import { Shield, Heart, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { FacilitatorPersona } from "@/types/session";
+import type { FacilitatorPersona } from "@/types/talk";
 
 /**
  * Persona configuration for display

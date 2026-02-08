@@ -371,33 +371,33 @@ export function CompactErrorFallback({
 // Session-Specific Error Fallback
 // =============================================================================
 
-interface SessionErrorFallbackProps {
+interface TalkErrorFallbackProps {
   error: Error;
-  sessionId?: string;
+  talkId?: string;
   onRetry?: () => void;
 }
 
 /**
  * Session-specific error fallback with session context.
  */
-export function SessionErrorFallback({
+export function TalkErrorFallback({
   error,
-  sessionId,
+  talkId,
   onRetry,
-}: SessionErrorFallbackProps) {
+}: TalkErrorFallbackProps) {
   const isNotFound = error.message.toLowerCase().includes('not found');
   const isConnectionError = error.message.toLowerCase().includes('connection') ||
     error.message.toLowerCase().includes('network');
 
-  let title = 'Session Error';
+  let title = 'Talk Error';
   let message = error.message;
 
   if (isNotFound) {
-    title = 'Session Not Found';
-    message = 'This session may have ended or the link may be invalid.';
+    title = 'Talk Not Found';
+    message = 'This talk may have ended or the link may be invalid.';
   } else if (isConnectionError) {
     title = 'Connection Lost';
-    message = 'Unable to connect to the session. Please check your internet connection.';
+    message = 'Unable to connect to the talk. Please check your internet connection.';
   }
 
   return (
@@ -409,9 +409,9 @@ export function SessionErrorFallback({
       <h2 className="text-xl font-semibold mb-2">{title}</h2>
       <p className="text-muted-foreground mb-4 max-w-sm">{message}</p>
 
-      {sessionId && (
+      {talkId && (
         <p className="text-xs text-muted-foreground mb-4">
-          Session ID: {sessionId}
+          Session ID: {talkId}
         </p>
       )}
 

@@ -1,5 +1,5 @@
 /**
- * Session-related types for frontend components.
+ * Talk-related types for frontend components.
  * Uses camelCase naming convention for TypeScript/React.
  *
  * Note: API response types in lib/api/types.ts use snake_case
@@ -10,7 +10,7 @@
 // Enums / Literals
 // =============================================================================
 
-export type SessionStatus =
+export type TalkStatus =
   | 'draft'
   | 'pending_consent'
   | 'ready'
@@ -46,7 +46,7 @@ export interface FacilitatorConfig {
   silenceDetection: boolean;
 }
 
-export interface Session {
+export interface Talk {
   id: string;
   title?: string;
   goal: string;
@@ -55,7 +55,7 @@ export interface Session {
   meetingUrl?: string;
   durationMinutes: number;
   scheduledAt?: string;
-  status: SessionStatus;
+  status: TalkStatus;
   participants: Participant[];
   facilitator: FacilitatorConfig;
   createdAt: string;
@@ -87,8 +87,8 @@ export interface KeyAgreement {
   description: string;
 }
 
-export interface SessionSummary {
-  sessionId: string;
+export interface TalkSummary {
+  talkId: string;
   durationMinutes: number;
   consensusSummary: string;
   actionItems: string[];
@@ -101,12 +101,12 @@ export interface SessionSummary {
 // Wizard / Form Types
 // =============================================================================
 
-export interface SessionWizardFormData {
+export interface TalkWizardFormData {
   // Step 0: Identity & Bond
   partnerName: string;
   relationshipContext: string;
 
-  // Step 1: Session Goal
+  // Step 1: Talk Goal
   goal: string;
   scheduledAt?: string;
   durationMinutes: number;
@@ -131,9 +131,9 @@ export interface WizardStep {
 // Utility Types
 // =============================================================================
 
-export type SessionStatusGroup = 'active' | 'upcoming' | 'past';
+export type TalkStatusGroup = 'active' | 'upcoming' | 'past';
 
-export function getSessionStatusGroup(status: SessionStatus): SessionStatusGroup {
+export function getTalkStatusGroup(status: TalkStatus): TalkStatusGroup {
   switch (status) {
     case 'in_progress':
     case 'paused':
@@ -148,16 +148,16 @@ export function getSessionStatusGroup(status: SessionStatus): SessionStatusGroup
   }
 }
 
-export function isSessionActive(status: SessionStatus): boolean {
+export function isTalkActive(status: TalkStatus): boolean {
   return status === 'in_progress' || status === 'paused';
 }
 
-export function canStartSession(status: SessionStatus): boolean {
+export function canStartTalk(status: TalkStatus): boolean {
   return status === 'ready';
 }
 
-export function getStatusLabel(status: SessionStatus): string {
-  const labels: Record<SessionStatus, string> = {
+export function getStatusLabel(status: TalkStatus): string {
+  const labels: Record<TalkStatus, string> = {
     draft: 'Draft',
     pending_consent: 'Awaiting Partner',
     ready: 'Ready to Start',

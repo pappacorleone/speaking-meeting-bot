@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import type { KeyAgreement } from '@/types/session';
+import type { KeyAgreement } from '@/types/talk';
 
 // =============================================================================
 // Types

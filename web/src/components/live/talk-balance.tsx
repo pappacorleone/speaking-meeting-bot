@@ -13,7 +13,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import type { TalkBalanceMetrics, BalanceStatus } from '@/types/session';
+import type { TalkBalanceMetrics, BalanceStatus } from '@/types/talk';
 
 // =============================================================================
 // Types

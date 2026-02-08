@@ -4,43 +4,43 @@ import * as React from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { ActiveSessionCard, RecentSessionsList, SearchBar } from "@/components/hub";
+import { ActiveTalkCard, RecentTalksList, SearchBar } from "@/components/hub";
 import { EmptyState } from "@/components/common";
 import { InlineErrorFallback } from "@/components/error";
-import { listSessions, parseError, shouldRetryQuery } from "@/lib/api";
-import type { Session as ApiSession } from "@/lib/api/types";
-import type { Session, SessionStatus } from "@/types/session";
+import { listTalks, parseError, shouldRetryQuery } from "@/lib/api";
+import type { Talk as ApiTalk } from "@/lib/api/types";
+import type { Talk, TalkStatus } from "@/types/talk";
 
 /**
- * Transform API session (snake_case) to frontend session (camelCase)
+ * Transform API talk (snake_case) to frontend talk (camelCase)
  */
-function transformSession(apiSession: ApiSession): Session {
+function transformTalk(apiTalk: ApiTalk): Talk {
   return {
-    id: apiSession.id,
-    title: apiSession.title,
-    goal: apiSession.goal,
-    relationshipContext: apiSession.relationship_context,
-    platform: apiSession.platform as Session["platform"],
-    meetingUrl: apiSession.meeting_url,
-    durationMinutes: apiSession.duration_minutes,
-    scheduledAt: apiSession.scheduled_at,
-    status: apiSession.status as SessionStatus,
-    participants: apiSession.participants.map((p) => ({
+    id: apiTalk.id,
+    title: apiTalk.title,
+    goal: apiTalk.goal,
+    relationshipContext: apiTalk.relationship_context,
+    platform: apiTalk.platform as Talk["platform"],
+    meetingUrl: apiTalk.meeting_url,
+    durationMinutes: apiTalk.duration_minutes,
+    scheduledAt: apiTalk.scheduled_at,
+    status: apiTalk.status as TalkStatus,
+    participants: apiTalk.participants.map((p) => ({
       id: p.id,
       name: p.name,
       role: p.role as "creator" | "invitee",
       consented: p.consented,
     })),
     facilitator: {
-      persona: apiSession.facilitator.persona as Session["facilitator"]["persona"],
-      interruptAuthority: apiSession.facilitator.interrupt_authority,
-      directInquiry: apiSession.facilitator.direct_inquiry,
-      silenceDetection: apiSession.facilitator.silence_detection,
+      persona: apiTalk.facilitator.persona as Talk["facilitator"]["persona"],
+      interruptAuthority: apiTalk.facilitator.interrupt_authority,
+      directInquiry: apiTalk.facilitator.direct_inquiry,
+      silenceDetection: apiTalk.facilitator.silence_detection,
     },
-    createdAt: apiSession.created_at,
-    inviteToken: apiSession.invite_token,
-    botId: apiSession.bot_id,
-    clientId: apiSession.client_id,
+    createdAt: apiTalk.created_at,
+    inviteToken: apiTalk.invite_token,
+    botId: apiTalk.bot_id,
+    clientId: apiTalk.client_id,
   };
 }
 
@@ -54,7 +54,7 @@ function transformSession(apiSession: ApiSession): Session {
 export default function HubPage() {
   const [searchQuery, setSearchQuery] = React.useState("");
 
-  // Fetch sessions from API
+  // Fetch talks from API
   // Note: In production, apiKey would come from auth context
   const apiKey =
     process.env.NEXT_PUBLIC_MEETING_BAAS_API_KEY ||
@@ -62,40 +62,40 @@ export default function HubPage() {
     "";
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["sessions"],
+    queryKey: ["talks"],
     queryFn: async () => {
-      const response = await listSessions({}, apiKey);
-      return response.sessions.map(transformSession);
+      const response = await listTalks({}, apiKey);
+      return response.talks.map(transformTalk);
     },
     // Use smart retry logic based on error type
     retry: (failureCount, err) => shouldRetryQuery(failureCount, err, 2),
   });
 
-  const sessions = data || [];
+  const talks = data || [];
 
-  // Find active sessions (ready, in_progress, or paused)
-  const activeSessions = sessions.filter(
+  // Find active talks (ready, in_progress, or paused)
+  const activeTalks = talks.filter(
     (s) =>
       s.status === "ready" ||
       s.status === "in_progress" ||
       s.status === "paused"
   );
 
-  // Get the most important active session (prioritize in_progress, then paused, then ready)
-  const primaryActiveSession = activeSessions.find(
+  // Get the most important active talk (prioritize in_progress, then paused, then ready)
+  const primaryActiveTalk = activeTalks.find(
     (s) => s.status === "in_progress"
   ) ||
-    activeSessions.find((s) => s.status === "paused") ||
-    activeSessions.find((s) => s.status === "ready");
+    activeTalks.find((s) => s.status === "paused") ||
+    activeTalks.find((s) => s.status === "ready");
 
-  // Recent sessions (excluding the primary active one)
-  const recentSessions = sessions.filter(
-    (s) => s.id !== primaryActiveSession?.id
+  // Recent talks (excluding the primary active one)
+  const recentTalks = talks.filter(
+    (s) => s.id !== primaryActiveTalk?.id
   );
 
-  // Filter sessions based on search query
-  const filteredRecentSessions = searchQuery
-    ? recentSessions.filter(
+  // Filter talks based on search query
+  const filteredRecentTalks = searchQuery
+    ? recentTalks.filter(
         (s) =>
           s.goal.toLowerCase().includes(searchQuery.toLowerCase()) ||
           s.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -103,7 +103,7 @@ export default function HubPage() {
             p.name.toLowerCase().includes(searchQuery.toLowerCase())
           )
       )
-    : recentSessions;
+    : recentTalks;
 
   // Loading state
   if (isLoading) {
@@ -133,7 +133,7 @@ export default function HubPage() {
           <HubHeader />
           <div className="mt-8">
             <InlineErrorFallback
-              title="Unable to load sessions"
+              title="Unable to load talks"
               message={parsedError.message}
               error={error instanceof Error ? error : null}
               onRetry={parsedError.isRecoverable ? () => refetch() : undefined}
@@ -144,8 +144,8 @@ export default function HubPage() {
     );
   }
 
-  // Empty state - no sessions at all
-  if (sessions.length === 0) {
+  // Empty state - no talks at all
+  if (talks.length === 0) {
     return (
       <div className="p-6 md:p-8">
         <div className="max-w-4xl mx-auto">
@@ -170,8 +170,8 @@ export default function HubPage() {
               title="Welcome to Diadi"
               description="Start your first facilitated conversation. Diadi helps you have the conversations you've been avoiding."
               action={{
-                label: "Start Your First Session",
-                href: "/sessions/new",
+                label: "Start Your First Talk",
+                href: "/talks/new",
               }}
             />
           </div>
@@ -204,28 +204,28 @@ export default function HubPage() {
           />
         </div>
 
-        {/* Active session card */}
-        {primaryActiveSession && (
+        {/* Active talk card */}
+        {primaryActiveTalk && (
           <div className="mt-8">
-            <h2 className="section-header mb-4">Active Session</h2>
-            <ActiveSessionCard session={primaryActiveSession} />
+            <h2 className="section-header mb-4">Active Talk</h2>
+            <ActiveTalkCard talk={primaryActiveTalk} />
           </div>
         )}
 
-        {/* Recent sessions */}
+        {/* Recent talks */}
         <div className="mt-8">
-          <RecentSessionsList
-            sessions={filteredRecentSessions}
+          <RecentTalksList
+            talks={filteredRecentTalks}
             limit={5}
             showViewAll={true}
           />
         </div>
 
-        {/* Quick action - visible when no active session */}
-        {!primaryActiveSession && sessions.length > 0 && (
+        {/* Quick action - visible when no active talk */}
+        {!primaryActiveTalk && talks.length > 0 && (
           <div className="mt-8 text-center">
             <Button asChild size="lg">
-              <Link href="/sessions/new">Start New Session</Link>
+              <Link href="/talks/new">Start New Talk</Link>
             </Button>
           </div>
         )}

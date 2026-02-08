@@ -26,15 +26,15 @@ import {
 // Types
 // =============================================================================
 
-export interface SessionRating {
+export interface TalkRating {
   overall: number; // 1-5 stars
   helpful: boolean;
   feedback?: string;
 }
 
 interface RatingPromptProps {
-  sessionId: string;
-  onSubmit: (rating: SessionRating) => void;
+  talkId: string;
+  onSubmit: (rating: TalkRating) => void;
   onSkip?: () => void;
   isSubmitting?: boolean;
   className?: string;
@@ -48,8 +48,8 @@ interface StarRatingProps {
 }
 
 interface RatingPromptDialogProps {
-  sessionId: string;
-  onSubmit: (rating: SessionRating) => void;
+  talkId: string;
+  onSubmit: (rating: TalkRating) => void;
   trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -172,7 +172,7 @@ function HelpfulToggle({
  * Reference: requirements.md Section 6.9 Post-Session Recap Design
  */
 export function RatingPrompt({
-  sessionId,
+  talkId,
   onSubmit,
   onSkip,
   isSubmitting = false,
@@ -252,11 +252,11 @@ export function RatingPrompt({
 
         {/* Optional feedback */}
         <div className="space-y-2">
-          <label htmlFor={`feedback-${sessionId}`} className="text-sm font-medium">
+          <label htmlFor={`feedback-${talkId}`} className="text-sm font-medium">
             Anything else you&apos;d like to share? (optional)
           </label>
           <Textarea
-            id={`feedback-${sessionId}`}
+            id={`feedback-${talkId}`}
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
             placeholder="Share your thoughts about the session..."
@@ -345,7 +345,7 @@ export function RatingPromptCompact({
  * RatingPromptDialog - Rating prompt in a dialog/modal.
  */
 export function RatingPromptDialog({
-  sessionId,
+  talkId,
   onSubmit,
   trigger,
   open,
@@ -360,7 +360,7 @@ export function RatingPromptDialog({
     ? (onOpenChange ?? (() => {}))
     : setInternalOpen;
 
-  const handleSubmit = async (rating: SessionRating) => {
+  const handleSubmit = async (rating: TalkRating) => {
     setIsSubmitting(true);
     try {
       await onSubmit(rating);
@@ -384,7 +384,7 @@ export function RatingPromptDialog({
           </DialogDescription>
         </DialogHeader>
         <RatingPromptInner
-          sessionId={sessionId}
+          talkId={talkId}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
         />
@@ -397,12 +397,12 @@ export function RatingPromptDialog({
  * Inner rating form for dialog use.
  */
 function RatingPromptInner({
-  sessionId,
+  talkId,
   onSubmit,
   isSubmitting,
 }: {
-  sessionId: string;
-  onSubmit: (rating: SessionRating) => void;
+  talkId: string;
+  onSubmit: (rating: TalkRating) => void;
   isSubmitting: boolean;
 }) {
   const [rating, setRating] = React.useState(0);
@@ -461,11 +461,11 @@ function RatingPromptInner({
 
       {/* Optional feedback */}
       <div className="space-y-2">
-        <label htmlFor={`dialog-feedback-${sessionId}`} className="text-sm font-medium">
+        <label htmlFor={`dialog-feedback-${talkId}`} className="text-sm font-medium">
           Anything else? (optional)
         </label>
         <Textarea
-          id={`dialog-feedback-${sessionId}`}
+          id={`dialog-feedback-${talkId}`}
           value={feedback}
           onChange={(e) => setFeedback(e.target.value)}
           placeholder="Share your thoughts..."

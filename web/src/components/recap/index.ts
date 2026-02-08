@@ -14,7 +14,7 @@ export {
   SynthesisBoardSkeleton,
   SynthesisBoardHeader,
   ConsensusSummaryCard,
-  SessionMetrics,
+  TalkMetrics,
 } from './synthesis-board';
 
 // =============================================================================
@@ -53,4 +53,4 @@ export {
   StarRating,
 } from './rating-prompt';
 
-export type { SessionRating } from './rating-prompt';
+export type { TalkRating } from './rating-prompt';

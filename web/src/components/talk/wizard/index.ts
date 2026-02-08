@@ -10,9 +10,9 @@ export {
   stepGoalSchema,
   stepFacilitatorSchema,
   stepLaunchSchema,
-  sessionWizardSchema,
+  talkWizardSchema,
   // Types
-  type SessionWizardFormData,
+  type TalkWizardFormData,
   type WizardStepConfig,
   type WizardState,
 } from "./wizard-provider";
