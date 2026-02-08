@@ -27,6 +27,8 @@ When asked to "start the codebase", "run the codebase", or similar, start ALL TH
 cloudflared tunnel --url http://localhost:7014
 
 # 2. Update BASE_URL in .env with the tunnel URL from step 1
+#    (can be done before or after starting the backend — the backend
+#    re-reads .env on each request, so no restart needed)
 
 # 3. Backend (FastAPI) - from project root
 ./.venv/Scripts/python.exe -m uvicorn app:app --reload --host 0.0.0.0 --port 7014
@@ -41,7 +43,7 @@ cd web && npm run dev
 - Frontend UI: http://localhost:3000 (or 3001/3002 if port is taken)
 - Tunnel: https://<random>.trycloudflare.com → localhost:7014
 
-**Why the tunnel matters:** MeetingBaas bots connect back to your server via WebSocket using `BASE_URL`. Without a live tunnel, bots join the meeting but can't stream audio — they sit silent. If the bot joins but doesn't speak, check that `BASE_URL` in `.env` points to a live tunnel.
+**Why the tunnel matters:** MeetingBaas bots connect back to your server via WebSocket using `BASE_URL`. Without a live tunnel, bots join the meeting but can't stream audio — they sit silent. If the bot joins but doesn't speak, check that `BASE_URL` in `.env` points to a live tunnel. The backend re-reads `.env` on each request, so updating `BASE_URL` takes effect immediately without a restart.
 
 ## Common Commands
 
@@ -266,6 +268,8 @@ Required:
 Optional:
 - `BASE_URL` - WebSocket base URL for MeetingBaas bot callbacks (set to Cloudflare tunnel URL for local dev, production domain for deploy). **Bot will join but not speak if this is stale.**
 - `DIADI_DB_PATH` - SQLite database path (default: `diadi.db`)
+- `DIADI_ENV` - Environment mode (default: `development`). Controls cookie security and log format: `development` = colored text logs, `production` = JSON structured logs for Cloud Run.
+- `LOG_LEVEL` - Logging level (default: `INFO`). Set to `DEBUG` for verbose output, `WARNING` to reduce noise.
 - `ALLOWED_ORIGINS` - Comma-separated CORS origins (default: localhost:3000, localhost:7014, Cloud Run frontend)
 - `REPLICATE_KEY` - AI image generation
 - `UTFS_KEY` / `APP_ID` - UploadThing image hosting
@@ -351,7 +355,7 @@ Regenerate protobuf files:
 ```
 
 **Bot joins meeting but doesn't speak:**
-`BASE_URL` in `.env` points to a dead/stale tunnel. Logs will show `[AUDIO ROUTING] No client connection found for <id>`. Fix: start a new Cloudflare tunnel (`cloudflared tunnel --url http://localhost:7014`), update `BASE_URL` in `.env`, restart backend.
+`BASE_URL` in `.env` points to a dead/stale tunnel. Logs will show `[AUDIO ROUTING] No client connection found for <id>`. Fix: start a new Cloudflare tunnel (`cloudflared tunnel --url http://localhost:7014`), update `BASE_URL` in `.env`. The backend re-reads `.env` on each request (`utils/ngrok.py:determine_websocket_url`), so no restart is needed — just update the file and start a new talk.
 
 **Zombie processes holding ports (Windows):**
 On Windows, Python and Node processes can survive after the parent is killed, holding ports 7014/3000-3002. Symptoms: server appears to start but serves old code, or "address already in use" errors.

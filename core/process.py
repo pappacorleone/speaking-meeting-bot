@@ -15,7 +15,7 @@ PIPECAT_PROCESSES: Dict[str, subprocess.Popen] = {}
 
 def stream_output(pipe, prefix):
     for line in iter(pipe.readline, ""):
-        print(f"{prefix} {line.strip()}", flush=True)
+        logger.info(f"{prefix} {line.strip()}")
 
 
 def start_pipecat_process(

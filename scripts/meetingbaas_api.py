@@ -194,10 +194,10 @@ def create_meeting_bot(
             config = stringify_values(config)
             logger.info("Applied stringify_values to fix JSON serialization issues")
 
-        print(f"[DEBUG] Sending to MeetingBaas: {config}")
-        print(f"[DEBUG] Webhook URL in request: {config.get('webhook_url', 'NOT SET')}")
+        logger.debug(f"Sending to MeetingBaas: payload keys={list(config.keys())}")
+        logger.debug(f"Webhook URL in request: {config.get('webhook_url', 'NOT SET')}")
         response = requests.post(url, json=config, headers=headers)
-        print(f"[DEBUG] MeetingBaas response: {response.status_code} - {response.text[:500]}")
+        logger.debug(f"MeetingBaas response: {response.status_code} - {response.text[:500]}")
 
         if response.status_code == 200:
             data = response.json()

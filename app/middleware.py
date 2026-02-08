@@ -1,10 +1,11 @@
-"""Middleware for anonymous user sessions.
+"""Middleware for anonymous user sessions and request logging.
 
 Sets a browser cookie to identify returning visitors without requiring login.
 Each visitor gets a unique session token stored in SQLite.
 """
 
 import os
+import time
 import uuid
 
 from fastapi import Request, Response
@@ -31,6 +32,33 @@ SKIP_PATHS = frozenset({
     "/openapi.json",
     "/redoc",
 })
+
+
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    """Log method, path, status code, and duration for each HTTP request."""
+
+    SKIP_PATHS = frozenset({"/health", "/health/detailed"})
+
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
+        if request.url.path in self.SKIP_PATHS:
+            return await call_next(request)
+
+        if request.headers.get("upgrade", "").lower() == "websocket":
+            return await call_next(request)
+
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
+        start = time.perf_counter()
+        response = await call_next(request)
+        duration_ms = (time.perf_counter() - start) * 1000
+
+        logger.info(
+            f"{request.method} {request.url.path} -> {response.status_code} ({duration_ms:.0f}ms)"
+        )
+        return response
 
 
 class AnonymousSessionMiddleware(BaseHTTPMiddleware):

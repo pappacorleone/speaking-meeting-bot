@@ -3,6 +3,7 @@
 import argparse
 import logging
 import os
+import platform
 import sys
 from typing import Dict, List, Optional, Tuple
 
@@ -31,6 +32,36 @@ logger.name = "meetingbaas-api"  # Set logger name after configuring
 # Set logging level for pipecat WebSocket client to WARNING to reduce noise
 pipecat_ws_logger = logging.getLogger("pipecat.transports.network.websocket_client")
 pipecat_ws_logger.setLevel(logging.WARNING)
+
+
+def _log_instance_config():
+    """Log instance configuration at startup for diagnostics."""
+    _, persona_count, _persona_names = validate_personas()
+
+    allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+    allowed_origins = [o.strip() for o in allowed_origins if o.strip()]
+
+    config = {
+        "environment": os.getenv("DIADI_ENV", "development"),
+        "log_level": os.getenv("LOG_LEVEL", "INFO"),
+        "port": os.getenv("PORT", "7014"),
+        "python_version": platform.python_version(),
+        "base_url": os.getenv("BASE_URL", "NOT SET"),
+        "db_path": os.getenv("DIADI_DB_PATH", "diadi.db"),
+        "persona_count": persona_count,
+        "cors_origins": allowed_origins or ["(defaults)"],
+        "api_keys": {
+            "MEETING_BAAS_API_KEY": "set" if os.getenv("MEETING_BAAS_API_KEY") else "MISSING",
+            "OPENAI_API_KEY": "set" if os.getenv("OPENAI_API_KEY") else "MISSING",
+            "CARTESIA_API_KEY": "set" if os.getenv("CARTESIA_API_KEY") else "MISSING",
+            "DEEPGRAM_API_KEY": "set" if os.getenv("DEEPGRAM_API_KEY") else "MISSING",
+        },
+    }
+
+    logger.info("=== Instance Configuration ===")
+    for key, value in config.items():
+        logger.info(f"  {key}: {value}")
+    logger.info("==============================")
 
 
 class ApiKeyMiddleware(BaseHTTPMiddleware):
@@ -101,21 +132,25 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     async def startup():
         await init_db()
+        _log_instance_config()
 
     @app.on_event("shutdown")
     async def shutdown():
         await close_db()
 
     # Middleware ordering: last add_middleware = outermost = runs first.
-    # Order of execution: CORS → AnonymousSession → ApiKey → route
-    # So we add in reverse: ApiKey first, then session, then CORS last.
+    # Order of execution: CORS → AnonymousSession → ApiKey → RequestLogging → route
+    # So we add in reverse: RequestLogging first, then ApiKey, then session, then CORS last.
 
-    # API key middleware (innermost — runs closest to the route)
+    from app.middleware import AnonymousSessionMiddleware, RequestLoggingMiddleware
+
+    # Request logging (innermost — runs closest to the route)
+    app.add_middleware(RequestLoggingMiddleware)
+
+    # API key middleware
     app.add_middleware(ApiKeyMiddleware)
 
     # Anonymous session middleware
-    from app.middleware import AnonymousSessionMiddleware
-
     app.add_middleware(AnonymousSessionMiddleware)
 
     # Set the server URL for the OpenAPI schema

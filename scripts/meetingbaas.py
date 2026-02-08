@@ -334,7 +334,7 @@ async def main(
     vad_sample_rate = 16000
     log_and_flush(logging.INFO, f"[CONFIG] Audio frequency: {streaming_audio_frequency} (output: {output_sample_rate}, VAD: {vad_sample_rate})")
 
-    print("Event loop set for Pipecat:", asyncio.get_running_loop())
+    log_and_flush(logging.DEBUG, f"[EVENT_LOOP] Event loop set for Pipecat: {asyncio.get_running_loop()}")
 
     transport = WebsocketClientTransport(
         uri=websocket_url,
@@ -642,7 +642,7 @@ if __name__ == "__main__":
                     persona_name = folder_name
                     break
         except Exception as e:
-            print(f"Error parsing persona data JSON: {e}")
+            log_and_flush(logging.ERROR, f"[PERSONA] Error parsing persona data JSON: {e}")
             persona_data = None
 
     # Run the bot

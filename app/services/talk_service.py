@@ -312,8 +312,8 @@ class TalkService:
             ValueError: If talk not found or not ready.
             RuntimeError: If bot creation fails.
         """
-        print(f"[DEBUG start_talk] websocket_base_url: {websocket_base_url}")
-        print(f"[DEBUG start_talk] api_key: {api_key[:15]}..." if api_key else "api_key: None")
+        logger.debug(f"start_talk websocket_base_url: {websocket_base_url}")
+        logger.debug(f"start_talk api_key: {api_key[:8]}..." if api_key else "start_talk api_key: None")
         talk = store_get_talk(talk_id)
         if not talk:
             raise ValueError("Talk not found")

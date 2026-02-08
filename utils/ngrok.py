@@ -236,10 +236,14 @@ def determine_websocket_url(
         logger.info(f"Using user-provided WebSocket URL: {request_websocket_url}")
         return request_websocket_url, temp_client_id
 
-    # 2. If BASE_URL is set in environment, use it
-    if WS_BASE_URL:
-        logger.info(f"Using WebSocket URL from BASE_URL env: {WS_BASE_URL}")
-        return WS_BASE_URL, temp_client_id
+    # 2. If BASE_URL is set in environment, re-read from .env to pick up
+    #    tunnel URL changes without requiring a server restart
+    load_dotenv(override=True)
+    fresh_base_url = os.environ.get("BASE_URL", None)
+    if fresh_base_url:
+        ws_url = convert_http_to_ws_url(fresh_base_url)
+        logger.info(f"Using WebSocket URL from BASE_URL env: {ws_url}")
+        return ws_url, temp_client_id
 
     # 3. In local dev mode, try to use ngrok URL
     if LOCAL_DEV_MODE:

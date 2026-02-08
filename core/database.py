@@ -26,42 +26,46 @@ async def init_db() -> None:
     Should be called once during FastAPI startup.
     """
     global _db
-    _db = await aiosqlite.connect(DB_PATH)
-    _db.row_factory = aiosqlite.Row
-    await _db.execute("PRAGMA journal_mode=WAL")
-    await _db.execute("PRAGMA foreign_keys=ON")
+    try:
+        _db = await aiosqlite.connect(DB_PATH)
+        _db.row_factory = aiosqlite.Row
+        await _db.execute("PRAGMA journal_mode=WAL")
+        await _db.execute("PRAGMA foreign_keys=ON")
 
-    await _db.executescript(
-        """
-        CREATE TABLE IF NOT EXISTS user_sessions (
-            id TEXT PRIMARY KEY,
-            created_at TEXT NOT NULL,
-            last_seen_at TEXT NOT NULL,
-            metadata TEXT
-        );
+        await _db.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS user_sessions (
+                id TEXT PRIMARY KEY,
+                created_at TEXT NOT NULL,
+                last_seen_at TEXT NOT NULL,
+                metadata TEXT
+            );
 
-        CREATE TABLE IF NOT EXISTS talks (
-            id TEXT PRIMARY KEY,
-            owner_session_id TEXT NOT NULL REFERENCES user_sessions(id),
-            data TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        );
+            CREATE TABLE IF NOT EXISTS talks (
+                id TEXT PRIMARY KEY,
+                owner_session_id TEXT NOT NULL REFERENCES user_sessions(id),
+                data TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
 
-        CREATE TABLE IF NOT EXISTS talk_summaries (
-            talk_id TEXT PRIMARY KEY REFERENCES talks(id),
-            data TEXT NOT NULL,
-            created_at TEXT NOT NULL
-        );
+            CREATE TABLE IF NOT EXISTS talk_summaries (
+                talk_id TEXT PRIMARY KEY REFERENCES talks(id),
+                data TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
 
-        CREATE INDEX IF NOT EXISTS idx_talks_owner
-            ON talks(owner_session_id);
-        CREATE INDEX IF NOT EXISTS idx_talks_created
-            ON talks(created_at DESC);
-        """
-    )
-    await _db.commit()
-    logger.info(f"Database initialized at {DB_PATH}")
+            CREATE INDEX IF NOT EXISTS idx_talks_owner
+                ON talks(owner_session_id);
+            CREATE INDEX IF NOT EXISTS idx_talks_created
+                ON talks(created_at DESC);
+            """
+        )
+        await _db.commit()
+        logger.info(f"Database initialized at {DB_PATH} (WAL mode, foreign keys ON)")
+    except Exception as e:
+        logger.error(f"Failed to initialize database at {DB_PATH}: {e}")
+        raise
 
 
 async def close_db() -> None:
@@ -73,7 +77,7 @@ async def close_db() -> None:
     if _db:
         await _db.close()
         _db = None
-        logger.info("Database connection closed")
+        logger.info(f"Database connection closed ({DB_PATH})")
 
 
 def get_db() -> aiosqlite.Connection:
@@ -83,6 +87,7 @@ def get_db() -> aiosqlite.Connection:
         RuntimeError: If the database has not been initialized.
     """
     if _db is None:
+        logger.error("Database not initialized — init_db() was not called")
         raise RuntimeError("Database not initialized. Call init_db() first.")
     return _db
 
